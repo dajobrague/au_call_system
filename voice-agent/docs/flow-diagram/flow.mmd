@@ -1,0 +1,56 @@
+%% Voice Agent Call Flow Diagram
+
+flowchart TD
+    A[Call Start] --> B[collect_client_id]
+    B --> |Valid ID| C[collect_job_number]
+    B --> |Invalid ID| B
+    B --> |Max Retries| Z[goodbye]
+    
+    C --> |Valid Number| D[confirm_job]
+    C --> |Invalid Number| C
+    C --> |Max Retries| Z
+    
+    D --> |User Says Yes| E[ask_action]
+    D --> |User Says No| C
+    D --> |Max Retries| Z
+    
+    E --> |Update Status| F[collect_action_value]
+    E --> |Update Date| F
+    E --> |Update Assignee| F
+    E --> |Add Note| F
+    E --> |Invalid Action| E
+    E --> |Max Retries| Z
+    
+    F --> |Valid Value| G[confirm_action]
+    F --> |Invalid Value| F
+    F --> |Max Retries| Z
+    
+    G --> |User Says Yes| H[execute_action]
+    G --> |User Says No| E
+    G --> |Max Retries| Z
+    
+    H --> |Success| I[More Actions?]
+    H --> |Failure| J[Error Recovery]
+    H --> |System Error| Z
+    
+    I --> |Yes| E
+    I --> |No| Z
+    
+    J --> |Retry| H
+    J --> |Give Up| Z
+    
+    Z --> K[Call End]
+    
+    %% Error Paths
+    B -.-> |System Error| Z
+    C -.-> |System Error| Z
+    D -.-> |System Error| Z
+    E -.-> |System Error| Z
+    F -.-> |System Error| Z
+    G -.-> |System Error| Z
+    
+    %% Recording Process
+    A --> L[Start Recording]
+    K --> M[Stop Recording]
+    M --> N[Upload to S3]
+    N --> O[Update Job History]

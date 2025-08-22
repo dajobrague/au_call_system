@@ -1,0 +1,105 @@
+# Spanish Voice Lines (Data-only)
+# Keys and sample text for voice prompts
+
+# Collection Prompts
+prompts:
+  welcome:
+    initial: "Bienvenido al sistema de gestión de trabajos."
+    
+  collect_client_id:
+    ask: "Dime tu identificador de cliente."
+    retry: "No entendí. Repite tu identificador de cliente."
+    timeout: "No recibí respuesta. ¿Puedes decir tu identificador?"
+    format_help: "El identificador debe tener al menos 3 caracteres."
+    
+  collect_job_number:
+    ask: "Ahora dime el número de trabajo."
+    retry: "Número de trabajo no válido. Inténtalo de nuevo."
+    timeout: "No escuché el número. ¿Cuál es el número de trabajo?"
+    format_help: "Dime solo los números del trabajo."
+    
+  ask_action:
+    menu: "¿Qué quieres hacer? Puedes actualizar estado, cambiar fecha, cambiar asignado, o agregar nota."
+    retry: "No entendí. Elige actualizar estado, cambiar fecha, cambiar asignado, o agregar nota."
+    timeout: "¿Qué acción quieres realizar?"
+    
+  collect_action_value:
+    status: "¿Cuál es el nuevo estado?"
+    date: "¿Cuál es la nueva fecha?"
+    assignee: "¿A quién quieres asignar el trabajo?"
+    note: "¿Qué nota quieres agregar?"
+
+# Confirmation Templates
+confirms:
+  job:
+    readback: "Trabajo {{job_number}}; estado {{status}}; fecha {{scheduled_date|sin fecha}}; asignado a {{assignee|sin asignar}}. ¿Es correcto?"
+    found: "Encontré el trabajo {{job_number}} para {{client_name}}."
+    
+  action:
+    update_status: "Voy a actualizar el estado a {{new_status}}. ¿Es correcto?"
+    update_date: "Voy a programar para {{new_date}}. ¿Es correcto?"
+    update_assignee: "Voy a asignar a {{new_assignee}}. ¿Es correcto?"
+    add_note: "Voy a agregar la nota: {{note_content}}. ¿Es correcto?"
+
+# Success Messages
+success:
+  status_updated: "Estado actualizado a {{new_status}}."
+  date_updated: "Fecha programada actualizada a {{new_date}}."
+  assignee_updated: "Asignado a {{new_assignee}}."
+  note_added: "Nota agregada."
+  
+# Error Messages
+errors:
+  not_found:
+    job: "No encuentro ese trabajo. Dime el número nuevamente."
+    client: "No encuentro ese cliente. Verifica el identificador."
+    assignee: "No encuentro esa persona. Dime otro nombre."
+    
+  invalid:
+    status_transition: "No puedo cambiar de {{current_status}} a {{requested_status}}."
+    date: "Esa fecha no es válida. Debe ser una fecha futura."
+    format: "Formato no válido. Inténtalo de nuevo."
+    
+  system:
+    error: "Hay un problema técnico. Intenta llamar más tarde."
+    timeout: "El sistema está tardando mucho. Por favor, intenta de nuevo."
+
+# Recording Messages
+recording:
+  available: "Grabación disponible."
+  pending: "Grabación pendiente de subida."
+
+# Goodbye Messages
+goodbye:
+  normal: "Gracias por llamar. Que tengas buen día."
+  error: "No pude completar tu solicitud. Por favor, llama más tarde."
+  max_retries: "No pude entender. Por favor, contacta soporte."
+
+# Processing Messages
+processing:
+  looking_up: "Déjame buscar esa información."
+  updating: "Actualizando el trabajo."
+  saving: "Guardando los cambios."
+
+# Status Values (for voice)
+status_values:
+  PENDING: "Pendiente"
+  IN_PROGRESS: "En Progreso"  
+  ON_HOLD: "En Espera"
+  COMPLETED: "Completado"
+  CANCELLED: "Cancelado"
+
+# Date Formatting
+dates:
+  today: "hoy"
+  tomorrow: "mañana"
+  yesterday: "ayer"
+  no_date: "sin fecha"
+  format_error: "fecha no válida"
+
+# Action Types (for voice)
+actions:
+  UPDATE_STATUS: "actualizar estado"
+  UPDATE_SCHEDULED_DATE: "cambiar fecha"
+  UPDATE_ASSIGNEE: "cambiar asignado"
+  ADD_NOTE: "agregar nota"

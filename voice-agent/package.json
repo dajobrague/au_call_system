@@ -1,0 +1,10 @@
+{
+  "name": "voice-agent",
+  "version": "1.0.0",
+  "description": "Clean, layered architecture for an Airtable-driven call agent",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
