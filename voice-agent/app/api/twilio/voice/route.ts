@@ -1,88 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { processCallState } from '@/fsm/state-service';
+import { logger } from '@/lib/logger';
+import type { TwilioWebhookData } from '@/fsm/types';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  
   try {
-    // Parse the form data from Twilio
+    // Parse Twilio form data
     const formData = await request.formData();
-    const callSid = formData.get('CallSid') as string;
-    const from = formData.get('From') as string;
-    const to = formData.get('To') as string;
-    const speechResult = formData.get('SpeechResult') as string;
-    const digits = formData.get('Digits') as string;
-    const gatherAttempt = formData.get('GatherAttempt') as string;
+    const webhookData: TwilioWebhookData = {
+      CallSid: formData.get('CallSid') as string,
+      From: formData.get('From') as string,
+      To: formData.get('To') as string,
+      SpeechResult: formData.get('SpeechResult') as string || undefined,
+      Digits: formData.get('Digits') as string || undefined,
+      GatherAttempt: formData.get('GatherAttempt') as string || undefined,
+    };
 
-    console.log('Twilio webhook received:', {
-      callSid,
-      from,
-      to,
-      speechResult,
-      digits,
-      gatherAttempt
+    // Validate required fields
+    if (!webhookData.CallSid || !webhookData.From || !webhookData.To) {
+      logger.error('Missing required webhook data', { 
+        callSid: webhookData.CallSid,
+        hasFrom: !!webhookData.From,
+        hasTo: !!webhookData.To 
+      });
+      
+      return new NextResponse('Bad Request: Missing required fields', { 
+        status: 400,
+        headers: { 'Content-Type': 'text/plain' }
+      });
+    }
+
+    // Log incoming request
+    logger.webhookRequest({
+      sid: webhookData.CallSid,
+      from: webhookData.From,
+      to: webhookData.To,
+      hasInput: !!(webhookData.SpeechResult || webhookData.Digits),
+      inputSource: webhookData.SpeechResult ? 'speech' : webhookData.Digits ? 'dtmf' : 'none',
     });
 
-    // Check if we have input (speech or DTMF)
-    const hasInput = speechResult || digits;
-    
-    if (hasInput) {
-      // Success: we received input
-      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="alice">Thank you. We received your response.</Say>
-  <Hangup/>
-</Response>`;
-      
-      return new NextResponse(twiml, {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/xml',
-          'Cache-Control': 'no-cache',
-        },
-      });
-    }
+    // Process through FSM
+    const result = await processCallState(webhookData);
+    const latencyMs = Date.now() - startTime;
 
-    // No input received - check if this is a retry
-    const attemptNumber = parseInt(gatherAttempt || '0');
-    const isRetry = attemptNumber > 0;
-    
-    if (isRetry && attemptNumber >= 1) {
-      // Max retries reached - end call
-      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="alice">We didn't receive your input. Goodbye.</Say>
-  <Hangup/>
-</Response>`;
-      
-      return new NextResponse(twiml, {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/xml',
-          'Cache-Control': 'no-cache',
-        },
-      });
-    }
+    // Log state transition
+    logger.stateTransition({
+      ...result.logData,
+      sid: webhookData.CallSid,
+      from: webhookData.From,
+      to: webhookData.To,
+      latencyMs,
+    });
 
-    // First attempt or retry - show gather prompt
-    const promptText = isRetry 
-      ? 'We didn\'t receive your input. Please try again.'
-      : 'Welcome. After the tone, please say your client number or enter it using the keypad, then press pound.';
-      
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Gather 
-    input="speech dtmf" 
-    language="en-US" 
-    timeout="10" 
-    speechTimeout="3" 
-    finishOnKey="#"
-    action="/api/twilio/voice"
-    method="POST">
-    <Say voice="alice">${promptText}</Say>
-  </Gather>
-  <Say voice="alice">We didn't receive your input. Please try again.</Say>
-  <Redirect>/api/twilio/voice</Redirect>
-</Response>`;
-
-    return new NextResponse(twiml, {
+    // Return TwiML response
+    return new NextResponse(result.twiml, {
       status: 200,
       headers: {
         'Content-Type': 'application/xml',
@@ -91,11 +64,18 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Webhook error:', error);
+    const latencyMs = Date.now() - startTime;
     
+    logger.error('Webhook processing error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      latencyMs,
+    });
+
+    // Fallback TwiML response
     const errorTwiML = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">Sorry, there was an error processing your request. Please try again later.</Say>
+  <Say voice="ys3XeJJA4ArWMhRpcX1D" language="en-AU" ttsProvider="ElevenLabs">Sorry, there was an error processing your request. Please try again later.</Say>
   <Hangup/>
 </Response>`;
 
@@ -111,5 +91,5 @@ export async function POST(request: NextRequest) {
 
 // Handle unsupported methods
 export async function GET() {
-  return new Response('Method Not Allowed', { status: 405 });
+  return new NextResponse('Method Not Allowed', { status: 405 });
 }
