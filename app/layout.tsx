@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Voice Agent - Twilio Integration',
-  description: 'Airtable-driven call agent built with Next.js and Twilio',
+  title: 'Twilio Voice Webhook',
+  description: 'Voice webhook service for Twilio integration',
 }
 
 export default function RootLayout({
