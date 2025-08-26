@@ -1,7 +1,1 @@
-{
-  "functions": {
-    "app/api/twilio/voice/route.ts": {
-      "maxDuration": 30
-    }
-  }
-}
+{}
