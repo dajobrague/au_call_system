@@ -1,47 +1,91 @@
-# Voice Agent
+# Voice Agent - Twilio Integration
 
-Clean, layered architecture for an Airtable-driven call agent.
+A clean, layered architecture for an Airtable-driven call agent built with Next.js and Twilio.
 
-## Overview
+## Phase 1: Twilio Plumbing ✅
 
-This monorepo implements a voice-driven system that:
-- Receives calls via Twilio webhooks
-- Updates Airtable Job records through a finite state machine
-- Records every call and stores audio in S3
-- Appends history to existing Job records (no new rows)
+The basic Twilio voice webhook is now implemented and ready for testing.
 
-## High-Level Flow
+### What's Working
 
-1. **Receiver**: Twilio webhook triggers FSM entry point
-2. **Interpreter**: Extracts client ID, job number, and action intent
-3. **Researcher**: Looks up Job in Airtable and validates actions
-4. **Responder**: Updates Job record and appends formatted history
+- ✅ **Voice Webhook**: `/api/twilio/voice` endpoint handles incoming calls
+- ✅ **English Prompts**: Clear welcome message and instructions
+- ✅ **Speech Recognition**: Accepts spoken numbers in English
+- ✅ **DTMF Support**: Keypad input with # to finish
+- ✅ **Timeout Handling**: Reprompts once, then politely ends call
+- ✅ **Error Handling**: Graceful error responses in TwiML format
 
-## Architecture
+### Quick Start
 
-- `apps/web/` - Next.js API-only app with Twilio webhooks
-- `packages/domain/` - Pure business logic and types
-- `packages/adapters/` - External service integrations
-- `packages/playbooks/` - Configuration data (stages, prompts)
+1. **Set up environment variables** in `.env.local`:
+   ```
+   TWILIO_ACCOUNT_SID=your_account_sid
+   TWILIO_AUTH_TOKEN=your_auth_token
+   TWILIO_PHONE_NUMBER=+1XXXXXXXXXX
+   ```
 
-## Key Configuration
+2. **Install dependencies**:
+   ```bash
+   cd voice-agent/apps/web
+   npm install
+   ```
 
-### Change Field Names
-Update field mappings in `apps/web/src/config/fields.ts` and corresponding mappers in `packages/adapters/airtable/`.
+3. **Start development server**:
+   ```bash
+   npm run dev
+   ```
 
-### Change Prompts
-Edit voice lines in `packages/playbooks/phrases.es.yaml`.
+4. **Test locally** (optional):
+   ```bash
+   # Test initial call
+   curl -X POST http://localhost:3000/api/twilio/voice \
+     -d "CallSid=test" -d "From=+1234567890" -d "To=+1987654321"
+   
+   # Test with speech input
+   curl -X POST http://localhost:3000/api/twilio/voice \
+     -d "CallSid=test" -d "SpeechResult=one two three"
+   ```
 
-### Change Stage Flow
-Modify stage progression in `packages/playbooks/flow.default.yaml`.
+### Call Flow
 
-## Getting Started
+1. **Initial Call**: Plays welcome prompt and starts gathering input
+2. **User Input**: Accepts speech or DTMF digits followed by #
+3. **Success**: Acknowledges input and hangs up
+4. **Timeout**: Reprompts once, then ends call politely
 
-1. Copy `apps/web/.env.example` to `apps/web/.env.local`
-2. Configure Twilio, Airtable, Redis, and S3 credentials
-3. Set up Twilio webhooks pointing to `/api/twilio/*` endpoints
-4. Start development server
+### Next Steps
 
-## Structure
+1. **Deploy to Vercel**: Follow `docs/deployment/vercel-setup.md`
+2. **Configure Twilio**: Point your number to the webhook URL
+3. **Test with real calls**: Use the scenarios in `docs/manual-tests/phase-1-call-scenarios.md`
+4. **Move to Phase 2**: Implement FSM state management
 
-See `docs/decisions/0001-layered-architecture.md` for architectural decisions.
+### Project Structure
+
+```
+voice-agent/
+├── apps/web/                          # Next.js web application
+│   ├── app/api/twilio/voice/          # Twilio webhook endpoints
+│   └── package.json                   # Web app dependencies
+├── docs/
+│   ├── deployment/                    # Deployment guides
+│   └── manual-tests/                  # Test scenarios
+└── packages/                          # Shared packages (future)
+```
+
+### Testing
+
+- **Manual Tests**: See `docs/manual-tests/phase-1-call-scenarios.md`
+- **Local Testing**: Webhook responds correctly to all scenarios
+- **Deployment**: Ready for Vercel with environment variables
+
+### Troubleshooting
+
+Common issues and solutions are documented in:
+- `docs/deployment/vercel-setup.md` - Deployment issues
+- `docs/manual-tests/phase-1-call-scenarios.md` - Call flow issues
+
+---
+
+**Status**: Phase 1 Complete ✅  
+**Next**: Phase 2 - FSM/State Management
