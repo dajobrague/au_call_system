@@ -1,92 +1,138 @@
 # Voice Agent - Twilio Integration
 
-A clean, layered architecture for an Airtable-driven call agent built with Next.js and Twilio.
+Clean, layered architecture for an Airtable-driven call agent built with Next.js and Twilio.
 
-## Phase 1: Twilio Plumbing ✅
+## 🚀 Quick Start
 
-The basic Twilio voice webhook is now implemented and ready for testing.
+### 1. Environment Setup
+```bash
+cp .env.local.example .env.local
+# Edit .env.local with your Twilio credentials
+```
 
-### What's Working
+### 2. Install Dependencies
+```bash
+npm install
+```
 
-- ✅ **Voice Webhook**: `/api/twilio/voice` endpoint handles incoming calls
-- ✅ **English Prompts**: Clear welcome message and instructions
-- ✅ **Speech Recognition**: Accepts spoken numbers in English
-- ✅ **DTMF Support**: Keypad input with # to finish
-- ✅ **Timeout Handling**: Reprompts once, then politely ends call
-- ✅ **Error Handling**: Graceful error responses in TwiML format
+### 3. Run Development Server
+```bash
+npm run dev
+```
 
-### Quick Start
+### 4. Test Locally
+```bash
+./scripts/smoke-curl.sh
+```
 
-1. **Set up environment variables**:
-   Create a `.env.local` file in the project root with:
-   ```
-   TWILIO_ACCOUNT_SID=your_account_sid
-   TWILIO_AUTH_TOKEN=your_auth_token
-   TWILIO_PHONE_NUMBER=+1XXXXXXXXXX
-   ```
+## 📋 Phase 1: Twilio Plumbing ✅
 
-2. **Install dependencies**:
-   ```bash
-   cd voice-agent/apps/web
-   npm install
-   ```
+**Status**: Complete and ready for testing
 
-3. **Start development server**:
-   ```bash
-   npm run dev
-   ```
+### Features
+- ✅ Twilio webhook handler (`/api/twilio/voice`)
+- ✅ Welcome prompt with speech + DTMF input
+- ✅ Retry logic for no input scenarios
+- ✅ Clean TwiML response generation
+- ✅ Structured logging and error handling
 
-4. **Test locally** (optional):
-   ```bash
-   # Test initial call
-   curl -X POST http://localhost:3000/api/twilio/voice \
-     -d "CallSid=test" -d "From=+1234567890" -d "To=+1987654321"
-   
-   # Test with speech input
-   curl -X POST http://localhost:3000/api/twilio/voice \
-     -d "CallSid=test" -d "SpeechResult=one two three"
-   ```
+### Test It
+1. **Local**: Run smoke tests with `./scripts/smoke-curl.sh`
+2. **Production**: Deploy to Vercel and configure Twilio webhook
+3. **Real Call**: Call your Twilio number to test end-to-end
 
-### Call Flow
+## 🏗️ Architecture
 
-1. **Initial Call**: Plays welcome prompt and starts gathering input
-2. **User Input**: Accepts speech or DTMF digits followed by #
-3. **Success**: Acknowledges input and hangs up
-4. **Timeout**: Reprompts once, then ends call politely
+```
+Twilio Call → API Route → FSM → Interpreter → Airtable/S3
+     ↓            ↓        ↓         ↓           ↓
+  Webhook    TwiML Gen   State    Rules &    Data Store
+             Response   Machine   Parsers   & Recording
+```
 
-### Next Steps
-
-1. **Deploy to Vercel**: Follow `docs/deployment/vercel-setup.md`
-2. **Configure Twilio**: Point your number to the webhook URL
-3. **Test with real calls**: Use the scenarios in `docs/manual-tests/phase-1-call-scenarios.md`
-4. **Move to Phase 2**: Implement FSM state management
-
-### Project Structure
-
+### Directory Structure
 ```
 voice-agent/
-├── apps/web/                          # Next.js web application
-│   ├── app/api/twilio/voice/          # Twilio webhook endpoints
-│   └── package.json                   # Web app dependencies
-├── docs/
-│   ├── deployment/                    # Deployment guides
-│   └── manual-tests/                  # Test scenarios
-└── packages/                          # Shared packages (future)
+├─ app/                    # Next.js App Router
+│  ├─ api/twilio/voice/    # Webhook endpoint ✅
+│  ├─ page.tsx             # Landing page ✅
+│  └─ layout.tsx           # App layout ✅
+├─ src/                    # Business logic
+│  ├─ config/              # Environment & telephony config ✅
+│  ├─ lib/                 # Shared utilities ✅
+│  ├─ fsm/                 # State machine (Phase 2)
+│  ├─ adapters/            # External integrations (Phase 3)
+│  ├─ interpreter/         # Business rules (Phase 4)
+│  ├─ responders/          # Response builders (Phase 4)
+│  ├─ services/            # External services (Phase 5-6)
+│  └─ i18n/                # Internationalization (Phase 7)
+├─ docs/                   # Documentation ✅
+├─ scripts/                # Utility scripts ✅
+└─ README.md               # This file ✅
 ```
 
-### Testing
+## 📚 Documentation
 
-- **Manual Tests**: See `docs/manual-tests/phase-1-call-scenarios.md`
-- **Local Testing**: Webhook responds correctly to all scenarios
-- **Deployment**: Ready for Vercel with environment variables
+- **[Architecture](docs/architecture.md)**: System design and phase breakdown
+- **[Deployment](docs/deploy-vercel.md)**: Vercel deployment guide with sanity tests
+- **[Testing](docs/manual-tests/phase-1-call-scenarios.md)**: Manual test scenarios and curl examples
 
-### Troubleshooting
+## 🧪 Testing
 
-Common issues and solutions are documented in:
-- `docs/deployment/vercel-setup.md` - Deployment issues
-- `docs/manual-tests/phase-1-call-scenarios.md` - Call flow issues
+### Automated Tests
+```bash
+# Smoke test all endpoints
+./scripts/smoke-curl.sh
 
----
+# Test production deployment
+./scripts/smoke-curl.sh https://your-app.vercel.app
+```
 
-**Status**: Phase 1 Complete ✅  
-**Next**: Phase 2 - FSM/State Management
+### Manual Testing
+See [Phase 1 Call Scenarios](docs/manual-tests/phase-1-call-scenarios.md) for detailed test cases.
+
+## 🚢 Deployment
+
+### Vercel (Recommended)
+```bash
+npx vercel --prod
+```
+
+See [Deployment Guide](docs/deploy-vercel.md) for complete instructions.
+
+### Local Development with ngrok
+```bash
+npm run dev
+ngrok http 3000
+# Update Twilio webhook to ngrok URL
+```
+
+See [ngrok Notes](scripts/ngrok-notes.md) for details.
+
+## 🔮 Roadmap
+
+- **Phase 1**: Twilio Plumbing ✅
+- **Phase 2**: Finite State Machine
+- **Phase 3**: Airtable Integration  
+- **Phase 4**: Interpreter & Responders
+- **Phase 5**: Recording Pipeline (S3)
+- **Phase 6**: Redis State Store
+- **Phase 7**: Internationalization
+
+## 🛠️ Technology Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Telephony**: Twilio Voice API
+- **Database**: Airtable (Phase 3)
+- **Storage**: AWS S3 (Phase 5)
+- **Cache**: Redis (Phase 6)
+- **Deployment**: Vercel
+
+## 📞 Support
+
+For issues or questions:
+1. Check the [documentation](docs/)
+2. Review [test scenarios](docs/manual-tests/phase-1-call-scenarios.md)
+3. Run [smoke tests](scripts/smoke-curl.sh)
+4. Check Vercel function logs

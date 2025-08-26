@@ -1,132 +1,147 @@
 # Phase 1 Call Scenarios - Manual Testing
 
-## Overview
-This document outlines the expected behavior for the initial Twilio voice webhook implementation (Step 1 of the voice agent setup).
-
-## Call Flow Behavior
-
-### Initial Call (First POST from Twilio)
-**Expected Response:**
-- Play welcome prompt: "Welcome. After the tone, please say your client number or enter it using the keypad, then press pound."
-- Start `<Gather>` with:
-  - `input="speech dtmf"`
-  - `language="en-US"`
-  - `timeout="10"` seconds
-  - `speechTimeout="3"` seconds
-  - `finishOnKey="#"`
-  - Posts back to same endpoint `/api/twilio/voice`
-
-### Successful Input (Second POST with SpeechResult or Digits)
-**Trigger:** User speaks numbers or enters DTMF digits followed by #
-**Expected Response:**
-- Play acknowledgment: "Thank you. We received your response."
-- Hang up call cleanly
-
-**Test Cases:**
-- Speaking: "one two three four five"
-- DTMF: "12345#"
-- Mixed: Speaking "twelve" then pressing "34#"
-
-### No Input - First Timeout
-**Trigger:** User doesn't speak or press keys within timeout
-**Expected Response:**
-- Play shorter reprompt: "Please say your client number or enter it using the keypad, followed by the pound key."
-- Start another `<Gather>` with same settings
-- This is attempt #1 (retry)
-
-### No Input - Second Timeout
-**Trigger:** User doesn't respond to reprompt
-**Expected Response:**
-- Play goodbye message: "We didn't receive your input. Thank you for calling. Goodbye."
-- Hang up call
-
 ## Test Scenarios
 
-### Scenario 1: Happy Path - Speech Input
-1. Call Twilio number
-2. Hear welcome prompt
-3. Say "one two three four five" clearly
-4. Hear "Thank you. We received your response."
-5. Call ends
+### Scenario 1: Happy Path (Speech Input)
+1. **Call** the Twilio number
+2. **Hear**: "Welcome. After the tone, please say your client number or enter it using the keypad, then press pound."
+3. **Say**: "One two three four five"
+4. **Hear**: "Thank you. We received your response."
+5. **Result**: Call ends
 
-### Scenario 2: Happy Path - DTMF Input
-1. Call Twilio number
-2. Hear welcome prompt
-3. Press "12345#" on keypad
-4. Hear "Thank you. We received your response."
-5. Call ends
+**Expected**: ✅ Successful flow with speech recognition
 
-### Scenario 3: Timeout with Recovery
-1. Call Twilio number
-2. Hear welcome prompt
-3. Wait without speaking/pressing keys
-4. Hear reprompt after ~10 seconds
-5. Say "six seven eight"
-6. Hear "Thank you. We received your response."
-7. Call ends
+### Scenario 2: Happy Path (DTMF Input)
+1. **Call** the Twilio number
+2. **Hear**: Welcome prompt
+3. **Press**: `12345#`
+4. **Hear**: "Thank you. We received your response."
+5. **Result**: Call ends
 
-### Scenario 4: Double Timeout
-1. Call Twilio number
-2. Hear welcome prompt
-3. Wait without speaking/pressing keys
-4. Hear reprompt after ~10 seconds
-5. Wait again without input
-6. Hear "We didn't receive your input. Thank you for calling. Goodbye."
-7. Call ends
+**Expected**: ✅ Successful flow with keypad input
+
+### Scenario 3: No Input (First Attempt)
+1. **Call** the Twilio number
+2. **Hear**: Welcome prompt
+3. **Do**: Nothing (wait for timeout)
+4. **Hear**: "We didn't receive your input. Please try again."
+5. **Say**: "Six seven eight nine"
+6. **Hear**: "Thank you. We received your response."
+7. **Result**: Call ends
+
+**Expected**: ✅ Retry logic works, second attempt succeeds
+
+### Scenario 4: No Input (Both Attempts)
+1. **Call** the Twilio number
+2. **Hear**: Welcome prompt
+3. **Do**: Nothing (wait for timeout)
+4. **Hear**: "We didn't receive your input. Please try again."
+5. **Do**: Nothing (wait for timeout again)
+6. **Hear**: "We didn't receive your input. Goodbye."
+7. **Result**: Call ends
+
+**Expected**: ✅ Call ends after max retries
+
+### Scenario 5: Mixed Input Types
+1. **Call** the Twilio number
+2. **Hear**: Welcome prompt
+3. **Say**: "One two" (without pressing #)
+4. **Press**: `34#`
+5. **Hear**: "Thank you. We received your response."
+6. **Result**: Call ends
+
+**Expected**: ✅ Both speech and DTMF are captured
+
+## Curl Tests (Development)
+
+### Test 1: Initial Call
+```bash
+curl -X POST http://localhost:3000/api/twilio/voice \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "CallSid=test123" \
+  -d "From=+1234567890" \
+  -d "To=+1987654321"
+```
+
+**Expected Response**:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Gather input="speech dtmf" language="en-US" timeout="10" speechTimeout="3" finishOnKey="#" action="/api/twilio/voice" method="POST">
+    <Say voice="alice">Welcome. After the tone, please say your client number or enter it using the keypad, then press pound.</Say>
+  </Gather>
+  <Say voice="alice">We didn't receive your input. Please try again.</Say>
+  <Redirect>/api/twilio/voice</Redirect>
+</Response>
+```
+
+### Test 2: With Speech Input
+```bash
+curl -X POST http://localhost:3000/api/twilio/voice \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "CallSid=test123" \
+  -d "SpeechResult=one two three four five"
+```
+
+**Expected Response**:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">Thank you. We received your response.</Say>
+  <Hangup/>
+</Response>
+```
+
+### Test 3: With DTMF Input
+```bash
+curl -X POST http://localhost:3000/api/twilio/voice \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "CallSid=test123" \
+  -d "Digits=12345"
+```
+
+**Expected Response**:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">Thank you. We received your response.</Say>
+  <Hangup/>
+</Response>
+```
+
+### Test 4: Timeout/Retry
+```bash
+curl -X POST http://localhost:3000/api/twilio/voice \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "CallSid=test123" \
+  -d "GatherAttempt=1"
+```
+
+**Expected Response**:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Gather input="speech dtmf" language="en-US" timeout="10" speechTimeout="3" finishOnKey="#" action="/api/twilio/voice" method="POST">
+    <Say voice="alice">We didn't receive your input. Please try again.</Say>
+  </Gather>
+  <Say voice="alice">We didn't receive your input. Goodbye.</Say>
+  <Hangup/>
+</Response>
+```
 
 ## Success Criteria
 
-✅ **Audio Quality:** All prompts are clear and audible
-✅ **Speech Recognition:** Spoken numbers are recognized reliably
-✅ **DTMF Recognition:** Keypad input works correctly
-✅ **Timeout Handling:** Appropriate fallbacks for no input
-✅ **Call Termination:** All scenarios end cleanly without hanging calls
-✅ **Webhook Logs:** Vercel logs show all POST requests with 200 OK responses
-✅ **Twilio Debugger:** No errors in Twilio Console → Monitor → Debugger
+- [ ] All 5 phone call scenarios work as expected
+- [ ] All 4 curl tests return correct TwiML
+- [ ] No errors in Vercel function logs
+- [ ] Call audio is clear and prompts are audible
+- [ ] Response times are under 2 seconds
+- [ ] Webhook handles concurrent calls properly
 
-## Troubleshooting Checklist
+## Notes
 
-### Audio Issues
-- [ ] Confirm Twilio number has Voice capability enabled
-- [ ] Check webhook URL uses HTTPS
-- [ ] Verify webhook points to correct endpoint `/api/twilio/voice`
-- [ ] Ensure webhook method is set to POST
-
-### Speech Recognition Issues
-- [ ] Test in quiet environment
-- [ ] Speak clearly and at normal pace
-- [ ] Confirm `language="en-US"` in gather
-- [ ] Check `input="speech"` is included
-
-### DTMF Issues
-- [ ] Verify `input="dtmf"` in gather
-- [ ] Confirm `finishOnKey="#"` is set
-- [ ] Test with different phones/carriers
-
-### Webhook Issues
-- [ ] Check Vercel deployment is successful
-- [ ] Verify environment variables are set in Vercel
-- [ ] Ensure route responds within 2 seconds
-- [ ] Check for any 500 errors in logs
-
-## Environment Setup Notes
-
-### Required Environment Variables
-```
-TWILIO_ACCOUNT_SID=your_account_sid
-TWILIO_AUTH_TOKEN=your_auth_token  
-TWILIO_PHONE_NUMBER=+1XXXXXXXXXX
-```
-
-### Twilio Number Configuration
-- **Voice Webhook URL:** `https://your-app.vercel.app/api/twilio/voice`
-- **HTTP Method:** POST
-- **Recording:** Leave empty for now
-- **Status Callback:** Leave empty for now
-
-## Next Steps
-Once all scenarios pass consistently:
-1. Move to Step 2: FSM/state backbone implementation
-2. Add Airtable integration for client lookup
-3. Implement recording functionality
-4. Add more sophisticated error handling
+- Test with different phone numbers (mobile, landline)
+- Test from different geographic locations
+- Verify speech recognition accuracy with various accents
+- Check DTMF tone detection reliability
+- Monitor for any dropped calls or timeouts

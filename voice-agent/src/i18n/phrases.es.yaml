@@ -1,0 +1,17 @@
+# Spanish phrases for Phase 7 internationalization
+
+prompts:
+  welcome: "Bienvenido. Después del tono, diga su número de cliente o márquelo y luego presione gato."
+  noInput: "No recibimos su entrada. Por favor, inténtelo de nuevo."
+  noInputFinal: "No recibimos su entrada. Adiós."
+  acknowledgment: "Gracias. Recibimos su respuesta."
+  error: "Lo siento, hubo un error procesando su solicitud. Por favor, inténtelo más tarde."
+
+voice:
+  name: "Polly.Lupe"  # Spanish voice
+  language: "es-MX"
+
+gather:
+  timeout: 10
+  speechTimeout: 3
+  finishOnKey: "#"
