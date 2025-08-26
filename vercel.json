@@ -1,6 +1,7 @@
 {
-  "buildCommand": "cd voice-agent/apps/web && npm run build",
-  "devCommand": "cd voice-agent/apps/web && npm run dev",
-  "installCommand": "cd voice-agent/apps/web && npm install",
-  "outputDirectory": "voice-agent/apps/web/.next"
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev", 
+  "installCommand": "npm install",
+  "outputDirectory": ".next",
+  "rootDirectory": "voice-agent/apps/web"
 }
