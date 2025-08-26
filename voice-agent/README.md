@@ -17,7 +17,8 @@ The basic Twilio voice webhook is now implemented and ready for testing.
 
 ### Quick Start
 
-1. **Set up environment variables** in `.env.local`:
+1. **Set up environment variables**:
+   Create a `.env.local` file in the project root with:
    ```
    TWILIO_ACCOUNT_SID=your_account_sid
    TWILIO_AUTH_TOKEN=your_auth_token
