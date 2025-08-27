@@ -5,10 +5,9 @@
  */
 
 export const telephonyConfig = {
-  // Voice settings (ElevenLabs Australian)
-  voice: 'ys3XeJJA4ArWMhRpcX1D' as const,
+  // Voice settings (Google Australian Neural)
+  voice: 'Google.en-AU-Wavenet-A' as const,
   language: 'en-AU' as const,
-  ttsProvider: 'ElevenLabs' as const,
   
   // Gather settings
   gather: {
@@ -26,12 +25,25 @@ export const telephonyConfig = {
     welcome: 'Welcome. Please say your client number, or enter it on the keypad, then press pound.',
     reprompt_clientId: 'Sorry, I didn\'t catch that. Please say your client number, or enter it, then press pound.',
     
-    // Job number collection
-    ask_jobNumber: 'Thanks. Now say your job number, or enter it, then press pound.',
+    // Job number collection (with personalized greeting)
+    ask_jobNumber: 'Hi David, Welcome to Healthcare Max Services, please enter your job id.',
     reprompt_jobNumber: 'Sorry, I didn\'t get the job number. Please say it, or enter it, then press pound.',
     
-    // Confirmation and completion
-    confirm_both: 'Thank you. We have your client number and job number.',
+    // Confirmation prompts
+    confirm_client_id: 'I heard client number {clientId}. Press 1 to confirm, or 2 to re-enter.',
+    reprompt_confirm_client_id: 'Please press 1 to confirm client number {clientId}, or 2 to re-enter.',
+    confirm_job_number: 'I heard job number {jobNumber}. Press 1 to confirm, or 2 to re-enter.',
+    reprompt_confirm_job_number: 'Please press 1 to confirm job number {jobNumber}, or 2 to re-enter.',
+    
+    // Job action options (mock workflow)
+    job_options: 'What do you want to do for Sam Wagle\'s Assignment on the 30th of August at 11:30 AM? Press 1 for re-scheduling, Press 2 to leave the job as open for someone else to take care of it, Press 3 to talk to a representative.',
+    reprompt_job_options: 'Please choose an option. Press 1 for re-scheduling, Press 2 to leave the job open, or Press 3 to talk to a representative.',
+    
+    // Workflow completion
+    workflow_complete: 'This is the end of the developed workflow, more coming in the future. Thanks for calling. Goodbye.',
+    
+    // Legacy completion (will be replaced by workflow_complete)
+    confirmed: 'Thank you. Your details have been confirmed.',
     goodbye: 'Thanks for calling. Goodbye.',
     
     // Error handling

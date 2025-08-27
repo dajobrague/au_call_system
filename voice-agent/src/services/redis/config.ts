@@ -7,6 +7,7 @@ export const redisConfig = {
   url: process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL || '',
   token: process.env.REDIS_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '',
   ttlSeconds: parseInt(process.env.STATE_TTL_SECONDS || '3600', 10), // 1 hour default
+  maxCallDuration: parseInt(process.env.MAX_CALL_DURATION_SECONDS || '600', 10), // 10 minutes max call
 } as const;
 
 export const stateKeys = {

@@ -1,21 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processCallState } from '@/fsm/state-service';
 import { logger } from '@/lib/logger';
+import { validateTwilioRequest } from '@/security/twilio-signature';
+import { env } from '@/config/env';
 import type { TwilioWebhookData } from '@/fsm/types';
+
+// Force Node.js runtime for Redis compatibility
+export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    // Parse Twilio form data
-    const formData = await request.formData();
+    // Get request body for signature validation
+    const body = await request.text();
+    
+    // Construct the exact URL Twilio used for signature generation
+    // Twilio uses the webhook URL without query parameters
+    const url = new URL(request.url);
+    const webhookUrl = `${url.protocol}//${url.host}${url.pathname}`;
+    
+    // Validate Twilio signature for security (skip in development for testing)
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const isTestRequest = request.headers.get('User-Agent')?.includes('curl');
+    const skipSignatureValidation = (isDevelopment && !request.headers.get('X-Twilio-Signature')) || 
+                                   (isTestRequest && !request.headers.get('X-Twilio-Signature'));
+    
+    // Parse Twilio form data from body
+    const formData = new URLSearchParams(body);
+    
+    if (!skipSignatureValidation) {
+      const validation = validateTwilioRequest(
+        request.headers,
+        webhookUrl,
+        formData,
+        env.TWILIO_AUTH_TOKEN
+      );
+      
+      if (!validation.isValid) {
+        logger.error('Invalid Twilio signature', { 
+          reason: validation.reason,
+          hasSignature: !!request.headers.get('X-Twilio-Signature'),
+          hasAuthToken: !!env.TWILIO_AUTH_TOKEN,
+          webhookUrl,
+          bodyLength: body.length,
+          userAgent: request.headers.get('User-Agent')
+        });
+        
+        return new NextResponse('Forbidden: Invalid signature', { 
+          status: 403,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      }
+    }
+    
+    // Extract webhook data from parsed form data
     const webhookData: TwilioWebhookData = {
       CallSid: formData.get('CallSid') as string,
       From: formData.get('From') as string,
       To: formData.get('To') as string,
-      SpeechResult: formData.get('SpeechResult') as string || undefined,
-      Digits: formData.get('Digits') as string || undefined,
-      GatherAttempt: formData.get('GatherAttempt') as string || undefined,
+      SpeechResult: formData.get('SpeechResult') || undefined,
+      Digits: formData.get('Digits') || undefined,
+      GatherAttempt: formData.get('GatherAttempt') || undefined,
     };
 
     // Validate required fields
@@ -75,7 +121,7 @@ export async function POST(request: NextRequest) {
     // Fallback TwiML response
     const errorTwiML = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="ys3XeJJA4ArWMhRpcX1D" language="en-AU" ttsProvider="ElevenLabs">Sorry, there was an error processing your request. Please try again later.</Say>
+  <Say voice="Google.en-AU-Wavenet-A" language="en-AU">Sorry, there was an error processing your request. Please try again later.</Say>
   <Hangup/>
 </Response>`;
 

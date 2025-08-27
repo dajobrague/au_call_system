@@ -8,7 +8,11 @@ export const MAX_ATTEMPTS_PER_FIELD = 2; // First prompt + 1 retry
 
 export const PHASES: Record<string, CallPhase> = {
   COLLECT_CLIENT_ID: 'collect_client_id',
+  CONFIRM_CLIENT_ID: 'confirm_client_id',
   COLLECT_JOB_NUMBER: 'collect_job_number',
+  CONFIRM_JOB_NUMBER: 'confirm_job_number',
+  JOB_OPTIONS: 'job_options',
+  WORKFLOW_COMPLETE: 'workflow_complete',
   DONE: 'done',
   ERROR: 'error',
 } as const;
@@ -16,9 +20,8 @@ export const PHASES: Record<string, CallPhase> = {
 export const DEFAULT_LANGUAGE = 'en-AU';
 
 export const VOICE_CONFIG = {
-  voice: 'ys3XeJJA4ArWMhRpcX1D', // ElevenLabs Australian voice
+  voice: 'Google.en-AU-Wavenet-A', // Google Australian Neural voice
   language: 'en-AU',
-  ttsProvider: 'ElevenLabs',
 } as const;
 
 export const GATHER_CONFIG = {

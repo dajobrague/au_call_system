@@ -9,6 +9,41 @@ interface LogContext {
   [key: string]: any;
 }
 
+/**
+ * Sanitize sensitive data from logs
+ * Removes PII like full phone numbers, speech content, etc.
+ */
+function sanitizeLogData(data: any): any {
+  if (typeof data !== 'object' || data === null) {
+    return data;
+  }
+  
+  const sanitized = { ...data };
+  
+  // Sanitize phone numbers - keep only last 4 digits
+  if (sanitized.from && typeof sanitized.from === 'string') {
+    sanitized.from = sanitized.from.replace(/^\+?1?(\d{6})(\d{4})$/, '***-***-$2');
+  }
+  if (sanitized.to && typeof sanitized.to === 'string') {
+    sanitized.to = sanitized.to.replace(/^\+?1?(\d{6})(\d{4})$/, '***-***-$2');
+  }
+  
+  // Remove raw speech content - keep only metadata
+  if (sanitized.speechResult) {
+    delete sanitized.speechResult;
+  }
+  if (sanitized.digits && sanitized.digits.length > 2) {
+    sanitized.digits = `[${sanitized.digits.length} digits]`;
+  }
+  
+  // Keep only safe input metadata
+  if (sanitized.input && sanitized.input.length > 2) {
+    sanitized.input = `[${sanitized.input.length} chars]`;
+  }
+  
+  return sanitized;
+}
+
 // Extended context for FSM state transitions
 interface FSMLogData extends LogContext {
   ts?: string;
@@ -50,22 +85,24 @@ class Logger {
 
   // Specialized method for FSM state transitions (structured JSON)
   stateTransition(data: FSMLogData) {
+    const sanitizedData = sanitizeLogData(data);
     const logEntry = {
       level: 'INFO',
       message: 'FSM state transition',
       ts: new Date().toISOString(),
-      ...data,
+      ...sanitizedData,
     };
     console.log(JSON.stringify(logEntry));
   }
 
   // Request logging for webhook calls
   webhookRequest(data: FSMLogData) {
+    const sanitizedData = sanitizeLogData(data);
     const logEntry = {
       level: 'INFO',
       message: 'Twilio webhook request',
       ts: new Date().toISOString(),
-      ...data,
+      ...sanitizedData,
     };
     console.log(JSON.stringify(logEntry));
   }
