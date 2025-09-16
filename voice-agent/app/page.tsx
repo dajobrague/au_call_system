@@ -1,28 +1,51 @@
 export default function Home() {
   return (
-    <div style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>Voice Agent - Twilio Integration</h1>
-      <p>Clean, layered architecture for an Airtable-driven call agent.</p>
-      
-      <h2>API Endpoints</h2>
-      <ul>
-        <li><code>POST /api/twilio/voice</code> - Twilio webhook handler</li>
-      </ul>
+    <main className="px-8 py-10 font-sans max-w-3xl mx-auto">
+      <h1 className="text-3xl font-bold">Voice Agent - Twilio Integration</h1>
+      <p className="text-gray-600 mt-2">Clean, layered architecture for an Airtable-driven call agent.</p>
 
-      <h2>Architecture</h2>
-      <p>This system follows a layered architecture:</p>
-      <ul>
-        <li><strong>Phase 1:</strong> Twilio webhook plumbing ✅</li>
-        <li><strong>Phase 2:</strong> Finite State Machine (FSM)</li>
-        <li><strong>Phase 3:</strong> Airtable integration</li>
-        <li><strong>Phase 4:</strong> Interpreter & Responders</li>
-        <li><strong>Phase 5:</strong> Recording pipeline (S3)</li>
-        <li><strong>Phase 6:</strong> Redis state store</li>
-        <li><strong>Phase 7:</strong> Internationalization</li>
-      </ul>
+      <section className="mt-8">
+        <h2 className="text-xl font-semibold">API Endpoints</h2>
+        <ul className="list-disc pl-6 mt-2">
+          <li>
+            <code className="px-2 py-1 bg-gray-100 rounded">POST /api/twilio/voice</code>
+            <span className="text-gray-600"> - Twilio webhook handler</span>
+          </li>
+        </ul>
+      </section>
 
-      <h2>Status</h2>
-      <p>🟢 Ready for Phase 1 testing</p>
-    </div>
+      <section className="mt-8">
+        <h2 className="text-xl font-semibold">Architecture</h2>
+        <p className="text-gray-600 mt-2">This system follows a layered architecture:</p>
+        <ul className="list-disc pl-6 mt-2 space-y-1">
+          <li>
+            <span className="font-semibold">Phase 1:</span> Twilio webhook plumbing ✅
+          </li>
+          <li>
+            <span className="font-semibold">Phase 2:</span> Finite State Machine (FSM)
+          </li>
+          <li>
+            <span className="font-semibold">Phase 3:</span> Airtable integration
+          </li>
+          <li>
+            <span className="font-semibold">Phase 4:</span> Interpreter & Responders
+          </li>
+          <li>
+            <span className="font-semibold">Phase 5:</span> Recording pipeline (S3)
+          </li>
+          <li>
+            <span className="font-semibold">Phase 6:</span> Redis state store
+          </li>
+          <li>
+            <span className="font-semibold">Phase 7:</span> Internationalization
+          </li>
+        </ul>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-xl font-semibold">Status</h2>
+        <p className="mt-2">🟢 Ready for Phase 1 testing</p>
+      </section>
+    </main>
   )
 }

@@ -25,9 +25,9 @@ export const telephonyConfig = {
     welcome: 'Welcome. Please say your client number, or enter it on the keypad, then press pound.',
     reprompt_clientId: 'Sorry, I didn\'t catch that. Please say your client number, or enter it, then press pound.',
     
-    // Job number collection (with personalized greeting)
-    ask_jobNumber: 'Hi David, Welcome to Healthcare Max Services, please enter your job id.',
-    reprompt_jobNumber: 'Sorry, I didn\'t get the job number. Please say it, or enter it, then press pound.',
+    // Job number collection (with personalized greeting)  
+    ask_jobNumber: 'Hi David, Welcome to Healthcare Max Services, please use your keypad to enter your job code.',
+    reprompt_jobNumber: 'Sorry, I didn\'t get the job code. Please use your keypad to enter it, then press pound.',
     
     // Confirmation prompts
     confirm_client_id: 'I heard client number {clientId}. Press 1 to confirm, or 2 to re-enter.',
@@ -36,8 +36,8 @@ export const telephonyConfig = {
     reprompt_confirm_job_number: 'Please press 1 to confirm job number {jobNumber}, or 2 to re-enter.',
     
     // Job action options (mock workflow)
-    job_options: 'What do you want to do for Sam Wagle\'s Assignment on the 30th of August at 11:30 AM? Press 1 for re-scheduling, Press 2 to leave the job as open for someone else to take care of it, Press 3 to talk to a representative.',
-    reprompt_job_options: 'Please choose an option. Press 1 for re-scheduling, Press 2 to leave the job open, or Press 3 to talk to a representative.',
+    job_options: 'What do you want to do for Sam Wagle\'s Assignment on the 30th of August at 11:30 AM? Press 1 for re-scheduling, Press 2 to leave the job as open for someone else to take care of it, Press 3 to talk to a representative, or Press 4 to enter a different job code.',
+    reprompt_job_options: 'Please choose an option. Press 1 for re-scheduling, Press 2 to leave the job open, Press 3 to talk to a representative, or Press 4 to enter a different job code.',
     
     // Workflow completion
     workflow_complete: 'This is the end of the developed workflow, more coming in the future. Thanks for calling. Goodbye.',
