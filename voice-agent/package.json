@@ -9,10 +9,15 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.15.0",
+    "@twilio/voice-sdk": "^2.15.0",
+    "@types/ws": "^8.18.1",
     "@upstash/redis": "^1.35.3",
     "next": "14.0.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "twilio": "^5.9.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

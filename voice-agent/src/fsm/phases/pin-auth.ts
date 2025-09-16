@@ -1,10 +1,13 @@
 /**
  * PIN Authentication Phase
  * Handles authentication via employee PIN when phone number is not recognized
+ * Supports both traditional DTMF and AI voice modes
  */
 
 import { employeeService } from '../../services/airtable';
 import { logger } from '../../lib/logger';
+import { convertSpokenToPin, generatePinConfirmation } from '../../services/voice/pin-validator';
+import { generateTwiML } from '../twiml/twiml-generator';
 import type { CallState, ProcessingResult, InputSource } from '../types';
 
 /**
@@ -85,11 +88,82 @@ export async function processPinAuthPhase(
     };
   }
 
-  // Parse PIN from input
-  const pinString = input.trim();
+  // Parse PIN from input (handle both voice and DTMF)
+  let pinString: string;
+  let confidence = 1.0;
+
+  if (inputSource === 'speech') {
+    // Process voice input
+    const voicePinResult = convertSpokenToPin(input);
+    
+    if (!voicePinResult.success) {
+      logger.info('Voice PIN conversion failed', {
+        callSid: state.sid,
+        input,
+        error: voicePinResult.error,
+        type: 'voice_pin_conversion_failed'
+      });
+
+      // Failed to parse voice PIN - ask for clarification
+      const newAttempts = state.attempts.clientId + 1;
+      
+      if (newAttempts > 2) {
+        const newState: CallState = {
+          ...state,
+          phase: 'error',
+          attempts: { ...state.attempts, clientId: newAttempts },
+          updatedAt: new Date().toISOString()
+        };
+
+        return {
+          newState,
+          result: {
+            twiml: generateTwiML('I couldn\'t understand your PIN. Connecting you with a representative.', false),
+            action: 'voice_pin_failed',
+            shouldDeleteState: true,
+          }
+        };
+      }
+
+      const newState: CallState = {
+        ...state,
+        attempts: { ...state.attempts, clientId: newAttempts },
+        updatedAt: new Date().toISOString()
+      };
+
+      const useVoiceAI = process.env.VOICE_AI_ENABLED === 'true';
+      const repromptMessage = useVoiceAI 
+        ? 'I didn\'t catch your PIN clearly. Please say your four-digit employee PIN again, speaking each number clearly.'
+        : 'I didn\'t understand your PIN. Please use your keypad to enter your employee PIN followed by the pound key.';
+
+      return {
+        newState,
+        result: {
+          twiml: generateTwiML(repromptMessage, true),
+          action: 'voice_pin_reprompt',
+          shouldDeleteState: false,
+        }
+      };
+    }
+
+    pinString = voicePinResult.pin!;
+    confidence = voicePinResult.confidence || 0.8;
+    
+    logger.info('Voice PIN extracted', {
+      callSid: state.sid,
+      originalInput: input,
+      extractedPin: pinString,
+      confidence,
+      type: 'voice_pin_extracted'
+    });
+  } else {
+    // Traditional DTMF input
+    pinString = input.trim();
+  }
+
   const pin = parseInt(pinString, 10);
 
-  if (isNaN(pin) || pin <= 0) {
+  if (isNaN(pin) || pin <= 0 || pinString.length !== 4) {
     logger.info('Invalid PIN format', {
       callSid: state.sid,
       input: pinString,
@@ -182,11 +256,14 @@ export async function processPinAuthPhase(
 
       // Transition to provider_selection with immediate personalized greeting
       const employeeName = authResult.employee.name;
+      const useVoiceAI = process.env.VOICE_AI_ENABLED === 'true';
       
       return {
         newState,
         result: {
-          twiml: `<?xml version="1.0" encoding="UTF-8"?>
+          twiml: useVoiceAI 
+            ? generateVoiceAuthSuccess(employeeName)
+            : `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Google.en-AU-Wavenet-A">Hi ${employeeName}.</Say>
   <Redirect>/api/twilio/voice</Redirect>
@@ -286,4 +363,20 @@ export async function processPinAuthPhase(
       }
     };
   }
+}
+
+/**
+ * Generate voice authentication success response
+ */
+function generateVoiceAuthSuccess(employeeName: string): string {
+  const prompt = `Hi ${employeeName}. Thank you for authenticating.`;
+  const baseUrl = process.env.APP_URL || process.env.VERCEL_URL || 'localhost:3000';
+  const protocol = baseUrl.includes('localhost') ? 'ws' : 'wss';
+  const streamUrl = `${protocol}://${baseUrl}/api/twilio/media-stream?prompt=${encodeURIComponent(prompt)}`;
+  
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Stream url="${streamUrl}" />
+  <Redirect>/api/twilio/voice</Redirect>
+</Response>`;
 }

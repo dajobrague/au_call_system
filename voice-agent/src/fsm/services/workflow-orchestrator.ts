@@ -8,6 +8,17 @@ import { telephonyConfig } from '../../config/telephony';
 import { loadCallState, saveCallState, deleteCallState } from '../state/state-manager';
 import { normalizeInput } from '../input/input-normalizer';
 import { generateTwiML } from '../twiml/twiml-generator';
+import { 
+  generatePhaseTransition, 
+  enhanceSystemResponse, 
+  generateNaturalErrorMessage,
+  generatePersonalizedGreeting,
+  getCurrentTimeOfDay
+} from '../../services/voice/conversation-flow';
+import { 
+  initializeConversationMemory, 
+  updateConversationMemory 
+} from '../../services/voice/context-manager';
 import type { TwilioWebhookData, ProcessingResult, CallState } from '../types';
 
 // Import phase processors
@@ -101,7 +112,7 @@ export async function processCallState(webhookData: TwilioWebhookData): Promise<
       case PHASES.PROVIDER_GREETING:
         // This phase should transition immediately to job code collection
         // If we hit this, it means we need to collect job code
-        ({ newState, result } = await processJobCodePhase(state, input, hasInput));
+        ({ newState, result } = await processJobCodePhase(state, input, hasInput, source));
         break;
         
       case PHASES.COLLECT_CLIENT_ID:
@@ -121,7 +132,7 @@ export async function processCallState(webhookData: TwilioWebhookData): Promise<
         break;
         
       case PHASES.COLLECT_JOB_CODE:
-        ({ newState, result } = await processJobCodePhase(state, input, hasInput));
+        ({ newState, result } = await processJobCodePhase(state, input, hasInput, source));
         break;
         
       case PHASES.CONFIRM_JOB_CODE:
@@ -129,7 +140,7 @@ export async function processCallState(webhookData: TwilioWebhookData): Promise<
         break;
         
       case PHASES.JOB_OPTIONS:
-        ({ newState, result } = processJobOptionsPhase(state, input, hasInput));
+        ({ newState, result } = processJobOptionsPhase(state, input, hasInput, source));
         break;
         
       case PHASES.OCCURRENCE_SELECTION:
@@ -145,7 +156,13 @@ export async function processCallState(webhookData: TwilioWebhookData): Promise<
         break;
         
       case PHASES.COLLECT_DAY:
-        ({ newState, result } = processCollectDayPhase(state, input, hasInput));
+        // Check if voice AI mode is enabled for conversational datetime
+        if (process.env.VOICE_AI_ENABLED === 'true' && source === 'speech') {
+          const { processConversationalDateTime } = await import('../phases/datetime-phase');
+          ({ newState, result } = processConversationalDateTime(state, input, hasInput, source));
+        } else {
+          ({ newState, result } = processCollectDayPhase(state, input, hasInput));
+        }
         break;
         
       case PHASES.COLLECT_MONTH:

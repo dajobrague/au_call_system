@@ -30,7 +30,15 @@ export const PHASES: Record<string, CallPhase> = {
 export const DEFAULT_LANGUAGE = 'en-AU';
 
 export const VOICE_CONFIG = {
-  voice: 'Google.en-AU-Wavenet-A', // Google Australian Neural voice
+  // For traditional DTMF mode (fallback)
+  voice: 'Google.en-AU-Wavenet-A', 
+  language: 'en-AU',
+} as const;
+
+export const ELEVENLABS_VOICE_CONFIG = {
+  // ElevenLabs voice configuration for AI mode
+  voiceId: process.env.ELEVENLABS_VOICE_ID || 'aGkVQvWUZi16EH8aZJvT', // Steve - Australian Male
+  modelId: 'eleven_monolingual_v1',
   language: 'en-AU',
 } as const;
 

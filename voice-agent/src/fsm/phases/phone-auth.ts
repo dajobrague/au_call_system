@@ -1,11 +1,13 @@
 /**
  * Phone Authentication Phase
  * Handles automatic authentication via phone number recognition
+ * Supports both traditional DTMF and AI voice modes
  */
 
 import { employeeService } from '../../services/airtable';
 import { extractTwilioPhoneNumber } from '../../utils/phone-formatter';
 import { logger } from '../../lib/logger';
+import { generateTwiML } from '../twiml/twiml-generator';
 import type { CallState, ProcessingResult, InputSource } from '../types';
 import type { TwilioWebhookData } from '../types';
 
@@ -66,10 +68,15 @@ export async function processPhoneAuthPhase(
       // Transition to provider_selection with immediate personalized greeting
       const employeeName = authResult.employee.name;
       
+      // Check if voice AI mode is enabled
+      const useVoiceAI = process.env.VOICE_AI_ENABLED === 'true';
+      
       return {
         newState,
         result: {
-          twiml: `<?xml version="1.0" encoding="UTF-8"?>
+          twiml: useVoiceAI 
+            ? generateVoiceGreeting(employeeName)
+            : `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Google.en-AU-Wavenet-A">Hi ${employeeName}.</Say>
   <Redirect>/api/twilio/voice</Redirect>
@@ -82,7 +89,8 @@ export async function processPhoneAuthPhase(
             employeeId: authResult.employee.id,
             employeeName: authResult.employee.name,
             authMethod: 'phone',
-            duration
+            duration,
+            voiceMode: useVoiceAI
           }
         }
       };
@@ -103,10 +111,15 @@ export async function processPhoneAuthPhase(
         updatedAt: new Date().toISOString()
       };
 
+      // Check if voice AI mode is enabled
+      const useVoiceAI = process.env.VOICE_AI_ENABLED === 'true';
+
       return {
         newState,
         result: {
-          twiml: `<?xml version="1.0" encoding="UTF-8"?>
+          twiml: useVoiceAI 
+            ? generateVoicePinRequest()
+            : `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather input="dtmf" timeout="10" finishOnKey="#">
     <Say voice="Google.en-AU-Wavenet-A">Welcome. I don't recognize your phone number. Please use your keypad to enter your employee PIN followed by the pound key.</Say>
@@ -122,7 +135,8 @@ export async function processPhoneAuthPhase(
             callerPhone,
             authMethod: 'phone_failed',
             duration,
-            error: authResult.error
+            error: authResult.error,
+            voiceMode: useVoiceAI
           }
         }
       };
@@ -167,4 +181,36 @@ export async function processPhoneAuthPhase(
       }
     };
   }
+}
+
+/**
+ * Generate voice greeting for authenticated users
+ */
+function generateVoiceGreeting(employeeName: string): string {
+  const prompt = `Hi ${employeeName}.`;
+  const baseUrl = process.env.APP_URL || process.env.VERCEL_URL || 'localhost:3000';
+  const protocol = baseUrl.includes('localhost') ? 'ws' : 'wss';
+  const streamUrl = `${protocol}://${baseUrl}/api/twilio/media-stream?prompt=${encodeURIComponent(prompt)}`;
+  
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Stream url="${streamUrl}" />
+  <Redirect>/api/twilio/voice</Redirect>
+</Response>`;
+}
+
+/**
+ * Generate voice PIN request for unknown numbers
+ */
+function generateVoicePinRequest(): string {
+  const prompt = "Welcome. I don't recognize your phone number. Please say your four-digit employee PIN.";
+  const baseUrl = process.env.APP_URL || process.env.VERCEL_URL || 'localhost:3000';
+  const protocol = baseUrl.includes('localhost') ? 'ws' : 'wss';
+  const streamUrl = `${protocol}://${baseUrl}/api/twilio/media-stream?prompt=${encodeURIComponent(prompt)}`;
+  
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Stream url="${streamUrl}" />
+  <Redirect>/api/twilio/voice</Redirect>
+</Response>`;
 }

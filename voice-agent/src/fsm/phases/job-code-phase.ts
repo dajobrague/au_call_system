@@ -1,23 +1,94 @@
 /**
  * Job code phase processors
  * Handles job code collection and confirmation with Airtable validation
+ * Supports both traditional DTMF and conversational AI voice modes
  */
 
 import { MAX_ATTEMPTS_PER_FIELD, PHASES } from '../constants';
 import { telephonyConfig } from '../../config/telephony';
-import { generateTwiML, generateConfirmationTwiML } from '../twiml/twiml-generator';
+import { generateTwiML, generateConfirmationTwiML, generateAdaptiveTwiML } from '../twiml/twiml-generator';
+import { parseVoiceJobCode, generateJobCodeRequest, generateJobCodeConfirmation, generateJobCodeClarification } from '../../services/voice/job-code-parser';
+import { extractJobCodeSmart } from '../../services/voice/phonetic-processor';
 import type { CallState, ProcessingResult } from '../types';
 
 /**
  * Process job_code collection phase
  * Validates job code against Airtable and checks employee authorization
  */
-export async function processJobCodePhase(state: CallState, input: string, hasInput: boolean): Promise<{ newState: CallState; result: Partial<ProcessingResult> }> {
-  console.log(`Job Code Phase: hasInput=${hasInput}, input="${input}"`);
+export async function processJobCodePhase(state: CallState, input: string, hasInput: boolean, inputSource?: 'speech' | 'dtmf' | 'none'): Promise<{ newState: CallState; result: Partial<ProcessingResult> }> {
+  console.log(`Job Code Phase: hasInput=${hasInput}, input="${input}", source=${inputSource}`);
   
   if (hasInput) {
-    // User provided job code
-    const jobCode = input.trim();
+    // Process job code based on input type
+    let jobCode: string;
+    let confidence = 1.0;
+    
+    if (inputSource === 'speech') {
+      // Process voice input
+      console.log(`Processing voice job code: "${input}"`);
+      
+      // Try primary voice parsing
+      let voiceResult = parseVoiceJobCode(input);
+      
+      // If primary parsing fails, try advanced phonetic processing
+      if (!voiceResult.success) {
+        voiceResult = extractJobCodeSmart(input);
+      }
+      
+      if (!voiceResult.success) {
+        console.log(`Voice job code parsing failed: ${voiceResult.error}`);
+        
+        // Failed to parse voice job code - ask for clarification
+        const newAttempts = state.attempts.jobNumber + 1;
+        
+        if (newAttempts > MAX_ATTEMPTS_PER_FIELD) {
+          console.log('Max job code attempts reached (voice parsing failed)');
+          return {
+            newState: {
+              ...state,
+              phase: PHASES.ERROR,
+              attempts: {
+                ...state.attempts,
+                jobNumber: newAttempts,
+              },
+            },
+            result: {
+              twiml: generateAdaptiveTwiML('I\'m having trouble understanding your job code. Let me connect you with a representative.', false),
+              action: 'error',
+              shouldDeleteState: true,
+            },
+          };
+        }
+        
+        // Generate helpful clarification
+        const clarificationPrompt = generateJobCodeClarification(newAttempts);
+        
+        const newState: CallState = {
+          ...state,
+          attempts: {
+            ...state.attempts,
+            jobNumber: newAttempts,
+          },
+        };
+        
+        return {
+          newState,
+          result: {
+            twiml: generateAdaptiveTwiML(clarificationPrompt, true),
+            action: 'reprompt',
+            shouldDeleteState: false,
+          },
+        };
+      }
+      
+      jobCode = voiceResult.jobCode!;
+      confidence = voiceResult.confidence || 0.8;
+      
+      console.log(`Voice job code extracted: "${input}" → ${jobCode} (confidence: ${confidence})`);
+    } else {
+      // Traditional DTMF input
+      jobCode = input.trim();
+    }
     
     if (jobCode.length > 0) {
       console.log(`Job code received: ${jobCode}, validating...`);
@@ -70,10 +141,18 @@ export async function processJobCodePhase(state: CallState, input: string, hasIn
           },
         };
         
+        // Generate confirmation message
+        const useVoiceAI = process.env.VOICE_AI_ENABLED === 'true';
+        const confirmationMessage = useVoiceAI 
+          ? generateJobCodeConfirmation(jobCode)
+          : `I heard job code ${jobCode}. Press 1 to confirm, or 2 to re-enter.`;
+        
         return {
           newState,
           result: {
-            twiml: generateConfirmationTwiML(`I heard job code ${jobCode}. Press 1 to confirm, or 2 to re-enter.`),
+            twiml: useVoiceAI
+              ? generateAdaptiveTwiML(confirmationMessage, true)
+              : generateConfirmationTwiML(confirmationMessage),
             action: 'transition',
             shouldDeleteState: false,
           },
@@ -172,14 +251,18 @@ export async function processJobCodePhase(state: CallState, input: string, hasIn
   };
   
   const isFirstAttempt = newAttempts === 1;
-  const prompt = isFirstAttempt 
-    ? 'Please use your keypad to enter your job code followed by the pound key.'
-    : 'I didn\'t get the job code. Please use your keypad to enter it followed by the pound key.';
+  const useVoiceAI = process.env.VOICE_AI_ENABLED === 'true';
+  
+  const prompt = useVoiceAI
+    ? generateJobCodeRequest(!isFirstAttempt)
+    : (isFirstAttempt 
+        ? 'Please use your keypad to enter your job code followed by the pound key.'
+        : 'I didn\'t get the job code. Please use your keypad to enter it followed by the pound key.');
   
   return {
     newState,
     result: {
-      twiml: generateTwiML(prompt, true),
+      twiml: generateAdaptiveTwiML(prompt, true),
       action: isFirstAttempt ? 'prompt' : 'reprompt',
       shouldDeleteState: false,
     },
@@ -206,22 +289,34 @@ export function processConfirmJobCodePhase(state: CallState, input: string, hasI
         },
       };
       
-      // Generate dynamic job options message
-      let jobOptionsMessage: string = telephonyConfig.prompts.job_options; // fallback
+      // Generate dynamic job options message - use natural language for voice AI
+      const useVoiceAI = process.env.VOICE_AI_ENABLED === 'true';
+      let jobOptionsMessage: string;
       
-      if (state.jobTemplate && state.patient) {
-        const patientName = state.patient.name;
-        const jobTitle = state.jobTemplate.title;
-        jobOptionsMessage = `What do you want to do for ${patientName}'s ${jobTitle}? Press 1 for re-scheduling, Press 2 to leave the job as open for someone else to take care of it, Press 3 to talk to a representative, or Press 4 to enter a different job code.`;
-      } else if (state.jobTemplate) {
-        const jobTitle = state.jobTemplate.title;
-        jobOptionsMessage = `What do you want to do for the ${jobTitle}? Press 1 for re-scheduling, Press 2 to leave the job as open for someone else to take care of it, Press 3 to talk to a representative, or Press 4 to enter a different job code.`;
+      if (useVoiceAI) {
+        // Import natural response generator
+        const { getJobOptionsMessage } = require('../../services/voice/natural-responses');
+        jobOptionsMessage = getJobOptionsMessage(state.jobTemplate, state.patient);
+      } else {
+        // Traditional DTMF prompts
+        jobOptionsMessage = telephonyConfig.prompts.job_options; // fallback
+        
+        if (state.jobTemplate && state.patient) {
+          const patientName = state.patient.name;
+          const jobTitle = state.jobTemplate.title;
+          jobOptionsMessage = `What do you want to do for ${patientName}'s ${jobTitle}? Press 1 for re-scheduling, Press 2 to leave the job as open for someone else to take care of it, Press 3 to talk to a representative, or Press 4 to enter a different job code.`;
+        } else if (state.jobTemplate) {
+          const jobTitle = state.jobTemplate.title;
+          jobOptionsMessage = `What do you want to do for the ${jobTitle}? Press 1 for re-scheduling, Press 2 to leave the job as open for someone else to take care of it, Press 3 to talk to a representative, or Press 4 to enter a different job code.`;
+        }
       }
       
       return {
         newState,
         result: {
-          twiml: generateConfirmationTwiML(jobOptionsMessage),
+          twiml: useVoiceAI 
+            ? generateAdaptiveTwiML(jobOptionsMessage, true)
+            : generateConfirmationTwiML(jobOptionsMessage),
           action: 'transition',
           shouldDeleteState: false,
         },

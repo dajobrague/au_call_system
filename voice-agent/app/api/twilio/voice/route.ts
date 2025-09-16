@@ -3,6 +3,7 @@ import { processCallState } from '@/fsm/state-service';
 import { logger } from '@/lib/logger';
 import { validateTwilioRequest } from '@/security/twilio-signature';
 import { env } from '@/config/env';
+import { voiceMetrics } from '../../../../src/services/monitoring/voice-metrics';
 import type { TwilioWebhookData } from '@/fsm/types';
 
 // Force Node.js runtime for Redis compatibility
@@ -10,6 +11,7 @@ export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  let callSid: string | undefined;
   
   try {
     // Get request body for signature validation
@@ -63,6 +65,13 @@ export async function POST(request: NextRequest) {
       Digits: formData.get('Digits') || undefined,
       GatherAttempt: formData.get('GatherAttempt') || undefined,
     };
+    
+    callSid = webhookData.CallSid;
+    
+    // Record call start for metrics
+    if (callSid) {
+      voiceMetrics.recordCallStart(callSid);
+    }
 
     // Validate required fields
     if (!webhookData.CallSid || !webhookData.From || !webhookData.To) {
@@ -100,12 +109,20 @@ export async function POST(request: NextRequest) {
       latencyMs,
     });
 
+    // Record call metrics
+    if (callSid) {
+      const isSuccessful = result.action !== 'error';
+      voiceMetrics.recordCallCompletion(callSid, latencyMs, isSuccessful);
+      voiceMetrics.recordPerformanceMetrics(latencyMs, 1); // Simplified concurrent call count
+    }
+
     // Return TwiML response
     return new NextResponse(result.twiml, {
       status: 200,
       headers: {
         'Content-Type': 'application/xml',
         'Cache-Control': 'no-cache',
+        'X-Response-Time': latencyMs.toString(),
       },
     });
 

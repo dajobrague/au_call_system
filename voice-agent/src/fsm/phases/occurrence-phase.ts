@@ -4,7 +4,7 @@
  */
 
 import { MAX_ATTEMPTS_PER_FIELD, PHASES } from '../constants';
-import { generateTwiML, generateConfirmationTwiML } from '../twiml/twiml-generator';
+import { generateTwiML, generateConfirmationTwiML, generateAdaptiveTwiML } from '../twiml/twiml-generator';
 import { generateSpeechTwiML } from '../../utils/speech-input';
 import { generateDateTimeTwiML } from '../../utils/date-time';
 import type { CallState, ProcessingResult } from '../types';
@@ -180,6 +180,8 @@ export async function processOccurrenceSelectionPhase(state: CallState, input: s
     
     if (state.actionType === 'reschedule') {
       // For reschedule, collect new date/time
+      const useVoiceAI = process.env.VOICE_AI_ENABLED === 'true';
+      
       const newState: CallState = {
         ...state,
         selectedOccurrence: {
@@ -188,7 +190,7 @@ export async function processOccurrenceSelectionPhase(state: CallState, input: s
           scheduledAt: selectedOccurrence.scheduledAt,
           displayDate: selectedOccurrence.displayDate,
         },
-        phase: PHASES.COLLECT_DAY,
+        phase: useVoiceAI ? PHASES.COLLECT_DAY : PHASES.COLLECT_DAY, // Will be handled differently in voice mode
         dateTimeInput: {}, // Initialize date/time collection
         attempts: {
           ...state.attempts,
@@ -196,14 +198,30 @@ export async function processOccurrenceSelectionPhase(state: CallState, input: s
         },
       };
       
-      return {
-        newState,
-        result: {
-          twiml: generateDateTimeTwiML('Enter the new day using 2 digits, for example 0 1 for the first or 1 5 for the fifteenth.', 2),
-          action: 'transition',
-          shouldDeleteState: false,
-        },
-      };
+      if (useVoiceAI) {
+        // Import the conversational datetime function
+        const { processConversationalDateTime } = require('./datetime-phase');
+        const { generateSchedulingRequest } = require('../../services/voice/datetime-parser');
+        
+        return {
+          newState,
+          result: {
+            twiml: generateTwiML(generateSchedulingRequest(), true),
+            action: 'transition',
+            shouldDeleteState: false,
+          },
+        };
+      } else {
+        // Traditional DTMF mode
+        return {
+          newState,
+          result: {
+            twiml: generateDateTimeTwiML('Enter the new day using 2 digits, for example 0 1 for the first or 1 5 for the fifteenth.', 2),
+            action: 'transition',
+            shouldDeleteState: false,
+          },
+        };
+      }
     } else {
       // For leave open, first collect the reason via speech
       console.log(`Starting leave open process for appointment: ${selectedOccurrence.displayDate}`);
@@ -223,14 +241,30 @@ export async function processOccurrenceSelectionPhase(state: CallState, input: s
         },
       };
       
-      return {
-        newState,
-        result: {
-          twiml: generateSpeechTwiML(`Please tell me the reason why you cannot take the appointment for ${selectedOccurrence.displayDate}. Speak clearly after the beep.`),
-          action: 'transition',
-          shouldDeleteState: false,
-        },
-      };
+      const useVoiceAI = process.env.VOICE_AI_ENABLED === 'true';
+      
+      if (useVoiceAI) {
+        const { generateNaturalReasonPrompt } = require('../../services/voice/reason-processor');
+        const naturalPrompt = generateNaturalReasonPrompt(selectedOccurrence.displayDate);
+        
+        return {
+          newState,
+          result: {
+            twiml: generateAdaptiveTwiML(naturalPrompt, true),
+            action: 'transition',
+            shouldDeleteState: false,
+          },
+        };
+      } else {
+        return {
+          newState,
+          result: {
+            twiml: generateSpeechTwiML(`Please tell me the reason why you cannot take the appointment for ${selectedOccurrence.displayDate}. Speak clearly after the beep.`),
+            action: 'transition',
+            shouldDeleteState: false,
+          },
+        };
+      }
     }
   }
   

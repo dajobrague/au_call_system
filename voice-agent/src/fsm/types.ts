@@ -6,7 +6,7 @@ export type CallPhase = 'phone_auth' | 'pin_auth' | 'provider_selection' | 'prov
 
 export type InputSource = 'speech' | 'dtmf' | 'none';
 
-export type StateAction = 'prompt' | 'reprompt' | 'transition' | 'confirm' | 'goodbye' | 'error' | 'duplicate' | 'restart' | 'phone_auth_success' | 'phone_auth_failed' | 'pin_auth_success' | 'pin_auth_failed' | 'pin_auth_max_attempts' | 'pin_auth_reprompt' | 'pin_auth_invalid_format' | 'pin_auth_invalid_reprompt' | 'pin_auth_not_found' | 'pin_auth_not_found_reprompt' | 'system_error' | 'schedule_new_not_implemented';
+export type StateAction = 'prompt' | 'reprompt' | 'transition' | 'confirm' | 'goodbye' | 'error' | 'duplicate' | 'restart' | 'phone_auth_success' | 'phone_auth_failed' | 'pin_auth_success' | 'pin_auth_failed' | 'pin_auth_max_attempts' | 'pin_auth_reprompt' | 'pin_auth_invalid_format' | 'pin_auth_invalid_reprompt' | 'pin_auth_not_found' | 'pin_auth_not_found_reprompt' | 'system_error' | 'schedule_new_not_implemented' | 'voice_pin_failed' | 'voice_pin_reprompt';
 
 export interface CallAttempts {
   clientId: number;        // Reused for PIN attempts

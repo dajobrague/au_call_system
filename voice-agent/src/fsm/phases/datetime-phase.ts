@@ -1,11 +1,12 @@
 /**
  * Date/time collection phase processors
  * Handles day, month, time collection and confirmation for rescheduling
+ * Supports both traditional DTMF and conversational AI voice modes
  */
 
 import { MAX_ATTEMPTS_PER_FIELD, PHASES } from '../constants';
 import { telephonyConfig } from '../../config/telephony';
-import { generateTwiML, generateConfirmationTwiML } from '../twiml/twiml-generator';
+import { generateTwiML, generateConfirmationTwiML, generateAdaptiveTwiML } from '../twiml/twiml-generator';
 import { 
   generateDateTimeTwiML, 
   validateDay, 
@@ -16,7 +17,246 @@ import {
   createFullDateString, 
   isFutureDate 
 } from '../../utils/date-time';
+import { 
+  parseNaturalDateTime, 
+  generateSchedulingRequest, 
+  generateSchedulingFollowUp,
+  generateDateTimeConfirmation,
+  validateFutureDateTime
+} from '../../services/voice/datetime-parser';
+import { validateAndSuggestSchedule } from '../../services/voice/schedule-validator';
 import type { CallState, ProcessingResult } from '../types';
+
+/**
+ * Process conversational datetime collection (Voice AI mode)
+ * Handles natural language date/time input like "next Tuesday at 2 PM"
+ */
+export function processConversationalDateTime(
+  state: CallState, 
+  input: string, 
+  hasInput: boolean, 
+  inputSource?: 'speech' | 'dtmf' | 'none'
+): { newState: CallState; result: Partial<ProcessingResult> } {
+  console.log(`Conversational DateTime: hasInput=${hasInput}, input="${input}", source=${inputSource}`);
+  
+  if (hasInput && inputSource === 'speech') {
+    // Parse natural language date/time
+    const parseResult = parseNaturalDateTime(input);
+    
+    if (parseResult.success) {
+      console.log(`Natural datetime parsed: "${input}" → Date: ${parseResult.date}, Time: ${parseResult.time}`);
+      
+      // Check if we have complete information
+      if (parseResult.date && parseResult.time) {
+        // Complete date/time provided
+        const validation = validateAndSuggestSchedule(parseResult.date, parseResult.time, input);
+        
+        if (validation.isValid) {
+          // Valid complete date/time - move to confirmation
+          const newState: CallState = {
+            ...state,
+            dateTimeInput: {
+              day: parseResult.date.split('-')[2],
+              month: parseResult.date.split('-')[1],
+              time: parseResult.time,
+              fullDate: parseResult.date,
+              displayDateTime: validation.displayDateTime || parseResult.displayDateTime,
+            },
+            phase: PHASES.CONFIRM_DATETIME,
+            attempts: {
+              ...state.attempts,
+              confirmJobNumber: 1,
+            },
+          };
+          
+          const confirmationMessage = generateDateTimeConfirmation(
+            parseResult.date,
+            parseResult.time,
+            validation.displayDateTime
+          );
+          
+          return {
+            newState,
+            result: {
+              twiml: generateAdaptiveTwiML(confirmationMessage, true),
+              action: 'transition',
+              shouldDeleteState: false,
+            },
+          };
+        } else {
+          // Invalid date/time - provide suggestions
+          const newAttempts = state.attempts.clientId + 1;
+          
+          if (newAttempts > MAX_ATTEMPTS_PER_FIELD) {
+            return {
+              newState: {
+                ...state,
+                phase: PHASES.ERROR,
+                attempts: {
+                  ...state.attempts,
+                  clientId: newAttempts,
+                },
+              },
+              result: {
+                twiml: generateAdaptiveTwiML('I\'m having trouble with the scheduling. Let me connect you with a representative.', false),
+                action: 'error',
+                shouldDeleteState: true,
+              },
+            };
+          }
+          
+          let errorMessage = validation.error || 'That time doesn\'t work.';
+          if (validation.suggestion) {
+            errorMessage += ` ${validation.suggestion}`;
+          }
+          
+          const newState: CallState = {
+            ...state,
+            attempts: {
+              ...state.attempts,
+              clientId: newAttempts,
+            },
+          };
+          
+          return {
+            newState,
+            result: {
+              twiml: generateAdaptiveTwiML(errorMessage, true),
+              action: 'reprompt',
+              shouldDeleteState: false,
+            },
+          };
+        }
+      } else if (parseResult.needsTime) {
+        // Have date, need time
+        const followUpMessage = generateSchedulingFollowUp(true, false, parseResult);
+        
+        const newState: CallState = {
+          ...state,
+          dateTimeInput: {
+            ...state.dateTimeInput,
+            day: parseResult.date?.split('-')[2],
+            month: parseResult.date?.split('-')[1],
+            fullDate: parseResult.date,
+          },
+          // Stay in same phase to collect time
+        };
+        
+        return {
+          newState,
+          result: {
+            twiml: generateAdaptiveTwiML(followUpMessage, true),
+            action: 'transition',
+            shouldDeleteState: false,
+          },
+        };
+      } else if (parseResult.needsDate) {
+        // Have time, need date
+        const followUpMessage = generateSchedulingFollowUp(false, true, parseResult);
+        
+        const newState: CallState = {
+          ...state,
+          dateTimeInput: {
+            ...state.dateTimeInput,
+            time: parseResult.time,
+          },
+          // Stay in same phase to collect date
+        };
+        
+        return {
+          newState,
+          result: {
+            twiml: generateAdaptiveTwiML(followUpMessage, true),
+            action: 'transition',
+            shouldDeleteState: false,
+          },
+        };
+      }
+    }
+    
+    // Failed to parse - ask for clarification
+    const newAttempts = state.attempts.clientId + 1;
+    
+    if (newAttempts > MAX_ATTEMPTS_PER_FIELD) {
+      return {
+        newState: {
+          ...state,
+          phase: PHASES.ERROR,
+          attempts: {
+            ...state.attempts,
+            clientId: newAttempts,
+          },
+        },
+        result: {
+          twiml: generateAdaptiveTwiML('I\'m having trouble understanding when you\'d like to reschedule. Let me connect you with a representative.', false),
+          action: 'error',
+          shouldDeleteState: true,
+        },
+      };
+    }
+    
+    const clarificationMessage = newAttempts === 1 
+      ? 'I didn\'t catch when you\'d like to reschedule. Could you say it again? For example, "next Tuesday at 2 PM" or "tomorrow morning".'
+      : 'I\'m still having trouble understanding the date and time. Could you try saying it differently? Like "Monday at 3 PM" or "January 15th at 10 AM".';
+    
+    const newState: CallState = {
+      ...state,
+      attempts: {
+        ...state.attempts,
+        clientId: newAttempts,
+      },
+    };
+    
+    return {
+      newState,
+      result: {
+        twiml: generateAdaptiveTwiML(clarificationMessage, true),
+        action: 'reprompt',
+        shouldDeleteState: false,
+      },
+    };
+  }
+  
+  // No input or not speech input
+  const newAttempts = state.attempts.clientId + 1;
+  
+  if (newAttempts > MAX_ATTEMPTS_PER_FIELD) {
+    return {
+      newState: {
+        ...state,
+        phase: PHASES.ERROR,
+        attempts: {
+          ...state.attempts,
+          clientId: newAttempts,
+        },
+      },
+      result: {
+        twiml: generateAdaptiveTwiML('I didn\'t hear when you\'d like to reschedule. Let me connect you with a representative.', false),
+        action: 'error',
+        shouldDeleteState: true,
+      },
+    };
+  }
+  
+  const newState: CallState = {
+    ...state,
+    attempts: {
+      ...state.attempts,
+      clientId: newAttempts,
+    },
+  };
+  
+  const initialMessage = generateSchedulingRequest();
+  
+  return {
+    newState,
+    result: {
+      twiml: generateAdaptiveTwiML(initialMessage, true),
+      action: 'prompt',
+      shouldDeleteState: false,
+    },
+  };
+}
 
 /**
  * Process collect_day phase

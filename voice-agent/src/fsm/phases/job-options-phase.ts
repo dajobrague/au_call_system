@@ -1,31 +1,96 @@
 /**
  * Job options phase processor
  * Handles user selection of job actions (1, 2, 3, or 4)
+ * Supports both traditional DTMF and conversational AI voice modes
  */
 
 import { MAX_ATTEMPTS_PER_FIELD, PHASES } from '../constants';
 import { telephonyConfig } from '../../config/telephony';
-import { generateTwiML, generateConfirmationTwiML } from '../twiml/twiml-generator';
+import { generateTwiML, generateConfirmationTwiML, generateAdaptiveTwiML } from '../twiml/twiml-generator';
+import { parseIntent } from '../../services/intent/intent-parser';
+import { getJobOptionsMessage } from '../../services/voice/natural-responses';
+import { getConversationContext, shouldRequestClarification, generateContextualClarification } from '../../services/intent/conversation-context';
 import type { CallState, ProcessingResult } from '../types';
 
 /**
  * Process job_options phase
  * Handles user selection of job actions (1, 2, 3, or 4)
  */
-export function processJobOptionsPhase(state: CallState, input: string, hasInput: boolean): { newState: CallState; result: Partial<ProcessingResult> } {
-  console.log(`Job Options Phase: hasInput=${hasInput}, input="${input}"`);
+export function processJobOptionsPhase(state: CallState, input: string, hasInput: boolean, inputSource?: 'speech' | 'dtmf' | 'none'): { newState: CallState; result: Partial<ProcessingResult> } {
+  console.log(`Job Options Phase: hasInput=${hasInput}, input="${input}", source=${inputSource}`);
   
   if (hasInput) {
-    // Check if user selected a valid option (1, 2, 3, or 4)
-    if (input === '1' || input === '2') {
-      console.log(`Option ${input} selected, looking up future occurrences`);
+    let selectedOption = input;
+    
+    // If this is voice input, parse the intent
+    if (inputSource === 'speech') {
+      const intentResult = parseIntent(input, 'job_options');
+      
+      if (!intentResult.success || !intentResult.intent) {
+        // Failed to parse intent - ask for clarification
+        const conversationContext = getConversationContext(state);
+        const newAttempts = state.attempts.jobOptions + 1;
+        
+        if (newAttempts > MAX_ATTEMPTS_PER_FIELD) {
+          console.log('Max job options attempts reached (voice parsing failed)');
+          return {
+            newState: {
+              ...state,
+              phase: PHASES.ERROR,
+              attempts: {
+                ...state.attempts,
+                jobOptions: newAttempts,
+              },
+            },
+            result: {
+              twiml: generateAdaptiveTwiML('I\'m having trouble understanding what you\'d like to do. Let me connect you with a representative.', false),
+              action: 'error',
+              shouldDeleteState: true,
+            },
+          };
+        }
+        
+        // Generate clarification prompt
+        const clarificationPrompt = generateContextualClarification({
+          currentPhase: state.phase,
+          expectedInputType: 'selection',
+          previousIntents: [],
+          failedAttempts: newAttempts,
+          conversationHistory: [],
+        });
+        
+        const newState: CallState = {
+          ...state,
+          attempts: {
+            ...state.attempts,
+            jobOptions: newAttempts,
+          },
+        };
+        
+        return {
+          newState,
+          result: {
+            twiml: generateAdaptiveTwiML(clarificationPrompt, true),
+            action: 'reprompt',
+            shouldDeleteState: false,
+          },
+        };
+      }
+      
+      selectedOption = intentResult.intent;
+      console.log(`Voice intent parsed: "${input}" → option ${selectedOption} (confidence: ${intentResult.confidence})`);
+    }
+    
+    // Process the selected option (now works for both voice and DTMF)
+    if (selectedOption === '1' || selectedOption === '2') {
+      console.log(`Option ${selectedOption} selected, looking up future occurrences`);
       // Options 1 (reschedule) or 2 (leave open) - need to find future occurrences
-      const actionType = input === '1' ? 'reschedule' : 'leave_open';
+      const actionType = selectedOption === '1' ? 'reschedule' : 'leave_open';
       
       // We'll handle the occurrence lookup in the next phase
       const newState: CallState = {
         ...state,
-        selectedOption: input,
+        selectedOption: selectedOption,
         actionType,
         phase: PHASES.OCCURRENCE_SELECTION,
         attempts: {
@@ -47,12 +112,12 @@ export function processJobOptionsPhase(state: CallState, input: string, hasInput
           shouldDeleteState: false,
         },
       };
-    } else if (input === '3') {
+    } else if (selectedOption === '3') {
       console.log('Option 3 selected, completing workflow (representative)');
       // Option 3 - talk to representative (complete workflow)
       const newState: CallState = {
         ...state,
-        selectedOption: input,
+        selectedOption: selectedOption,
         phase: PHASES.WORKFLOW_COMPLETE,
       };
       
@@ -64,7 +129,7 @@ export function processJobOptionsPhase(state: CallState, input: string, hasInput
           shouldDeleteState: true,
         },
       };
-    } else if (input === '4') {
+    } else if (selectedOption === '4') {
       console.log('Option 4 selected, going back to job code entry');
       // Option 4 - go back to job code entry
       const newState: CallState = {

@@ -1,17 +1,27 @@
 /**
  * Reason collection phase processors
  * Handles speech input for why employee cannot take the job and leave open confirmation
+ * Enhanced with conversational AI and empathetic responses
  */
 
 import { MAX_ATTEMPTS_PER_FIELD, PHASES } from '../constants';
 import { telephonyConfig } from '../../config/telephony';
-import { generateTwiML } from '../twiml/twiml-generator';
+import { generateTwiML, generateAdaptiveTwiML } from '../twiml/twiml-generator';
 import { 
   generateSpeechTwiML, 
   cleanSpeechInput, 
   formatReasonForAirtable, 
   generateSpeechConfirmationTwiML 
 } from '../../utils/speech-input';
+import { 
+  processSpokenReason, 
+  generateNaturalReasonPrompt, 
+  generateEmpatheticConfirmation 
+} from '../../services/voice/reason-processor';
+import { 
+  summarizeConversation, 
+  detectEmotionalDistress 
+} from '../../services/voice/conversation-summarizer';
 import type { CallState, ProcessingResult, InputSource } from '../types';
 
 /**
@@ -22,7 +32,91 @@ export function processCollectReasonPhase(state: CallState, input: string, hasIn
   console.log(`Collect Reason Phase: hasInput=${hasInput}, input="${input}", source=${inputSource}`);
   
   if (hasInput && inputSource === 'speech') {
-    // Clean and validate the speech input
+    const useVoiceAI = process.env.VOICE_AI_ENABLED === 'true';
+    
+    if (useVoiceAI) {
+      // Enhanced voice AI processing
+      const reasonResult = processSpokenReason(input);
+      
+      if (reasonResult.success && !reasonResult.needsMoreDetail) {
+        console.log(`Enhanced reason processed: "${input}" → Category: ${reasonResult.category}, Summary: ${reasonResult.summary}`);
+        
+        // Check for emotional distress and respond appropriately
+        const distressCheck = detectEmotionalDistress(input);
+        
+        // Store enhanced reason data
+        const newState: CallState = {
+          ...state,
+          rescheduleReason: reasonResult.summary || reasonResult.reason || input,
+          phase: PHASES.CONFIRM_LEAVE_OPEN,
+          attempts: {
+            ...state.attempts,
+            confirmClientId: 1,
+          },
+        };
+        
+        // Generate empathetic confirmation
+        const appointmentDate = state.selectedOccurrence?.displayDate || 'the appointment';
+        const confirmationMessage = distressCheck.hasDistress 
+          ? distressCheck.supportiveResponse!
+          : generateEmpatheticConfirmation(
+              reasonResult.reason || input,
+              reasonResult.category || 'other',
+              appointmentDate
+            );
+        
+        return {
+          newState,
+          result: {
+            twiml: generateAdaptiveTwiML(confirmationMessage, true),
+            action: 'transition',
+            shouldDeleteState: false,
+          },
+        };
+      } else if (reasonResult.needsMoreDetail && reasonResult.suggestedFollowUp) {
+        // Need more detail - ask follow-up question
+        console.log(`Reason needs more detail: "${input}"`);
+        
+        const newAttempts = state.attempts.clientId + 1;
+        
+        if (newAttempts > MAX_ATTEMPTS_PER_FIELD) {
+          return {
+            newState: {
+              ...state,
+              phase: PHASES.ERROR,
+              attempts: {
+                ...state.attempts,
+                clientId: newAttempts,
+              },
+            },
+            result: {
+              twiml: generateAdaptiveTwiML('I understand you have your reasons. Let me mark this appointment as open for others.', false),
+              action: 'error',
+              shouldDeleteState: true,
+            },
+          };
+        }
+        
+        const newState: CallState = {
+          ...state,
+          attempts: {
+            ...state.attempts,
+            clientId: newAttempts,
+          },
+        };
+        
+        return {
+          newState,
+          result: {
+            twiml: generateAdaptiveTwiML(reasonResult.suggestedFollowUp, true),
+            action: 'reprompt',
+            shouldDeleteState: false,
+          },
+        };
+      }
+    }
+    
+    // Fallback to traditional speech processing
     const speechValidation = cleanSpeechInput(input);
     
     if (speechValidation.isValid) {
@@ -39,10 +133,16 @@ export function processCollectReasonPhase(state: CallState, input: string, hasIn
         },
       };
       
+      const confirmationMessage = useVoiceAI
+        ? `I understand. I'll mark this appointment as open for others and record your reason. Is that okay?`
+        : speechValidation.cleaned;
+      
       return {
         newState,
         result: {
-          twiml: generateSpeechConfirmationTwiML(speechValidation.cleaned),
+          twiml: useVoiceAI 
+            ? generateAdaptiveTwiML(confirmationMessage, true)
+            : generateSpeechConfirmationTwiML(speechValidation.cleaned),
           action: 'transition',
           shouldDeleteState: false,
         },
