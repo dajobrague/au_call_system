@@ -375,8 +375,9 @@ function generateVoiceAuthSuccess(employeeName: string): string {
   
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Connect>
+  <Start>
     <Stream url="${streamUrl}" />
-  </Connect>
+  </Start>
+  <Say>Connecting you now...</Say>
 </Response>`;
 }
