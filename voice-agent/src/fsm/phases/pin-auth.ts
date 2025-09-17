@@ -80,7 +80,7 @@ export async function processPinAuthPhase(
     <Say voice="Google.en-AU-Wavenet-A">I didn't hear your PIN. Please use your keypad to enter your employee PIN followed by the pound key.</Say>
   </Gather>
   <Say voice="Google.en-AU-Wavenet-A">I didn't receive your PIN. Please try again.</Say>
-  <Redirect>/api/twilio/voice</Redirect>
+  <Hangup/>
 </Response>`,
         action: 'pin_auth_reprompt',
         shouldDeleteState: false,
@@ -210,7 +210,7 @@ export async function processPinAuthPhase(
     <Say voice="Google.en-AU-Wavenet-A">Please use your keypad to enter a valid employee PIN using numbers only, followed by the pound key.</Say>
   </Gather>
   <Say voice="Google.en-AU-Wavenet-A">I didn't receive your PIN. Please try again.</Say>
-  <Redirect>/api/twilio/voice</Redirect>
+  <Hangup/>
 </Response>`,
         action: 'pin_auth_invalid_reprompt',
         shouldDeleteState: false,
@@ -266,7 +266,7 @@ export async function processPinAuthPhase(
             : `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Google.en-AU-Wavenet-A">Hi ${employeeName}.</Say>
-  <Redirect>/api/twilio/voice</Redirect>
+  <Hangup/>
 </Response>`,
           action: 'pin_auth_success',
           shouldDeleteState: false,
@@ -323,7 +323,7 @@ export async function processPinAuthPhase(
     <Say voice="Google.en-AU-Wavenet-A">I couldn't find that PIN. Please use your keypad to enter your correct employee PIN followed by the pound key.</Say>
   </Gather>
   <Say voice="Google.en-AU-Wavenet-A">I didn't receive your PIN. Please try again.</Say>
-  <Redirect>/api/twilio/voice</Redirect>
+  <Hangup/>
 </Response>`,
           action: 'pin_auth_not_found_reprompt',
           shouldDeleteState: false,
@@ -370,13 +370,11 @@ export async function processPinAuthPhase(
  */
 function generateVoiceAuthSuccess(employeeName: string): string {
   const prompt = `Hi ${employeeName}. Thank you for authenticating.`;
-  const baseUrl = process.env.APP_URL || process.env.VERCEL_URL || 'localhost:3000';
-  const protocol = baseUrl.includes('localhost') ? 'ws' : 'wss';
-  const streamUrl = `${protocol}://${baseUrl}/api/twilio/media-stream?prompt=${encodeURIComponent(prompt)}`;
+  const cloudflareUrl = process.env.CLOUDFLARE_VOICE_PROXY_URL || 'wss://voice-proxy.brachod.workers.dev/stream';
+  const streamUrl = `${cloudflareUrl}?callSid={CallSid}&prompt=${encodeURIComponent(prompt)}`;
   
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Stream url="${streamUrl}" />
-  <Redirect>/api/twilio/voice</Redirect>
 </Response>`;
 }

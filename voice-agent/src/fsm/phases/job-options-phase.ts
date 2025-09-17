@@ -106,7 +106,7 @@ export function processJobOptionsPhase(state: CallState, input: string, hasInput
           twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Google.en-AU-Wavenet-A">Please wait while I look up your upcoming appointments.</Say>
-  <Redirect>/api/twilio/voice</Redirect>
+  <Hangup/>
 </Response>`,
           action: 'transition',
           shouldDeleteState: false,

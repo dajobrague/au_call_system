@@ -24,7 +24,7 @@ export function generateSpeechTwiML(
     <Say voice="${voice}">${prompt}</Say>
   </Gather>
   <Say voice="${voice}">I didn't hear your response. Please try again.</Say>
-  <Redirect>/api/twilio/voice</Redirect>
+  <Hangup/>
 </Response>`;
 }
 
@@ -104,6 +104,6 @@ export function generateSpeechConfirmationTwiML(
     <Say voice="${voice}">I heard: ${reason}. Press 1 to confirm and leave the job open, or 2 to try again.</Say>
   </Gather>
   <Say voice="${voice}">Please press 1 to confirm or 2 to try again.</Say>
-  <Redirect>/api/twilio/voice</Redirect>
+  <Hangup/>
 </Response>`;
 }

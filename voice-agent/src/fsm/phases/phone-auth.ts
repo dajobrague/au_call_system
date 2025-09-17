@@ -79,7 +79,7 @@ export async function processPhoneAuthPhase(
             : `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Google.en-AU-Wavenet-A">Hi ${employeeName}.</Say>
-  <Redirect>/api/twilio/voice</Redirect>
+  <Hangup/>
 </Response>`,
           action: 'phone_auth_success',
           shouldDeleteState: false,
@@ -121,11 +121,11 @@ export async function processPhoneAuthPhase(
             ? generateVoicePinRequest()
             : `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather input="dtmf" timeout="10" finishOnKey="#">
+  <Gather input="dtmf" timeout="10" finishOnKey="#" action="/api/twilio/voice" method="POST">
     <Say voice="Google.en-AU-Wavenet-A">Welcome. I don't recognize your phone number. Please use your keypad to enter your employee PIN followed by the pound key.</Say>
   </Gather>
   <Say voice="Google.en-AU-Wavenet-A">I didn't receive your PIN. Please try again.</Say>
-  <Redirect>/api/twilio/voice</Redirect>
+  <Hangup/>
 </Response>`,
           action: 'phone_auth_failed',
           shouldDeleteState: false,
@@ -188,14 +188,12 @@ export async function processPhoneAuthPhase(
  */
 function generateVoiceGreeting(employeeName: string): string {
   const prompt = `Hi ${employeeName}.`;
-  const baseUrl = process.env.APP_URL || process.env.VERCEL_URL || 'localhost:3000';
-  const protocol = baseUrl.includes('localhost') ? 'ws' : 'wss';
-  const streamUrl = `${protocol}://${baseUrl}/api/twilio/media-stream?prompt=${encodeURIComponent(prompt)}`;
+  const cloudflareUrl = process.env.CLOUDFLARE_VOICE_PROXY_URL || 'wss://voice-proxy.brachod.workers.dev/stream';
+  const streamUrl = `${cloudflareUrl}?callSid={CallSid}&prompt=${encodeURIComponent(prompt)}`;
   
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Stream url="${streamUrl}" />
-  <Redirect>/api/twilio/voice</Redirect>
 </Response>`;
 }
 
@@ -204,13 +202,11 @@ function generateVoiceGreeting(employeeName: string): string {
  */
 function generateVoicePinRequest(): string {
   const prompt = "Welcome. I don't recognize your phone number. Please say your four-digit employee PIN.";
-  const baseUrl = process.env.APP_URL || process.env.VERCEL_URL || 'localhost:3000';
-  const protocol = baseUrl.includes('localhost') ? 'ws' : 'wss';
-  const streamUrl = `${protocol}://${baseUrl}/api/twilio/media-stream?prompt=${encodeURIComponent(prompt)}`;
+  const cloudflareUrl = process.env.CLOUDFLARE_VOICE_PROXY_URL || 'wss://voice-proxy.brachod.workers.dev/stream';
+  const streamUrl = `${cloudflareUrl}?callSid={CallSid}&prompt=${encodeURIComponent(prompt)}`;
   
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Stream url="${streamUrl}" />
-  <Redirect>/api/twilio/voice</Redirect>
 </Response>`;
 }

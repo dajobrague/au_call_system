@@ -70,9 +70,22 @@ export function generateConfirmationTwiML(prompt: string): string {
  * Get dynamic WebSocket URL for current environment
  */
 function getDynamicWebSocketUrl(): string {
-  const baseUrl = process.env.APP_URL || process.env.VERCEL_URL || 'localhost:3000';
-  const protocol = baseUrl.includes('localhost') ? 'ws' : 'wss';
-  return `${protocol}://${baseUrl}/api/twilio/media-stream`;
+  // Always use Cloudflare Workers for WebSocket when Voice AI is enabled
+  const cloudflareWorkerUrl = process.env.CLOUDFLARE_VOICE_PROXY_URL || 'wss://voice-proxy.brachod.workers.dev/stream';
+  
+  // Check if we're in a production environment or Voice AI is enabled
+  const isProduction = process.env.NODE_ENV === 'production';
+  const voiceAiEnabled = process.env.VOICE_AI_ENABLED === 'true';
+  
+  if (voiceAiEnabled) {
+    // Use Cloudflare Workers for all Voice AI WebSocket connections
+    return cloudflareWorkerUrl;
+  } else {
+    // Fallback to local WebSocket for development without Voice AI
+    const baseUrl = process.env.APP_URL || process.env.VERCEL_URL || 'localhost:3000';
+    const protocol = baseUrl.includes('localhost') ? 'ws' : 'wss';
+    return `${protocol}://${baseUrl}/api/twilio/media-stream`;
+  }
 }
 
 /**
@@ -85,7 +98,6 @@ export function generateVoiceTwiML(prompt: string, streamUrl?: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Stream url="${defaultStreamUrl}" />
-  <Redirect>${GATHER_CONFIG.action}</Redirect>
 </Response>`;
 }
 
@@ -97,12 +109,12 @@ export function generateVoiceTwiMLWithPrompt(prompt: string, streamUrl?: string)
   const defaultStreamUrl = streamUrl || getDynamicWebSocketUrl();
   
   // Store the prompt in the URL as a parameter so the WebSocket handler can use it
-  const urlWithPrompt = `${defaultStreamUrl}?prompt=${encodeURIComponent(prompt)}`;
+  // Include callSid placeholder for Twilio to replace
+  const urlWithPrompt = `${defaultStreamUrl}?callSid={CallSid}&prompt=${encodeURIComponent(prompt)}`;
   
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Stream url="${urlWithPrompt}" />
-  <Redirect>${GATHER_CONFIG.action}</Redirect>
 </Response>`;
 }
 
@@ -111,12 +123,15 @@ export function generateVoiceTwiMLWithPrompt(prompt: string, streamUrl?: string)
  */
 export function generateAdaptiveTwiML(prompt: string, isGather: boolean = true): string {
   const useVoiceAI = process.env.VOICE_AI_ENABLED === 'true';
+  console.log(`🔍 generateAdaptiveTwiML: VOICE_AI_ENABLED=${process.env.VOICE_AI_ENABLED}, useVoiceAI=${useVoiceAI}`);
   
   if (useVoiceAI) {
     // Use ElevenLabs voice through WebSocket streaming
+    console.log('🎤 Using generateVoiceTwiMLWithPrompt (should have NO redirect)');
     return generateVoiceTwiMLWithPrompt(prompt);
   } else {
     // Use traditional Twilio TTS with Google voice
+    console.log('📞 Using generateTwiML (has redirect)');
     return generateTwiML(prompt, isGather);
   }
 }

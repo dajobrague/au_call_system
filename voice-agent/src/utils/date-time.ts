@@ -200,6 +200,6 @@ export function generateDateTimeTwiML(prompt: string, numDigits: number, voice: 
     <Say voice="${voice}">${prompt}</Say>
   </Gather>
   <Say voice="${voice}">I didn't receive your input. Please try again.</Say>
-  <Redirect>/api/twilio/voice</Redirect>
+  <Hangup/>
 </Response>`;
 }

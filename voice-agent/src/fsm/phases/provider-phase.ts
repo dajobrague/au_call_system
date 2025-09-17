@@ -4,7 +4,7 @@
  */
 
 import { MAX_ATTEMPTS_PER_FIELD, PHASES } from '../constants';
-import { generateTwiML, generateConfirmationTwiML } from '../twiml/twiml-generator';
+import { generateTwiML, generateConfirmationTwiML, generateAdaptiveTwiML } from '../twiml/twiml-generator';
 import type { CallState, ProcessingResult } from '../types';
 
 /**
@@ -51,7 +51,7 @@ export async function processProviderSelectionPhase(state: CallState, input: str
         return {
           newState,
           result: {
-            twiml: generateTwiML(greeting, true),
+            twiml: generateAdaptiveTwiML(greeting, true),
             action: 'transition',
             shouldDeleteState: false,
           },
@@ -78,7 +78,7 @@ export async function processProviderSelectionPhase(state: CallState, input: str
       return {
         newState,
         result: {
-          twiml: generateConfirmationTwiML(selectionMessage),
+            twiml: generateAdaptiveTwiML(selectionMessage, true),
           action: 'prompt',
           shouldDeleteState: false,
         },
@@ -98,7 +98,7 @@ export async function processProviderSelectionPhase(state: CallState, input: str
       return {
         newState,
         result: {
-          twiml: generateTwiML(greeting, true),
+          twiml: generateAdaptiveTwiML(greeting, true),
           action: 'transition',
           shouldDeleteState: false,
         },
@@ -130,7 +130,7 @@ export async function processProviderSelectionPhase(state: CallState, input: str
             },
           },
           result: {
-            twiml: generateTwiML('I didn\'t understand your provider selection. Connecting you with a representative.', false),
+            twiml: generateAdaptiveTwiML('I didn\'t understand your provider selection. Connecting you with a representative.', false),
             action: 'error',
             shouldDeleteState: true,
           },
@@ -152,7 +152,7 @@ export async function processProviderSelectionPhase(state: CallState, input: str
       return {
         newState,
         result: {
-          twiml: generateConfirmationTwiML(repromptMessage),
+          twiml: generateAdaptiveTwiML(repromptMessage, true),
           action: 'reprompt',
           shouldDeleteState: false,
         },
@@ -201,7 +201,7 @@ export async function processProviderSelectionPhase(state: CallState, input: str
         },
       },
       result: {
-        twiml: generateTwiML('I didn\'t hear your provider selection. Connecting you with a representative.', false),
+        twiml: generateAdaptiveTwiML('I didn\'t hear your provider selection. Connecting you with a representative.', false),
         action: 'error',
         shouldDeleteState: true,
       },
@@ -224,7 +224,7 @@ export async function processProviderSelectionPhase(state: CallState, input: str
     return {
       newState,
       result: {
-        twiml: generateConfirmationTwiML(repromptMessage),
+        twiml: generateAdaptiveTwiML(repromptMessage, true),
         action: 'reprompt',
         shouldDeleteState: false,
       },
@@ -238,7 +238,7 @@ export async function processProviderSelectionPhase(state: CallState, input: str
       phase: PHASES.ERROR,
     },
     result: {
-      twiml: generateTwiML('System error with provider selection. Connecting you with a representative.', false),
+      twiml: generateAdaptiveTwiML('System error with provider selection. Connecting you with a representative.', false),
       action: 'error',
       shouldDeleteState: true,
     },
