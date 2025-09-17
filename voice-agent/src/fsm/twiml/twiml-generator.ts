@@ -110,14 +110,11 @@ export function generateVoiceTwiML(prompt: string, streamUrl?: string): string {
 export function generateVoiceTwiMLWithPrompt(prompt: string, streamUrl?: string): string {
   const defaultStreamUrl = streamUrl || getDynamicWebSocketUrl();
   
-  // Store the prompt in the URL as a parameter so the WebSocket handler can use it
-  // Include callSid placeholder for Twilio to replace
-  const urlWithPrompt = `${defaultStreamUrl}?callSid={CallSid}&prompt=${encodeURIComponent(prompt)}`;
-  
+  // Start simple - no query parameters to avoid XML parsing issues
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
-    <Stream url="${urlWithPrompt}" />
+    <Stream url="${defaultStreamUrl}" />
   </Connect>
 </Response>`;
 }

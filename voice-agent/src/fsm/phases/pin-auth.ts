@@ -369,14 +369,13 @@ export async function processPinAuthPhase(
  * Generate voice authentication success response
  */
 function generateVoiceAuthSuccess(employeeName: string): string {
-  const prompt = `Hi ${employeeName}. Thank you for authenticating.`;
   const cloudflareUrl = process.env.CLOUDFLARE_VOICE_PROXY_URL || 'wss://voice-proxy.brachod.workers.dev/stream';
-  const streamUrl = `${cloudflareUrl}?callSid={CallSid}&prompt=${encodeURIComponent(prompt)}`;
   
+  // Start simple - no query parameters to avoid XML parsing issues
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
-    <Stream url="${streamUrl}" />
+    <Stream url="${cloudflareUrl}" />
   </Connect>
 </Response>`;
 }

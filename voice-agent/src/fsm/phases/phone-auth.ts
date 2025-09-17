@@ -187,14 +187,13 @@ export async function processPhoneAuthPhase(
  * Generate voice greeting for authenticated users
  */
 function generateVoiceGreeting(employeeName: string): string {
-  const prompt = `Hi ${employeeName}.`;
   const cloudflareUrl = process.env.CLOUDFLARE_VOICE_PROXY_URL || 'wss://voice-proxy.brachod.workers.dev/stream';
-  const streamUrl = `${cloudflareUrl}?callSid={CallSid}&prompt=${encodeURIComponent(prompt)}`;
   
+  // Start simple - no query parameters to avoid XML parsing issues
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
-    <Stream url="${streamUrl}" />
+    <Stream url="${cloudflareUrl}" />
   </Connect>
 </Response>`;
 }
@@ -203,14 +202,13 @@ function generateVoiceGreeting(employeeName: string): string {
  * Generate voice PIN request for unknown numbers
  */
 function generateVoicePinRequest(): string {
-  const prompt = "Welcome. I don't recognize your phone number. Please say your four-digit employee PIN.";
   const cloudflareUrl = process.env.CLOUDFLARE_VOICE_PROXY_URL || 'wss://voice-proxy.brachod.workers.dev/stream';
-  const streamUrl = `${cloudflareUrl}?callSid={CallSid}&prompt=${encodeURIComponent(prompt)}`;
   
+  // Start simple - no query parameters to avoid XML parsing issues
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
-    <Stream url="${streamUrl}" />
+    <Stream url="${cloudflareUrl}" />
   </Connect>
 </Response>`;
 }

@@ -11,15 +11,26 @@ app.get('/health', (req, res) => {
   res.send('OK');
 });
 
-// Handle HTTP requests to /stream (before WebSocket upgrade)
-app.get('/stream', (req, res) => {
-  console.log('📋 HTTP GET request to /stream:');
+// Handle HTTP requests to /stream - require WebSocket upgrade
+app.all('/stream', (req, res) => {
+  console.log(`📋 ${req.method} request to /stream:`);
   console.log('📋 URL:', req.url);
   console.log('📋 Headers:', req.headers);
   console.log('📋 Query:', req.query);
   
-  // This might be Twilio's initial request before WebSocket upgrade
-  res.status(200).send('Stream endpoint ready for WebSocket upgrade');
+  // Check if this is a WebSocket upgrade attempt
+  const isWebSocketUpgrade = req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket';
+  const hasWebSocketHeaders = req.headers['sec-websocket-key'] && req.headers['sec-websocket-version'];
+  
+  if (isWebSocketUpgrade || hasWebSocketHeaders) {
+    console.log('🔍 This looks like a WebSocket upgrade request - letting WebSocket server handle it');
+    // Let the WebSocket server handle it
+    return;
+  }
+  
+  // For non-WebSocket requests, return 426 to signal upgrade required
+  console.log('❌ Non-WebSocket request to /stream - returning 426 Upgrade Required');
+  res.status(426).set('Upgrade', 'websocket').send('WebSocket upgrade required');
 });
 
 // Create WebSocket server with custom verification
