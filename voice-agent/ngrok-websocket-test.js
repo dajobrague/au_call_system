@@ -11,10 +11,30 @@ app.get('/health', (req, res) => {
   res.send('OK');
 });
 
-// Create WebSocket server
+// Handle HTTP requests to /stream (before WebSocket upgrade)
+app.get('/stream', (req, res) => {
+  console.log('📋 HTTP GET request to /stream:');
+  console.log('📋 URL:', req.url);
+  console.log('📋 Headers:', req.headers);
+  console.log('📋 Query:', req.query);
+  
+  // This might be Twilio's initial request before WebSocket upgrade
+  res.status(200).send('Stream endpoint ready for WebSocket upgrade');
+});
+
+// Create WebSocket server with custom verification
 const wss = new WebSocket.Server({ 
   server,
-  path: '/stream'
+  path: '/stream',
+  verifyClient: (info) => {
+    console.log('🔍 WebSocket verification request:');
+    console.log('📋 URL:', info.req.url);
+    console.log('📋 Headers:', info.req.headers);
+    console.log('📋 Method:', info.req.method);
+    
+    // Accept all WebSocket requests for testing
+    return true;
+  }
 });
 
 console.log('🚀 Starting ngrok WebSocket test server...');
