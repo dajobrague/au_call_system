@@ -97,7 +97,9 @@ export function generateVoiceTwiML(prompt: string, streamUrl?: string): string {
   
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Stream url="${defaultStreamUrl}" />
+  <Connect>
+    <Stream url="${defaultStreamUrl}" />
+  </Connect>
 </Response>`;
 }
 
@@ -114,7 +116,9 @@ export function generateVoiceTwiMLWithPrompt(prompt: string, streamUrl?: string)
   
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Stream url="${urlWithPrompt}" />
+  <Connect>
+    <Stream url="${urlWithPrompt}" />
+  </Connect>
 </Response>`;
 }
 

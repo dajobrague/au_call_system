@@ -1,6 +1,7 @@
 name = "voice-proxy"
 main = "src/index.ts"
 compatibility_date = "2025-09-01"
+workers_dev = true
 
 [[durable_objects.bindings]]
 name = "CALL_SESSIONS"
@@ -9,13 +10,3 @@ class_name = "CallSession"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["CallSession"]
-
-[vars]
-ELEVENLABS_MODE = "tts"
-MAX_CALL_DURATION = 600000
-AUDIO_BUFFER_SIZE = 64000
-
-# Secrets to be set via: wrangler secret put
-# XI_API_KEY
-# ELEVENLABS_AGENT_ID (for conversational AI)
-# ELEVENLABS_VOICE_ID (fallback for TTS mode)
