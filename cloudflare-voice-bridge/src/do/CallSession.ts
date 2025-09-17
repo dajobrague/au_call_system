@@ -16,12 +16,20 @@ export class CallSession implements DurableObject {
     this.callSid = url.searchParams.get("callSid") ?? "unknown";
 
     const upgrade = request.headers.get("Upgrade");
+    const hasWebSocketKey = request.headers.has("Sec-WebSocket-Key");
+    const hasWebSocketVersion = request.headers.has("Sec-WebSocket-Version");
+    
     console.log("📋 Upgrade header:", JSON.stringify(upgrade));
     console.log("📋 Connection header:", JSON.stringify(request.headers.get("Connection")));
+    console.log("📋 Has WebSocket Key:", hasWebSocketKey);
+    console.log("📋 Has WebSocket Version:", hasWebSocketVersion);
 
-    // Reject non-WS requests; this fixes the "Worker tried to return a WebSocket..." error.
-    if (!upgrade || upgrade.toLowerCase() !== "websocket") {
-      return new Response("Expected WebSocket", {
+    // Handle Twilio's Media Streams API - it sends WebSocket-like headers but not always Upgrade: websocket
+    const isTwilioStream = hasWebSocketKey && hasWebSocketVersion;
+    const isStandardWebSocket = upgrade && upgrade.toLowerCase() === "websocket";
+    
+    if (!isTwilioStream && !isStandardWebSocket) {
+      return new Response("Expected WebSocket or Twilio Stream", {
         status: 426,
         headers: { "Upgrade": "websocket" },
       });
