@@ -70,15 +70,15 @@ export function generateConfirmationTwiML(prompt: string): string {
  * Get dynamic WebSocket URL for current environment
  */
 function getDynamicWebSocketUrl(): string {
-  // Temporarily use ngrok for testing Twilio WebSocket compatibility
-  const cloudflareWorkerUrl = process.env.CLOUDFLARE_VOICE_PROXY_URL || 'wss://climbing-merely-joey.ngrok-free.app/stream';
+  // Use deployed Cloudflare Workers with working ElevenLabs integration
+  const cloudflareWorkerUrl = process.env.CLOUDFLARE_VOICE_PROXY_URL || 'wss://voice-proxy.brachod.workers.dev/stream';
   
   // Check if we're in a production environment or Voice AI is enabled
   const isProduction = process.env.NODE_ENV === 'production';
   const voiceAiEnabled = process.env.VOICE_AI_ENABLED === 'true';
   
   if (voiceAiEnabled) {
-    // Use Cloudflare Workers for all Voice AI WebSocket connections
+    // Use Cloudflare Workers for all Voice AI WebSocket connections (now with working audio!)
     return cloudflareWorkerUrl;
   } else {
     // Fallback to local WebSocket for development without Voice AI
