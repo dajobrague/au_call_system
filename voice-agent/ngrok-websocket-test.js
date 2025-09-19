@@ -196,6 +196,15 @@ async function getVoicePrompt(callSid) {
   }
 }
 
+// Extract text content from TwiML (simple regex-based extraction)
+function extractTextFromTwiML(twiml) {
+  if (!twiml || typeof twiml !== 'string') return null;
+  
+  // For voice AI mode, the TwiML just contains <Connect><Stream>, no text
+  // We need to extract the prompt that was cached or use the FSM logic directly
+  return null; // We'll handle this differently
+}
+
 const app = express();
 const server = http.createServer(app);
 
@@ -416,8 +425,6 @@ wss.on('connection', (ws, request) => {
             console.log(`🔐 Auth result: success=${authResult.success}, employee=${authResult.employee?.name}`);
             
             if (authResult.success && authResult.employee) {
-              // Known employee - personalized greeting
-              const personalizedGreeting = `Hi ${authResult.employee.name}, how can I help you today?`;
               console.log(`✅ Authenticated employee: ${authResult.employee.name}`);
               
               // Update call state with employee info
@@ -431,7 +438,70 @@ wss.on('connection', (ws, request) => {
               };
               
               await stateManager.saveCallState(callState);
-              generateElevenLabsSpeech(personalizedGreeting);
+              
+              // Continue with provider selection phase using existing FSM logic
+              console.log('🔄 Running provider selection phase...');
+              
+              try {
+                // Check for multiple providers using existing logic
+                const providerResult = await multiProviderService.getEmployeeProviders(authResult.employee);
+                console.log(`🏢 Provider check: hasMultiple=${providerResult.hasMultipleProviders}, total=${providerResult.totalProviders}`);
+                
+                if (!providerResult.hasMultipleProviders) {
+                  // Single provider - use provider greeting + ask for job code
+                  const provider = providerResult.providers[0];
+                  const providerGreeting = provider?.greeting || 'Welcome to Healthcare Services';
+                  const fullGreeting = `Hi ${authResult.employee.name}. ${providerGreeting}. Please use your keypad to enter your job code followed by the pound key.`;
+                  
+                  console.log(`🎤 Single provider greeting: "${fullGreeting}"`);
+                  
+                  // Update state to provider_greeting phase
+                  callState = {
+                    ...callState,
+                    provider: provider ? {
+                      id: provider.id,
+                      name: provider.name,
+                      greeting: provider.greeting
+                    } : null,
+                    phase: 'provider_greeting',
+                    updatedAt: new Date().toISOString()
+                  };
+                  
+                  await stateManager.saveCallState(callState);
+                  generateElevenLabsSpeech(fullGreeting);
+                  
+                } else {
+                  // Multiple providers - ask for selection
+                  const selectionMessage = multiProviderService.generateProviderSelectionMessage(
+                    authResult.employee.name,
+                    providerResult.providers
+                  );
+                  
+                  console.log(`🎤 Multi-provider selection: "${selectionMessage}"`);
+                  
+                  // Update state with available providers
+                  callState = {
+                    ...callState,
+                    availableProviders: providerResult.providers.map(p => ({
+                      id: p.id,
+                      name: p.name,
+                      greeting: p.greeting,
+                      selectionNumber: p.selectionNumber
+                    })),
+                    phase: 'provider_selection',
+                    attempts: { ...callState.attempts, clientId: 1 },
+                    updatedAt: new Date().toISOString()
+                  };
+                  
+                  await stateManager.saveCallState(callState);
+                  generateElevenLabsSpeech(selectionMessage);
+                }
+                
+              } catch (error) {
+                console.error('❌ Provider selection phase error:', error);
+                const fallbackGreeting = `Hi ${authResult.employee.name}, how can I help you today?`;
+                generateElevenLabsSpeech(fallbackGreeting);
+              }
               
             } else {
               // Unknown number - PIN request
