@@ -71,29 +71,60 @@ export async function processPhoneAuthPhase(
       // Check if voice AI mode is enabled
       const useVoiceAI = process.env.VOICE_AI_ENABLED === 'true';
       
-      return {
-        newState,
-        result: {
-          twiml: useVoiceAI 
-            ? generateVoiceGreeting(employeeName)
-            : `<?xml version="1.0" encoding="UTF-8"?>
+      if (useVoiceAI) {
+        // Pre-cache the personalized greeting for WebSocket to retrieve
+        const personalizedGreeting = `Hi ${employeeName}, how can I help you today?`;
+        
+        // Cache the prompt asynchronously
+        import('../../services/redis').then(({ cacheVoicePrompt }) => {
+          cacheVoicePrompt(webhookData.CallSid, personalizedGreeting).catch(err => {
+            console.error('❌ Failed to cache personalized greeting:', err);
+          });
+        }).catch(err => {
+          console.error('❌ Failed to import Redis service:', err);
+        });
+        
+        return {
+          newState,
+          result: {
+            twiml: generateVoiceGreeting(employeeName),
+            action: 'phone_auth_success',
+            shouldDeleteState: false,
+            logData: {
+              phase: state.phase,
+              action: 'phone_auth_success',
+              employeeId: authResult.employee.id,
+              employeeName: authResult.employee.name,
+              authMethod: 'phone',
+              duration,
+              voiceMode: useVoiceAI,
+              voicePromptCached: personalizedGreeting
+            }
+          }
+        };
+      } else {
+        return {
+          newState,
+          result: {
+            twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Google.en-AU-Wavenet-A">Hi ${employeeName}.</Say>
   <Hangup/>
 </Response>`,
-          action: 'phone_auth_success',
-          shouldDeleteState: false,
-          logData: {
-            phase: state.phase,
             action: 'phone_auth_success',
-            employeeId: authResult.employee.id,
-            employeeName: authResult.employee.name,
-            authMethod: 'phone',
-            duration,
-            voiceMode: useVoiceAI
+            shouldDeleteState: false,
+            logData: {
+              phase: state.phase,
+              action: 'phone_auth_success',
+              employeeId: authResult.employee.id,
+              employeeName: authResult.employee.name,
+              authMethod: 'phone',
+              duration,
+              voiceMode: useVoiceAI
+            }
           }
-        }
-      };
+        };
+      }
 
     } else {
       // Phone not found - transition to PIN authentication
@@ -114,12 +145,42 @@ export async function processPhoneAuthPhase(
       // Check if voice AI mode is enabled
       const useVoiceAI = process.env.VOICE_AI_ENABLED === 'true';
 
-      return {
-        newState,
-        result: {
-          twiml: useVoiceAI 
-            ? generateVoicePinRequest()
-            : `<?xml version="1.0" encoding="UTF-8"?>
+      if (useVoiceAI) {
+        // Pre-cache the PIN request prompt for WebSocket to retrieve
+        const pinPrompt = `Welcome. I don't recognize your phone number. Please use your keypad to enter your employee PIN followed by the pound key.`;
+        
+        // Cache the prompt asynchronously
+        import('../../services/redis').then(({ cacheVoicePrompt }) => {
+          cacheVoicePrompt(webhookData.CallSid, pinPrompt).catch(err => {
+            console.error('❌ Failed to cache PIN prompt:', err);
+          });
+        }).catch(err => {
+          console.error('❌ Failed to import Redis service:', err);
+        });
+        
+        return {
+          newState,
+          result: {
+            twiml: generateVoicePinRequest(),
+            action: 'phone_auth_failed',
+            shouldDeleteState: false,
+            logData: {
+              phase: state.phase,
+              action: 'phone_auth_failed',
+              callerPhone,
+              authMethod: 'phone_failed',
+              duration,
+              error: authResult.error,
+              voiceMode: useVoiceAI,
+              voicePromptCached: pinPrompt
+            }
+          }
+        };
+      } else {
+        return {
+          newState,
+          result: {
+            twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather input="dtmf" timeout="10" finishOnKey="#" action="/api/twilio/voice" method="POST">
     <Say voice="Google.en-AU-Wavenet-A">Welcome. I don't recognize your phone number. Please use your keypad to enter your employee PIN followed by the pound key.</Say>
@@ -127,19 +188,20 @@ export async function processPhoneAuthPhase(
   <Say voice="Google.en-AU-Wavenet-A">I didn't receive your PIN. Please try again.</Say>
   <Hangup/>
 </Response>`,
-          action: 'phone_auth_failed',
-          shouldDeleteState: false,
-          logData: {
-            phase: state.phase,
             action: 'phone_auth_failed',
-            callerPhone,
-            authMethod: 'phone_failed',
-            duration,
-            error: authResult.error,
-            voiceMode: useVoiceAI
+            shouldDeleteState: false,
+            logData: {
+              phase: state.phase,
+              action: 'phone_auth_failed',
+              callerPhone,
+              authMethod: 'phone_failed',
+              duration,
+              error: authResult.error,
+              voiceMode: useVoiceAI
+            }
           }
-        }
-      };
+        };
+      }
     }
 
   } catch (error) {

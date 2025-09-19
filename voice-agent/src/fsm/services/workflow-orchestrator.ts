@@ -35,6 +35,7 @@ import {
   processConfirmDateTimePhase 
 } from '../phases/datetime-phase';
 import { processCollectReasonPhase, processConfirmLeaveOpenPhase } from '../phases/reason-phase';
+import { setCurrentCallContext, clearCurrentCallContext } from '../twiml/twiml-generator';
 
 /**
  * Main FSM processing function
@@ -44,6 +45,9 @@ export async function processCallState(webhookData: TwilioWebhookData): Promise<
   const hasInput = input.length > 0;
   
   try {
+    // Set call context for TwiML generation
+    setCurrentCallContext(webhookData.CallSid, webhookData.From);
+    
     // Load current state
     let state = await loadCallState(webhookData.CallSid);
     
@@ -280,5 +284,8 @@ export async function processCallState(webhookData: TwilioWebhookData): Promise<
         },
       };
     }
+  } finally {
+    // Clear call context
+    clearCurrentCallContext();
   }
 }

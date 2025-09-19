@@ -118,6 +118,84 @@ if (fs.existsSync(envPath)) {
   console.log('📋 Loaded environment variables from .env.local');
 }
 
+// Redis client for prompt caching (using same config as main app)
+const { Redis } = require('@upstash/redis');
+let redisClient = null;
+
+// Import existing FSM modules and services
+const fs_promises = require('fs').promises;
+
+// FSM Services (will be imported dynamically to handle ES modules)
+let employeeService = null;
+let multiProviderService = null;
+let stateManager = null;
+let phoneFormatter = null;
+
+// Initialize FSM services using ts-node for TypeScript compatibility
+async function initializeFSMServices() {
+  try {
+    // Register ts-node for TypeScript support with compatible config
+    require('ts-node').register({
+      transpileOnly: true,
+      compilerOptions: {
+        module: 'commonjs',
+        target: 'es2020',
+        moduleResolution: 'node',
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true,
+        skipLibCheck: true
+      }
+    });
+    
+    // Import TypeScript modules directly
+    const employeeModule = require('./src/services/airtable/employee-service.ts');
+    const multiProviderModule = require('./src/services/airtable/multi-provider-service.ts');
+    const stateModule = require('./src/fsm/state/state-manager.ts');
+    const phoneModule = require('./src/utils/phone-formatter.ts');
+    
+    employeeService = employeeModule.employeeService;
+    multiProviderService = multiProviderModule.multiProviderService;
+    stateManager = stateModule;
+    phoneFormatter = phoneModule;
+    
+    console.log('✅ FSM services initialized successfully with ts-node');
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to initialize FSM services:', error);
+    return false;
+  }
+}
+
+function getRedisClient() {
+  if (!redisClient) {
+    redisClient = new Redis({
+      url: process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.REDIS_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+  return redisClient;
+}
+
+// Get cached prompt for a call
+async function getVoicePrompt(callSid) {
+  try {
+    const client = getRedisClient();
+    const key = `voice_prompt:${callSid}`;
+    const cached = await client.get(key);
+    
+    if (cached && typeof cached === 'object' && cached.prompt) {
+      console.log(`📝 Retrieved cached voice prompt for ${callSid}: "${cached.prompt}"`);
+      return cached.prompt;
+    }
+    
+    console.log(`⚠️ No cached prompt found for ${callSid}`);
+    return null;
+  } catch (error) {
+    console.error('❌ Redis error getting voice prompt:', error);
+    return null;
+  }
+}
+
 const app = express();
 const server = http.createServer(app);
 
@@ -164,6 +242,18 @@ const wss = new WebSocket.Server({
 });
 
 console.log('🚀 Starting ngrok WebSocket test server...');
+
+// Initialize FSM services asynchronously
+initializeFSMServices().then(success => {
+  if (success) {
+    console.log('🎯 FSM integration ready - personalized greetings enabled');
+  } else {
+    console.log('⚠️ FSM integration failed - using fallback greetings');
+  }
+}).catch(error => {
+  console.error('❌ FSM initialization error:', error);
+  console.log('⚠️ FSM integration failed - using fallback greetings');
+});
 
 wss.on('connection', (ws, request) => {
   const parsedUrl = url.parse(request.url, true);
@@ -274,7 +364,7 @@ wss.on('connection', (ws, request) => {
   }
 
   // Handle incoming messages from Twilio
-  ws.on('message', (message) => {
+  ws.on('message', async (message) => {
     try {
       const data = JSON.parse(message.toString());
       
@@ -291,10 +381,68 @@ wss.on('connection', (ws, request) => {
           media: data.media
         });
         
-        // Direct ElevenLabs voice - no test tone
-        setTimeout(() => {
-          generateElevenLabsSpeech("Hi David Bracho. How can I help you today?");
-        }, 1000);
+        // Run phone authentication directly within WebSocket
+        const callSid = data.start?.callSid;
+        if (callSid && employeeService) {
+          console.log(`🔍 Running phone authentication for call ${callSid}...`);
+          
+          // Extract caller phone from URL parameters or use fallback
+          const parsedUrl = url.parse(request.url, true);
+          const callerPhone = parsedUrl.query.from || 'unknown';
+          console.log(`📞 Caller phone: ${callerPhone}`);
+          
+          try {
+            // Load or create call state
+            let callState = await stateManager.loadCallState(callSid);
+            console.log(`📊 Call state loaded: phase=${callState.phase}`);
+            
+            // Run phone authentication using existing FSM logic
+            const authResult = await employeeService.authenticateByPhone(callerPhone);
+            console.log(`🔐 Auth result: success=${authResult.success}, employee=${authResult.employee?.name}`);
+            
+            if (authResult.success && authResult.employee) {
+              // Known employee - personalized greeting
+              const personalizedGreeting = `Hi ${authResult.employee.name}, how can I help you today?`;
+              console.log(`✅ Authenticated employee: ${authResult.employee.name}`);
+              
+              // Update call state with employee info
+              callState = {
+                ...callState,
+                phase: 'provider_selection',
+                employee: authResult.employee,
+                provider: authResult.provider,
+                authMethod: 'phone',
+                updatedAt: new Date().toISOString()
+              };
+              
+              await stateManager.saveCallState(callState);
+              generateElevenLabsSpeech(personalizedGreeting);
+              
+            } else {
+              // Unknown number - PIN request
+              const pinPrompt = "Welcome. I don't recognize your phone number. Please use your keypad to enter your employee PIN followed by the pound key.";
+              console.log(`❌ Phone not found, requesting PIN`);
+              
+              // Update call state for PIN authentication
+              callState = {
+                ...callState,
+                phase: 'pin_auth',
+                updatedAt: new Date().toISOString()
+              };
+              
+              await stateManager.saveCallState(callState);
+              generateElevenLabsSpeech(pinPrompt);
+            }
+            
+          } catch (error) {
+            console.error('❌ Phone authentication error:', error);
+            generateElevenLabsSpeech("Hello, how can I help you today?");
+          }
+          
+        } else {
+          console.log('⚠️ FSM services not initialized or no callSid, using fallback');
+          generateElevenLabsSpeech("Hello, how can I help you today?");
+        }
         
       } else if (data.event === 'media') {
         // Log media frames (don't spam too much)

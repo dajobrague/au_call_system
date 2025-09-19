@@ -12,6 +12,7 @@ export const redisConfig = {
 
 export const stateKeys = {
   call: (callSid: string) => `call:${callSid}`,
+  voicePrompt: (callSid: string) => `voice_prompt:${callSid}`,
 } as const;
 
 // Validate required environment variables

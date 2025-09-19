@@ -77,3 +77,42 @@ export async function isRedisHealthy(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Cache voice prompt for WebSocket to retrieve
+ */
+export async function cacheVoicePrompt(callSid: string, prompt: string): Promise<boolean> {
+  try {
+    const client = getRedisClient();
+    const key = `voice_prompt:${callSid}`;
+    // Short TTL for prompts (5 minutes)
+    await client.setex(key, 300, JSON.stringify({ prompt, timestamp: Date.now() }));
+    console.log(`💾 Cached voice prompt for ${callSid}: "${prompt}"`);
+    return true;
+  } catch (error) {
+    console.error('Redis voice prompt cache error:', { callSid, error });
+    return false;
+  }
+}
+
+/**
+ * Get cached voice prompt for WebSocket
+ */
+export async function getVoicePrompt(callSid: string): Promise<string | null> {
+  try {
+    const client = getRedisClient();
+    const key = `voice_prompt:${callSid}`;
+    const cached = await client.get(key);
+    
+    if (cached && typeof cached === 'object' && 'prompt' in cached) {
+      const promptData = cached as { prompt: string; timestamp: number };
+      console.log(`📝 Retrieved cached voice prompt for ${callSid}: "${promptData.prompt}"`);
+      return promptData.prompt;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Redis voice prompt get error:', { callSid, error });
+    return null;
+  }
+}
