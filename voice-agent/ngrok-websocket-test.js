@@ -386,10 +386,25 @@ wss.on('connection', (ws, request) => {
         if (callSid && employeeService) {
           console.log(`🔍 Running phone authentication for call ${callSid}...`);
           
-          // Extract caller phone from URL parameters or use fallback
+          // Extract caller phone from URL parameters or fetch from Twilio API
           const parsedUrl = url.parse(request.url, true);
-          const callerPhone = parsedUrl.query.from || 'unknown';
-          console.log(`📞 Caller phone: ${callerPhone}`);
+          let callerPhone = parsedUrl.query.from || null;
+          
+          // If no phone in URL, fetch from Twilio API using callSid
+          if (!callerPhone || callerPhone === 'unknown') {
+            console.log(`🔍 No phone in URL, fetching from Twilio API for call ${callSid}...`);
+            try {
+              const twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+              const call = await twilioClient.calls(callSid).fetch();
+              callerPhone = call.from;
+              console.log(`📞 Fetched caller phone from Twilio API: ${callerPhone}`);
+            } catch (error) {
+              console.error('❌ Failed to fetch call details from Twilio:', error);
+              callerPhone = 'unknown';
+            }
+          }
+          
+          console.log(`📞 Final caller phone: ${callerPhone}`);
           
           try {
             // Load or create call state
