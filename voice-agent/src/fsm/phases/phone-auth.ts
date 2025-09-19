@@ -249,28 +249,16 @@ export async function processPhoneAuthPhase(
  * Generate voice greeting for authenticated users
  */
 function generateVoiceGreeting(employeeName: string): string {
-  const cloudflareUrl = process.env.CLOUDFLARE_VOICE_PROXY_URL || 'wss://voice-proxy.brachod.workers.dev/stream';
-  
-  // Start simple - no query parameters to avoid XML parsing issues
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Connect>
-    <Stream url="${cloudflareUrl}" />
-  </Connect>
-</Response>`;
+  // Use generateAdaptiveTwiML to get proper phone parameter handling
+  const { generateAdaptiveTwiML } = require('../twiml/twiml-generator');
+  return generateAdaptiveTwiML(`Hi ${employeeName}, welcome. Please enter your job code.`, false);
 }
 
 /**
  * Generate voice PIN request for unknown numbers
  */
 function generateVoicePinRequest(): string {
-  const cloudflareUrl = process.env.CLOUDFLARE_VOICE_PROXY_URL || 'wss://voice-proxy.brachod.workers.dev/stream';
-  
-  // Start simple - no query parameters to avoid XML parsing issues
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Connect>
-    <Stream url="${cloudflareUrl}" />
-  </Connect>
-</Response>`;
+  // Use generateAdaptiveTwiML to get proper phone parameter handling
+  const { generateAdaptiveTwiML } = require('../twiml/twiml-generator');
+  return generateAdaptiveTwiML("Welcome. I don't recognize your phone number. Please enter your PIN.", false);
 }

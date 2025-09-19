@@ -206,6 +206,37 @@ async function getVoicePrompt(callSid) {
   }
 }
 
+// Optimized Redis state operations with minimal calls
+async function getCallStateOptimized(callSid) {
+  // Use cached state if available and recent (< 5 seconds old)
+  if (ws.cachedState && ws.cachedState.sid === callSid && 
+      (Date.now() - ws.cachedStateTime) < 5000) {
+    console.log(`⚡ Using cached call state for ${callSid}`);
+    return ws.cachedState;
+  }
+  
+  // Load from Redis and cache
+  const state = await stateManager.loadCallState(callSid);
+  ws.cachedState = state;
+  ws.cachedStateTime = Date.now();
+  console.log(`📊 Loaded and cached call state for ${callSid}: phase=${state.phase}`);
+  return state;
+}
+
+// Batch Redis state update (non-blocking) - needs WebSocket context
+function saveCallStateOptimized(ws, newState) {
+  // Update cached state immediately
+  ws.cachedState = newState;
+  ws.cachedStateTime = Date.now();
+  
+  // Save to Redis asynchronously (non-blocking)
+  stateManager.saveCallState(newState).catch(error => {
+    console.error('❌ Background state save error:', error);
+  });
+  
+  console.log(`⚡ State updated instantly (cached) and saving to Redis in background`);
+}
+
 // Extract text content from TwiML (simple regex-based extraction)
 function extractTextFromTwiML(twiml) {
   if (!twiml || typeof twiml !== 'string') return null;
@@ -494,7 +525,13 @@ const wss = new WebSocket.Server({
   }
 });
 
-console.log('🚀 Starting ngrok WebSocket test server...');
+console.log('🚀 Starting optimized ngrok WebSocket server...');
+console.log('⚡ Performance optimizations enabled:');
+console.log('  - Eliminated redundant Twilio API calls');
+console.log('  - Parallel background data prefetching');
+console.log('  - ElevenLabs streaming latency optimization');
+console.log('  - Redis operation caching and batching');
+console.log('  - Clean terminal output (no audio chunk spam)');
 
 // Initialize FSM services asynchronously
 initializeFSMServices().then(success => {
@@ -579,7 +616,6 @@ wss.on('connection', (ws, request) => {
           if (streamSid) {            
             try {
               totalRawBytes += chunk.length;
-              console.log(`🎵 Raw chunk: ${chunk.length} bytes (total: ${totalRawBytes})`);
               
               // TEMP: Send raw chunks directly to see if ngrok/chunking is the issue
               const base64Chunk = chunk.toString('base64');
@@ -594,7 +630,6 @@ wss.on('connection', (ws, request) => {
               };
               
               ws.send(JSON.stringify(twilioMessage));
-              console.log(`🎵 Sent raw chunk: ${chunk.length} bytes`);
               
             } catch (error) {
               console.error('❌ Audio processing error:', error);
@@ -690,18 +725,27 @@ wss.on('connection', (ws, request) => {
               
               await stateManager.saveCallState(callState);
               
-              // OPTIMIZATION: Start background data prefetching immediately
-              console.log('🚀 Starting background data prefetching...');
+              // OPTIMIZATION: Start comprehensive background data prefetching
+              console.log('🚀 Starting comprehensive background data prefetching...');
               const backgroundDataPromise = Promise.all([
                 multiProviderService.getEmployeeProviders(authResult.employee),
-                // Add more parallel data fetching here as needed
-              ]).then(([providerResult]) => {
-                // Cache the results on the WebSocket for instant access
-                ws.cachedProviderData = providerResult;
-                console.log('✅ Background provider data loaded');
-                return providerResult;
+                // Prefetch job templates for this employee (for faster job code validation)
+                employeeService.getEmployeeJobTemplates ? employeeService.getEmployeeJobTemplates(authResult.employee) : Promise.resolve([]),
+                // Prefetch recent patient data (for context)
+                employeeService.getRecentPatients ? employeeService.getRecentPatients(authResult.employee) : Promise.resolve([])
+              ]).then(([providerResult, jobTemplates, recentPatients]) => {
+                // Cache all results on the WebSocket for instant access
+                ws.cachedData = {
+                  providers: providerResult,
+                  jobTemplates: jobTemplates || [],
+                  recentPatients: recentPatients || [],
+                  loadedAt: Date.now()
+                };
+                console.log(`✅ Background data loaded: ${providerResult?.providers?.length || 0} providers, ${jobTemplates?.length || 0} job templates, ${recentPatients?.length || 0} patients`);
+                return ws.cachedData;
               }).catch(error => {
                 console.error('❌ Background data loading error:', error);
+                ws.cachedData = null;
                 return null;
               });
               
@@ -709,8 +753,15 @@ wss.on('connection', (ws, request) => {
               console.log('🔄 Running provider selection phase...');
               
               try {
-                // Use cached data if available, otherwise fetch (parallel optimization)
-                const providerResult = ws.cachedProviderData || await multiProviderService.getEmployeeProviders(authResult.employee);
+                // Wait for background data if it's still loading, or use cached data
+                let providerResult = ws.cachedData?.providers;
+                
+                if (!providerResult) {
+                  console.log('🔄 Waiting for background data to complete...');
+                  // Wait for background promise to complete
+                  const backgroundData = await backgroundDataPromise;
+                  providerResult = backgroundData?.providers || await multiProviderService.getEmployeeProviders(authResult.employee);
+                }
                 console.log(`🏢 Provider check: hasMultiple=${providerResult.hasMultipleProviders}, total=${providerResult.totalProviders}`);
                 
                 if (!providerResult.hasMultipleProviders) {
@@ -733,8 +784,23 @@ wss.on('connection', (ws, request) => {
                     updatedAt: new Date().toISOString()
                   };
                   
-                  await stateManager.saveCallState(callState);
+                  saveCallStateOptimized(ws, callState);
                   generateElevenLabsSpeech(fullGreeting);
+                  
+                  // OPTIMIZATION: Prefetch job templates while greeting plays
+                  if (authResult.employee.jobTemplateIds && authResult.employee.jobTemplateIds.length > 0) {
+                    console.log('🚀 Prefetching job templates while greeting plays...');
+                    setTimeout(async () => {
+                      try {
+                        const jobService = require('./src/services/airtable/job-service.ts');
+                        const jobTemplates = await jobService.getJobTemplatesByIds(authResult.employee.jobTemplateIds);
+                        ws.cachedJobTemplates = jobTemplates;
+                        console.log(`✅ Prefetched ${jobTemplates?.length || 0} job templates`);
+                      } catch (error) {
+                        console.error('❌ Job template prefetch error:', error);
+                      }
+                    }, 100); // Start immediately while audio plays
+                  }
                   
                 } else {
                   // Multiple providers - ask for selection
@@ -759,7 +825,7 @@ wss.on('connection', (ws, request) => {
                     updatedAt: new Date().toISOString()
                   };
                   
-                  await stateManager.saveCallState(callState);
+                  saveCallStateOptimized(ws, callState);
                   generateElevenLabsSpeech(fullMessage);
                 }
                 
@@ -806,7 +872,7 @@ wss.on('connection', (ws, request) => {
             const callSid = ws.callSid || data.streamSid;
             console.log(`🔍 Loading state for callSid: ${callSid}`);
             
-            const currentState = await stateManager.loadCallState(callSid);
+            const currentState = await getCallStateOptimized(callSid);
             console.log(`📊 Processing DTMF for phase: ${currentState.phase}`);
             
             // Initialize job code collection if not exists
@@ -1271,10 +1337,7 @@ wss.on('connection', (ws, request) => {
           }
         }
         
-        // Log media frames occasionally (don't spam)
-        if (Math.random() < 0.001) { // Log ~0.1% of frames
-          console.log('🎧 Media frame received, payload length:', data.media?.payload?.length || 0);
-        }
+        // Media frames processed silently (no logging for performance)
         
       } else if (data.event === 'stop') {
         console.log('🛑 Twilio stream stopped:', data);
