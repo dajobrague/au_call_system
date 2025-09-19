@@ -131,6 +131,16 @@ let multiProviderService = null;
 let stateManager = null;
 let phoneFormatter = null;
 
+// Speech-to-text processing with voice activity detection
+let speechBuffer = Buffer.alloc(0);
+let speechTimeout = null;
+let lastAudioLevel = 0;
+let speechDetected = false;
+const SPEECH_SILENCE_TIMEOUT = 1000; // 1 second of silence to process speech
+const MIN_SPEECH_DURATION = 800; // Minimum 100ms of actual speech
+const MAX_SPEECH_DURATION = 8000; // Maximum 1 second of speech
+const SPEECH_VOLUME_THRESHOLD = 100; // Minimum volume to consider as speech
+
 // Initialize FSM services using ts-node for TypeScript compatibility
 async function initializeFSMServices() {
   try {
@@ -203,6 +213,240 @@ function extractTextFromTwiML(twiml) {
   // For voice AI mode, the TwiML just contains <Connect><Stream>, no text
   // We need to extract the prompt that was cached or use the FSM logic directly
   return null; // We'll handle this differently
+}
+
+// Extract response text from FSM result (for job code and other phases)
+function extractResponseText(fsmResult) {
+  // For voice AI mode, we need to extract the text that would have been spoken
+  // This is a simplified approach - in a full implementation, we'd need to parse
+  // the specific FSM response format
+  if (fsmResult && fsmResult.twiml) {
+    // Try to extract any text that might be in the TwiML
+    const textMatch = fsmResult.twiml.match(/<Say[^>]*>(.*?)<\/Say>/);
+    if (textMatch && textMatch[1]) {
+      return textMatch[1];
+    }
+  }
+  return null;
+}
+
+// Convert μ-law audio to WAV for speech recognition
+function mulawToWav(mulawBuffer) {
+  // Convert μ-law to PCM16
+  const pcmBuffer = new Int16Array(mulawBuffer.length);
+  
+  // μ-law to linear conversion (simplified)
+  for (let i = 0; i < mulawBuffer.length; i++) {
+    const mulaw = mulawBuffer[i];
+    const sign = mulaw & 0x80 ? -1 : 1;
+    const exponent = (mulaw & 0x70) >> 4;
+    const mantissa = mulaw & 0x0F;
+    
+    let linear = (33 + 2 * mantissa) * Math.pow(2, exponent + 2) - 33;
+    pcmBuffer[i] = sign * Math.min(32767, linear);
+  }
+  
+  // Create WAV header (44 bytes) + PCM data
+  const wavBuffer = Buffer.alloc(44 + pcmBuffer.length * 2);
+  
+  // WAV header
+  wavBuffer.write('RIFF', 0);
+  wavBuffer.writeUInt32LE(36 + pcmBuffer.length * 2, 4);
+  wavBuffer.write('WAVE', 8);
+  wavBuffer.write('fmt ', 12);
+  wavBuffer.writeUInt32LE(16, 16); // PCM format size
+  wavBuffer.writeUInt16LE(1, 20);  // PCM format
+  wavBuffer.writeUInt16LE(1, 22);  // Mono
+  wavBuffer.writeUInt32LE(8000, 24); // Sample rate
+  wavBuffer.writeUInt32LE(16000, 28); // Byte rate
+  wavBuffer.writeUInt16LE(2, 32);  // Block align
+  wavBuffer.writeUInt16LE(16, 34); // Bits per sample
+  wavBuffer.write('data', 36);
+  wavBuffer.writeUInt32LE(pcmBuffer.length * 2, 40);
+  
+  // Copy PCM data
+  for (let i = 0; i < pcmBuffer.length; i++) {
+    wavBuffer.writeInt16LE(pcmBuffer[i], 44 + i * 2);
+  }
+  
+  return wavBuffer;
+}
+
+// Speech-to-text using OpenAI Whisper with robust validation
+async function speechToText(audioBuffer) {
+  try {
+    const FormData = require('form-data');
+    
+    // Validate audio buffer size (prevent processing noise)
+    if (audioBuffer.length < 1600) { // Less than 200ms at 8kHz
+      console.log(`⚠️ Audio too short: ${audioBuffer.length} bytes`);
+      return null;
+    }
+    
+    if (audioBuffer.length > 80000) { // More than 10 seconds at 8kHz
+      console.log(`⚠️ Audio too long: ${audioBuffer.length} bytes, truncating`);
+      audioBuffer = audioBuffer.slice(0, 80000);
+    }
+    
+    // Convert μ-law to WAV
+    const wavBuffer = mulawToWav(new Uint8Array(audioBuffer));
+    
+    // Create form data for OpenAI API with strict constraints
+    const form = new FormData();
+    form.append('file', wavBuffer, {
+      filename: 'audio.wav',
+      contentType: 'audio/wav'
+    });
+    form.append('model', 'whisper-1');
+    form.append('language', 'en');
+    form.append('temperature', '0'); // Reduce hallucination with low temperature
+    form.append('prompt', 'This is a healthcare scheduling call. User is saying dates, times, or brief reasons. Common words: Monday Tuesday Wednesday Thursday Friday Saturday Sunday tomorrow next January February March April May June July August September October November December morning afternoon evening AM PM sick emergency personal family'); // Constrain vocabulary
+    
+    // Use node-fetch for proper multipart form handling
+    const fetch = require('node-fetch');
+    
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        ...form.getHeaders()
+      },
+      body: form
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      const text = result.text?.trim() || '';
+      
+      // Validate response length (prevent hallucination)
+      if (text.length > 100) {
+        console.log(`⚠️ Speech response too long (${text.length} chars), likely hallucination: "${text}"`);
+        return null;
+      }
+      
+      // Filter out common hallucination patterns
+      const hallucinations = [
+        'thank you for watching',
+        'like and subscribe',
+        'music playing',
+        'background noise',
+        'silence',
+        '[music]',
+        '[noise]',
+        'you'
+      ];
+      
+      const lowerText = text.toLowerCase();
+      for (const hallucination of hallucinations) {
+        if (lowerText.includes(hallucination)) {
+          console.log(`⚠️ Detected hallucination pattern: "${text}"`);
+          return null;
+        }
+      }
+      
+      // Validate that response contains relevant content
+      const relevantWords = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 
+                           'tomorrow', 'next', 'january', 'february', 'march', 'april', 'may', 'june',
+                           'july', 'august', 'september', 'october', 'november', 'december',
+                           'morning', 'afternoon', 'evening', 'am', 'pm', 'sick', 'emergency', 'personal'];
+      
+      const hasRelevantContent = relevantWords.some(word => lowerText.includes(word)) || /\d/.test(text);
+      
+      if (!hasRelevantContent && text.length > 0) {
+        console.log(`⚠️ Speech doesn't contain relevant content: "${text}"`);
+        return null;
+      }
+      
+      console.log(`🎤 Speech recognized (validated): "${text}"`);
+      return text;
+    } else {
+      const errorText = await response.text();
+      console.error('❌ Speech-to-text API error:', response.status, errorText);
+      return null;
+    }
+    
+  } catch (error) {
+    console.error('❌ Speech-to-text error:', error);
+    return null;
+  }
+}
+
+// Simple voice activity detection
+function detectVoiceActivity(audioBuffer) {
+  const samples = new Uint8Array(audioBuffer);
+  let totalEnergy = 0;
+  let peakLevel = 0;
+  
+  // Calculate audio energy and peak level
+  for (let i = 0; i < samples.length; i++) {
+    const sample = Math.abs(samples[i] - 128); // Center around 0
+    totalEnergy += sample * sample;
+    peakLevel = Math.max(peakLevel, sample);
+  }
+  
+  const avgEnergy = totalEnergy / samples.length;
+  const hasVoice = avgEnergy > SPEECH_VOLUME_THRESHOLD && peakLevel > 50;
+  
+  if (hasVoice) {
+    console.log(`🎤 Voice detected - Energy: ${Math.round(avgEnergy)}, Peak: ${peakLevel}`);
+  }
+  
+  return {
+    hasVoice,
+    energy: avgEnergy,
+    peak: peakLevel
+  };
+}
+
+// Parse spoken date into structured format
+function parseSpokenDate(spokenText) {
+  const text = spokenText.toLowerCase();
+  
+  // Common date patterns
+  const patterns = [
+    // "tomorrow" -> next day
+    /\btomorrow\b/,
+    // "next monday", "next tuesday", etc.
+    /\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/,
+    // "monday", "tuesday", etc. (this week or next)
+    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/,
+    // "december 15th", "january 3rd", etc.
+    /\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(st|nd|rd|th)?\b/,
+    // "15th of december", "3rd of january", etc.
+    /\b(\d{1,2})(st|nd|rd|th)?\s+of\s+(january|february|march|april|may|june|july|august|september|october|november|december)\b/
+  ];
+  
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      console.log(`📅 Date pattern matched: "${match[0]}"`);
+      return {
+        success: true,
+        originalText: spokenText,
+        parsedDate: match[0],
+        confidence: 'high'
+      };
+    }
+  }
+  
+  // Fallback - look for any date-like words
+  const dateWords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const foundDateWord = dateWords.find(word => text.includes(word));
+  
+  if (foundDateWord) {
+    return {
+      success: true,
+      originalText: spokenText,
+      parsedDate: foundDateWord,
+      confidence: 'medium'
+    };
+  }
+  
+  return {
+    success: false,
+    originalText: spokenText,
+    error: 'No date pattern recognized'
+  };
 }
 
 const app = express();
@@ -296,12 +540,15 @@ wss.on('connection', (ws, request) => {
     
     const postData = JSON.stringify({
       text: text,
-      model_id: "eleven_monolingual_v1",
+      model_id: "eleven_turbo_v2_5", // More natural and faster model
       voice_settings: {
-        speed: 1,
-        stability: 0.5,
-        similarity_boost: 0.8
-      }
+        speed: 0.95, // Slightly slower for more natural pace
+        stability: 0.5, // Lower stability for more emotion and variation
+        similarity_boost: 0.9, // Higher similarity for more authentic voice
+        style: 0.2, // Add slight style variation for naturalness
+        use_speaker_boost: true // Boost similarity to original speaker
+      },
+      optimize_streaming_latency: 3 // Maximum latency optimization for fastest response
     });
     
     // Use μ-law 8kHz directly from ElevenLabs - no conversion needed!
@@ -384,6 +631,8 @@ wss.on('connection', (ws, request) => {
       
       if (data.event === 'start') {
         streamSid = data.streamSid;
+        ws.callSid = data.start?.callSid; // Store callSid on WebSocket for DTMF handling
+        
         console.log('✅ Twilio stream started:', {
           callSid: data.start?.callSid,
           streamSid: streamSid,
@@ -395,25 +644,27 @@ wss.on('connection', (ws, request) => {
         if (callSid && employeeService) {
           console.log(`🔍 Running phone authentication for call ${callSid}...`);
           
-          // Extract caller phone from URL parameters or fetch from Twilio API
+          // Extract caller phone from URL parameters (passed from Vercel webhook)
           const parsedUrl = url.parse(request.url, true);
           let callerPhone = parsedUrl.query.from || null;
           
-          // If no phone in URL, fetch from Twilio API using callSid
+          console.log(`📞 Caller phone from URL: ${callerPhone}`);
+          
+          // If no phone in URL, use Twilio API as fallback (should be rare after Vercel deployment)
           if (!callerPhone || callerPhone === 'unknown') {
-            console.log(`🔍 No phone in URL, fetching from Twilio API for call ${callSid}...`);
+            console.log(`⚠️ No phone in URL, using Twilio API fallback for call ${callSid}...`);
             try {
               const twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
               const call = await twilioClient.calls(callSid).fetch();
               callerPhone = call.from;
-              console.log(`📞 Fetched caller phone from Twilio API: ${callerPhone}`);
+              console.log(`📞 Fallback: Fetched caller phone from Twilio API: ${callerPhone}`);
             } catch (error) {
               console.error('❌ Failed to fetch call details from Twilio:', error);
               callerPhone = 'unknown';
             }
+          } else {
+            console.log(`✅ Phone number available instantly from URL: ${callerPhone}`);
           }
-          
-          console.log(`📞 Final caller phone: ${callerPhone}`);
           
           try {
             // Load or create call state
@@ -439,12 +690,27 @@ wss.on('connection', (ws, request) => {
               
               await stateManager.saveCallState(callState);
               
+              // OPTIMIZATION: Start background data prefetching immediately
+              console.log('🚀 Starting background data prefetching...');
+              const backgroundDataPromise = Promise.all([
+                multiProviderService.getEmployeeProviders(authResult.employee),
+                // Add more parallel data fetching here as needed
+              ]).then(([providerResult]) => {
+                // Cache the results on the WebSocket for instant access
+                ws.cachedProviderData = providerResult;
+                console.log('✅ Background provider data loaded');
+                return providerResult;
+              }).catch(error => {
+                console.error('❌ Background data loading error:', error);
+                return null;
+              });
+              
               // Continue with provider selection phase using existing FSM logic
               console.log('🔄 Running provider selection phase...');
               
               try {
-                // Check for multiple providers using existing logic
-                const providerResult = await multiProviderService.getEmployeeProviders(authResult.employee);
+                // Use cached data if available, otherwise fetch (parallel optimization)
+                const providerResult = ws.cachedProviderData || await multiProviderService.getEmployeeProviders(authResult.employee);
                 console.log(`🏢 Provider check: hasMultiple=${providerResult.hasMultipleProviders}, total=${providerResult.totalProviders}`);
                 
                 if (!providerResult.hasMultipleProviders) {
@@ -472,12 +738,12 @@ wss.on('connection', (ws, request) => {
                   
                 } else {
                   // Multiple providers - ask for selection
-                  const selectionMessage = multiProviderService.generateProviderSelectionMessage(
-                    authResult.employee.name,
-                    providerResult.providers
-                  );
+                  console.log(`🏢 Multiple providers found:`, providerResult.providers);
                   
-                  console.log(`🎤 Multi-provider selection: "${selectionMessage}"`);
+                  const selectionMessage = multiProviderService.generateProviderSelectionMessage(providerResult.providers);
+                  const fullMessage = `Hi ${authResult.employee.name}. ${selectionMessage}`;
+                  
+                  console.log(`🎤 Multi-provider selection: "${fullMessage}"`);
                   
                   // Update state with available providers
                   callState = {
@@ -494,7 +760,7 @@ wss.on('connection', (ws, request) => {
                   };
                   
                   await stateManager.saveCallState(callState);
-                  generateElevenLabsSpeech(selectionMessage);
+                  generateElevenLabsSpeech(fullMessage);
                 }
                 
               } catch (error) {
@@ -529,9 +795,484 @@ wss.on('connection', (ws, request) => {
           generateElevenLabsSpeech("Hello, how can I help you today?");
         }
         
+      } else if (data.event === 'dtmf') {
+        // Handle DTMF input (keypad presses)
+        const digit = data.dtmf?.digit;
+        console.log(`🎹 DTMF received: ${digit}`);
+        
+        if (digit && employeeService && stateManager) {
+          try {
+            // Use the stored callSid from the start event
+            const callSid = ws.callSid || data.streamSid;
+            console.log(`🔍 Loading state for callSid: ${callSid}`);
+            
+            const currentState = await stateManager.loadCallState(callSid);
+            console.log(`📊 Processing DTMF for phase: ${currentState.phase}`);
+            
+            // Initialize job code collection if not exists
+            if (!ws.jobCodeDigits) {
+              ws.jobCodeDigits = '';
+            }
+            
+            if (currentState.phase === 'provider_selection' && currentState.availableProviders) {
+              // Handle provider selection
+              const selectionNum = parseInt(digit, 10);
+              const selectedProvider = currentState.availableProviders.find(p => p.selectionNumber === selectionNum);
+              
+              if (selectedProvider) {
+                console.log(`✅ Provider selected: ${selectedProvider.name}`);
+                
+                // Update state with selected provider and move to provider greeting
+                const updatedState = {
+                  ...currentState,
+                  provider: {
+                    id: selectedProvider.id,
+                    name: selectedProvider.name,
+                    greeting: selectedProvider.greeting
+                  },
+                  phase: 'provider_greeting',
+                  updatedAt: new Date().toISOString()
+                };
+                
+                await stateManager.saveCallState(updatedState);
+                
+                // Generate provider greeting + job code request
+                const providerGreeting = selectedProvider.greeting || `Welcome to ${selectedProvider.name}`;
+                const fullGreeting = `${providerGreeting}. Please use your keypad to enter your job code followed by the pound key.`;
+                
+                console.log(`🎤 Provider greeting: "${fullGreeting}"`);
+                generateElevenLabsSpeech(fullGreeting);
+                
+              } else {
+                console.log(`❌ Invalid provider selection: ${digit}`);
+                generateElevenLabsSpeech("Invalid selection. Please press 1 for Sunrise Health Group or 2 for Pacific Wellness.");
+              }
+              
+            } else if (currentState.phase === 'provider_greeting' || currentState.phase === 'collect_job_code') {
+              // Handle job code collection
+              if (digit === '#') {
+                // Job code complete - process it
+                const jobCode = ws.jobCodeDigits;
+                console.log(`🔢 Job code collected: "${jobCode}"`);
+                
+                if (jobCode.length > 0) {
+                  try {
+                    // Import and use existing job code validation logic
+                    const jobCodePhase = require('./src/fsm/phases/job-code-phase.ts');
+                    
+                    // Update state to job code collection phase
+                    const updatedState = {
+                      ...currentState,
+                      phase: 'collect_job_code',
+                      jobCode: jobCode,
+                      updatedAt: new Date().toISOString()
+                    };
+                    
+                    // Process job code using existing FSM logic
+                    const jobCodeResult = await jobCodePhase.processJobCodePhase(updatedState, jobCode, true, 'dtmf');
+                    console.log(`🏢 Job code result: action=${jobCodeResult.result.action}`);
+                    
+                    // Save the new state
+                    await stateManager.saveCallState(jobCodeResult.newState);
+                    
+                    // Generate response based on job code validation
+                    if (jobCodeResult.result.action === 'transition') {
+                      // Job code valid - create personalized response with patient info
+                      const jobTemplate = jobCodeResult.newState.jobTemplate;
+                      const patient = jobCodeResult.newState.patient;
+                      
+                      let personalizedResponse;
+                      if (jobTemplate && patient) {
+                        personalizedResponse = `Perfect! Your job code is correct. You're scheduled for ${jobTemplate.title} with ${patient.name}. What would you like to do?`;
+                      } else {
+                        personalizedResponse = `Great! Your job code is valid. What would you like to do with this appointment?`;
+                      }
+                      
+                      console.log(`✅ Job code accepted with patient info: "${personalizedResponse}"`);
+                      generateElevenLabsSpeech(personalizedResponse);
+                      
+                      // Continue to job options immediately - no delay for more natural flow
+                      setTimeout(async () => {
+                        try {
+                          console.log(`🔄 Continuing to job options phase...`);
+                          
+                          // Import job options phase
+                          const jobOptionsPhase = require('./src/fsm/phases/job-options-phase.ts');
+                          
+                          // Load the updated state
+                          const latestState = await stateManager.loadCallState(callSid);
+                          console.log(`📊 Latest state phase: ${latestState.phase}`);
+                          
+                          // Process job options phase
+                          const jobOptionsResult = await jobOptionsPhase.processJobOptionsPhase(latestState, '', false, 'none');
+                          console.log(`🎯 Job options result: action=${jobOptionsResult.result.action}`);
+                          
+                          // Save the new state
+                          await stateManager.saveCallState(jobOptionsResult.newState);
+                          
+                          // Generate more natural job options response
+                          let optionsText = extractResponseText(jobOptionsResult.result);
+                          if (!optionsText) {
+                            // Create natural options text
+                            optionsText = "You can press 1 to reschedule this appointment, press 2 if you can't make it and want to leave it open for someone else, press 3 to speak with a representative, or press 4 to enter a different job code.";
+                          }
+                          
+                          console.log(`🎤 Job options: "${optionsText}"`);
+                          generateElevenLabsSpeech(optionsText);
+                          
+                        } catch (error) {
+                          console.error('❌ Job options phase error:', error);
+                          generateElevenLabsSpeech("Let me get your options for this appointment.");
+                        }
+                      }, 500); // Shorter delay for more natural conversation flow
+                      
+                    } else {
+                      // Job code invalid - ask for retry
+                      const errorText = extractResponseText(jobCodeResult.result) || `I couldn't find job code ${jobCode}. Please try again.`;
+                      console.log(`❌ Job code rejected: "${errorText}"`);
+                      generateElevenLabsSpeech(errorText);
+                    }
+                    
+                    // Reset job code collection
+                    ws.jobCodeDigits = '';
+                    
+                  } catch (error) {
+                    console.error('❌ Job code processing error:', error);
+                    generateElevenLabsSpeech(`I couldn't process job code ${jobCode}. Please try again.`);
+                    ws.jobCodeDigits = '';
+                  }
+                } else {
+                  console.log(`❌ Empty job code`);
+                  generateElevenLabsSpeech("Please enter your job code followed by the pound key.");
+                }
+                
+              } else if (digit >= '0' && digit <= '9') {
+                // Collect job code digits
+                ws.jobCodeDigits += digit;
+                console.log(`🔢 Collecting job code: "${ws.jobCodeDigits}"`);
+                
+                // Optional: Provide feedback for long job codes
+                if (ws.jobCodeDigits.length === 5) {
+                  console.log(`🔢 Job code length reached 5 digits: "${ws.jobCodeDigits}"`);
+                }
+              } else {
+                console.log(`❌ Invalid job code digit: ${digit}`);
+              }
+              
+            } else if (currentState.phase === 'confirm_job_code') {
+              // Handle job options selection (1=reschedule, 2=leave open, 3=representative, 4=new job code)
+              console.log(`🎯 Job options selection: ${digit}`);
+              
+              if (digit === '1') {
+                // Reschedule - transition to occurrence selection
+                console.log(`🔄 Option 1: Reschedule selected`);
+                
+                try {
+                  // Import occurrence phase
+                  const occurrencePhase = require('./src/fsm/phases/occurrence-phase.ts');
+                  
+                  // Update state to occurrence selection with reschedule action
+                  const updatedState = {
+                    ...currentState,
+                    phase: 'occurrence_selection',
+                    selectedOption: '1',
+                    actionType: 'reschedule', // Critical: Set action type for reschedule flow
+                    updatedAt: new Date().toISOString()
+                  };
+                  
+                  // Process occurrence selection
+                  const occurrenceResult = await occurrencePhase.processOccurrenceSelectionPhase(updatedState, '', false);
+                  console.log(`📅 Occurrence result: action=${occurrenceResult.result.action}`);
+                  
+                  await stateManager.saveCallState(occurrenceResult.newState);
+                  
+                  const occurrenceText = extractResponseText(occurrenceResult.result) || "You have multiple appointments available. Please select one.";
+                  console.log(`🎤 Occurrence options: "${occurrenceText}"`);
+                  generateElevenLabsSpeech(occurrenceText);
+                  
+                } catch (error) {
+                  console.error('❌ Occurrence phase error:', error);
+                  generateElevenLabsSpeech("I'm having trouble getting your appointment options. Please try again.");
+                }
+                
+              } else if (digit === '2') {
+                // Leave job open - transition to reason collection
+                console.log(`🔄 Option 2: Leave job open selected`);
+                
+                try {
+                  // Update state to reason collection with leave open action
+                  const updatedState = {
+                    ...currentState,
+                    phase: 'collect_reason',
+                    selectedOption: '2',
+                    actionType: 'leave_open', // Critical: Set action type for leave open flow
+                    updatedAt: new Date().toISOString()
+                  };
+                  
+                  await stateManager.saveCallState(updatedState);
+                  
+                  const reasonPrompt = "Please tell me the reason why you cannot take this job. Speak clearly after the tone.";
+                  console.log(`🎤 Reason collection: "${reasonPrompt}"`);
+                  generateElevenLabsSpeech(reasonPrompt);
+                  
+                } catch (error) {
+                  console.error('❌ Reason collection setup error:', error);
+                  generateElevenLabsSpeech("I'm having trouble with the reason collection. Please try again.");
+                }
+                
+              } else if (digit === '3') {
+                // Transfer to representative
+                console.log(`🔄 Option 3: Transfer to representative selected`);
+                
+                const transferMessage = "I'm connecting you with a representative. Please hold.";
+                console.log(`🎤 Transfer message: "${transferMessage}"`);
+                generateElevenLabsSpeech(transferMessage);
+                
+                // In a real implementation, this would transfer the call
+                
+              } else if (digit === '4') {
+                // Enter different job code
+                console.log(`🔄 Option 4: Different job code selected`);
+                
+                // Reset job code collection and go back to job code phase
+                ws.jobCodeDigits = '';
+                
+                const updatedState = {
+                  ...currentState,
+                  phase: 'collect_job_code',
+                  jobCode: null,
+                  updatedAt: new Date().toISOString()
+                };
+                
+                await stateManager.saveCallState(updatedState);
+                
+                const newJobCodePrompt = "Please enter a different job code followed by the pound key.";
+                console.log(`🎤 New job code request: "${newJobCodePrompt}"`);
+                generateElevenLabsSpeech(newJobCodePrompt);
+                
+              } else {
+                console.log(`❌ Invalid job option: ${digit}`);
+                generateElevenLabsSpeech("Invalid selection. Please press 1 for rescheduling, 2 to leave the job open, 3 for a representative, or 4 to enter a different job code.");
+              }
+              
+            } else if (currentState.phase === 'occurrence_selection') {
+              // Handle appointment selection
+              console.log(`📅 Appointment selection: ${digit}`);
+              
+              try {
+                // Import occurrence phase
+                const occurrencePhase = require('./src/fsm/phases/occurrence-phase.ts');
+                
+                // Process the selection
+                const occurrenceResult = await occurrencePhase.processOccurrenceSelectionPhase(currentState, digit, true);
+                console.log(`📅 Occurrence selection result: action=${occurrenceResult.result.action}`);
+                
+                await stateManager.saveCallState(occurrenceResult.newState);
+                
+                const responseText = extractResponseText(occurrenceResult.result) || "Appointment selection processed.";
+                console.log(`🎤 Occurrence response: "${responseText}"`);
+                generateElevenLabsSpeech(responseText);
+                
+              } catch (error) {
+                console.error('❌ Occurrence selection error:', error);
+                generateElevenLabsSpeech("I'm having trouble with your appointment selection. Please try again.");
+              }
+              
+            } else if (currentState.phase === 'collect_day' || currentState.phase === 'collect_month' || currentState.phase === 'collect_time') {
+              // Handle date/time collection
+              console.log(`📅 Date/time input: ${digit} for phase ${currentState.phase}`);
+              
+              try {
+                // Import datetime phase
+                const datetimePhase = require('./src/fsm/phases/datetime-phase.ts');
+                
+                let phaseResult;
+                if (currentState.phase === 'collect_day') {
+                  phaseResult = datetimePhase.processCollectDayPhase(currentState, digit, true);
+                } else if (currentState.phase === 'collect_month') {
+                  phaseResult = datetimePhase.processCollectMonthPhase(currentState, digit, true);
+                } else if (currentState.phase === 'collect_time') {
+                  phaseResult = datetimePhase.processCollectTimePhase(currentState, digit, true);
+                }
+                
+                if (phaseResult) {
+                  console.log(`📅 DateTime result: action=${phaseResult.result.action}`);
+                  await stateManager.saveCallState(phaseResult.newState);
+                  
+                  const responseText = extractResponseText(phaseResult.result) || "Date/time processed.";
+                  console.log(`🎤 DateTime response: "${responseText}"`);
+                  generateElevenLabsSpeech(responseText);
+                }
+                
+              } catch (error) {
+                console.error('❌ Date/time processing error:', error);
+                generateElevenLabsSpeech("I'm having trouble with the date and time. Please try again.");
+              }
+              
+            } else if (currentState.phase === 'confirm_datetime' || currentState.phase === 'confirm_leave_open') {
+              // Handle confirmations (1=yes, 2=no)
+              console.log(`✅ Confirmation input: ${digit} for phase ${currentState.phase}`);
+              
+              if (digit === '1') {
+                // Yes - confirm
+                console.log(`✅ Confirmation: YES`);
+                
+                try {
+                  if (currentState.phase === 'confirm_datetime') {
+                    const datetimePhase = require('./src/fsm/phases/datetime-phase.ts');
+                    const confirmResult = await datetimePhase.processConfirmDateTimePhase(currentState, '1', true);
+                    
+                    await stateManager.saveCallState(confirmResult.newState);
+                    const responseText = extractResponseText(confirmResult.result) || "Appointment confirmed. Thank you!";
+                    generateElevenLabsSpeech(responseText);
+                    
+                  } else if (currentState.phase === 'confirm_leave_open') {
+                    const reasonPhase = require('./src/fsm/phases/reason-phase.ts');
+                    const confirmResult = await reasonPhase.processConfirmLeaveOpenPhase(currentState, '1', true);
+                    
+                    await stateManager.saveCallState(confirmResult.newState);
+                    const responseText = extractResponseText(confirmResult.result) || "Job marked as open. Thank you!";
+                    generateElevenLabsSpeech(responseText);
+                  }
+                  
+                } catch (error) {
+                  console.error('❌ Confirmation processing error:', error);
+                  generateElevenLabsSpeech("Confirmation processed. Thank you!");
+                }
+                
+              } else if (digit === '2') {
+                // No - go back or ask for clarification
+                console.log(`❌ Confirmation: NO`);
+                generateElevenLabsSpeech("Let me help you with a different option. Please hold while I get your choices.");
+                
+              } else {
+                console.log(`❌ Invalid confirmation: ${digit}`);
+                generateElevenLabsSpeech("Please press 1 for yes or 2 for no.");
+              }
+              
+            } else {
+              console.log(`🔍 DTMF received in phase: ${currentState.phase} - not handled yet`);
+            }
+            
+          } catch (error) {
+            console.error('❌ DTMF processing error:', error);
+          }
+        }
+        
       } else if (data.event === 'media') {
-        // Log media frames (don't spam too much)
-        if (Math.random() < 0.01) { // Log ~1% of frames
+        // Handle audio for speech recognition in date collection phases
+        const callSid = ws.callSid;
+        
+        if (callSid && stateManager) {
+          // Check if we're in a speech collection phase
+          const currentState = await stateManager.loadCallState(callSid);
+          
+          if (currentState.phase === 'collect_day' || currentState.phase === 'collect_month' || 
+              currentState.phase === 'collect_time' || currentState.phase === 'collect_reason') {
+            
+            // Decode audio and check for voice activity
+            const audioData = Buffer.from(data.media.payload, 'base64');
+            const voiceActivity = detectVoiceActivity(audioData);
+            
+            // Only buffer audio if voice is detected
+            if (voiceActivity.hasVoice) {
+              speechBuffer = Buffer.concat([speechBuffer, audioData]);
+              speechDetected = true;
+              
+              // Prevent buffer from getting too large
+              if (speechBuffer.length > MAX_SPEECH_DURATION) {
+                console.log(`⚠️ Speech buffer too large (${speechBuffer.length} bytes), processing early`);
+                // Process immediately if buffer gets too large
+                processCollectedSpeech();
+                return;
+              }
+            }
+            
+            // Reset speech timeout when voice is detected
+            if (voiceActivity.hasVoice) {
+              if (speechTimeout) {
+                clearTimeout(speechTimeout);
+              }
+              
+              // Process speech after silence
+              speechTimeout = setTimeout(processCollectedSpeech, SPEECH_SILENCE_TIMEOUT);
+            }
+            
+            // Define speech processing function
+            async function processCollectedSpeech() {
+              if (speechBuffer.length > MIN_SPEECH_DURATION && speechDetected) { // At least 100ms of actual speech
+                console.log(`🎤 Processing ${speechBuffer.length} bytes of speech for ${currentState.phase}`);
+                
+                try {
+                  const spokenText = await speechToText(speechBuffer);
+                  
+                  if (spokenText) {
+                    // Parse the spoken input based on current phase
+                    if (currentState.phase === 'collect_day' || currentState.phase === 'collect_month' || currentState.phase === 'collect_time') {
+                      // Parse date/time input
+                      const dateResult = parseSpokenDate(spokenText);
+                      
+                      if (dateResult.success) {
+                        console.log(`📅 Date parsed: "${dateResult.parsedDate}"`);
+                        
+                        // Process through datetime phase
+                        const datetimePhase = require('./src/fsm/phases/datetime-phase.ts');
+                        let phaseResult;
+                        
+                        if (currentState.phase === 'collect_day') {
+                          phaseResult = datetimePhase.processCollectDayPhase(currentState, dateResult.parsedDate, true);
+                        } else if (currentState.phase === 'collect_month') {
+                          phaseResult = datetimePhase.processCollectMonthPhase(currentState, dateResult.parsedDate, true);
+                        } else if (currentState.phase === 'collect_time') {
+                          phaseResult = datetimePhase.processCollectTimePhase(currentState, dateResult.parsedDate, true);
+                        }
+                        
+                        if (phaseResult) {
+                          await stateManager.saveCallState(phaseResult.newState);
+                          const responseText = extractResponseText(phaseResult.result) || `I heard ${dateResult.parsedDate}. Is that correct?`;
+                          generateElevenLabsSpeech(responseText);
+                        }
+                        
+                      } else {
+                        console.log(`❌ Could not parse date from: "${spokenText}"`);
+                        generateElevenLabsSpeech("I didn't catch that date. Could you say it again? For example, say 'next Monday' or 'December 15th'.");
+                      }
+                      
+                    } else if (currentState.phase === 'collect_reason') {
+                      // Process reason input
+                      console.log(`💬 Reason collected: "${spokenText}"`);
+                      
+                      const reasonPhase = require('./src/fsm/phases/reason-phase.ts');
+                      const reasonResult = reasonPhase.processCollectReasonPhase(currentState, spokenText, true, 'speech');
+                      
+                      await stateManager.saveCallState(reasonResult.newState);
+                      const responseText = extractResponseText(reasonResult.result) || "Thank you for letting me know. I'll mark this job as open.";
+                      generateElevenLabsSpeech(responseText);
+                    }
+                  } else {
+                    console.log(`❌ No speech recognized`);
+                    generateElevenLabsSpeech("I didn't hear anything. Could you please repeat that?");
+                  }
+                  
+                } catch (error) {
+                  console.error('❌ Speech processing error:', error);
+                  generateElevenLabsSpeech("I'm having trouble understanding. Could you please repeat that?");
+                }
+                
+                // Reset speech buffer and detection flag
+                speechBuffer = Buffer.alloc(0);
+                speechDetected = false;
+              } else {
+                console.log(`⚠️ Speech buffer too small or no voice detected: ${speechBuffer.length} bytes`);
+                speechBuffer = Buffer.alloc(0);
+                speechDetected = false;
+              }
+            }
+          }
+        }
+        
+        // Log media frames occasionally (don't spam)
+        if (Math.random() < 0.001) { // Log ~0.1% of frames
           console.log('🎧 Media frame received, payload length:', data.media?.payload?.length || 0);
         }
         
