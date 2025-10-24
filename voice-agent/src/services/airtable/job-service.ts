@@ -69,6 +69,18 @@ export interface JobValidationResult {
 }
 
 /**
+ * Employee job list result
+ */
+export interface EmployeeJobListResult {
+  success: boolean;
+  jobs: Array<{
+    jobTemplate: JobTemplate;
+    patient: Patient | null;
+  }>;
+  error?: string;
+}
+
+/**
  * Job Template Service Class
  */
 export class JobService {
@@ -297,6 +309,130 @@ export class JobService {
         success: false,
         error: 'System error during job validation',
         errorType: 'system_error'
+      };
+    }
+  }
+
+  /**
+   * Get all job templates assigned to an employee with patient information
+   * Queries by employee record ID and optionally filters by provider
+   */
+  async getEmployeeJobs(employee: Employee, providerId?: string): Promise<EmployeeJobListResult> {
+    const startTime = Date.now();
+    
+    logger.info('Fetching employee job list by record ID', {
+      employeeId: employee.id,
+      employeeName: employee.name,
+      providerId: providerId,
+      type: 'employee_jobs_fetch_start'
+    });
+
+    try {
+      // Query Airtable for job templates where "recordId (from Default Employee)" contains this employee's ID
+      // and optionally where "recordId (from Provider)" contains the provider ID
+      let filterFormula = `FIND('${employee.id}', ARRAYJOIN({recordId (from Default Employee)}))`;
+      
+      if (providerId) {
+        filterFormula = `AND(${filterFormula}, FIND('${providerId}', ARRAYJOIN({recordId (from Provider)})))`;
+      }
+      
+      logger.info('Querying job templates with filter', {
+        filterFormula,
+        type: 'job_query_filter'
+      });
+
+      const jobTemplateRecords = await airtableClient.findJobTemplatesByFilter(filterFormula);
+      
+      if (!jobTemplateRecords || jobTemplateRecords.length === 0) {
+        logger.info('No jobs found for employee', {
+          employeeId: employee.id,
+          employeeName: employee.name,
+          providerId: providerId,
+          duration: Date.now() - startTime,
+          type: 'employee_jobs_empty'
+        });
+        
+        return {
+          success: true,
+          jobs: []
+        };
+      }
+
+      logger.info(`Found ${jobTemplateRecords.length} job templates for employee`, {
+        employeeId: employee.id,
+        count: jobTemplateRecords.length,
+        type: 'job_templates_found'
+      });
+
+      // Process each job template
+      const jobPromises = jobTemplateRecords.map(async (jobTemplateRecord) => {
+        try {
+          const jobTemplate = transformJobTemplateRecord(jobTemplateRecord);
+          
+          // Only include active job templates
+          if (!jobTemplate.active) {
+            logger.info('Skipping inactive job template', {
+              jobTemplateId: jobTemplate.id,
+              jobCode: jobTemplate.jobCode,
+              type: 'job_template_inactive'
+            });
+            return null;
+          }
+
+          // Get patient information if available
+          let patient: Patient | null = null;
+          if (jobTemplate.patientId) {
+            patient = await this.getJobPatient(jobTemplate);
+          }
+
+          return {
+            jobTemplate,
+            patient
+          };
+        } catch (error) {
+          logger.error('Error processing job template', {
+            jobTemplateId: jobTemplateRecord.id,
+            employeeId: employee.id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            type: 'job_template_process_error'
+          });
+          return null;
+        }
+      });
+
+      const jobResults = await Promise.all(jobPromises);
+      
+      // Filter out null results and sort by job code
+      const jobs = jobResults
+        .filter((job): job is { jobTemplate: JobTemplate; patient: Patient | null } => job !== null)
+        .sort((a, b) => a.jobTemplate.jobCode.localeCompare(b.jobTemplate.jobCode));
+
+      logger.info('Employee job list fetched successfully', {
+        employeeId: employee.id,
+        employeeName: employee.name,
+        totalJobs: jobs.length,
+        duration: Date.now() - startTime,
+        type: 'employee_jobs_fetch_success'
+      });
+
+      return {
+        success: true,
+        jobs
+      };
+
+    } catch (error) {
+      logger.error('Error fetching employee jobs', {
+        employeeId: employee.id,
+        employeeName: employee.name,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        duration: Date.now() - startTime,
+        type: 'employee_jobs_fetch_error'
+      });
+
+      return {
+        success: false,
+        jobs: [],
+        error: 'System error fetching job list'
       };
     }
   }

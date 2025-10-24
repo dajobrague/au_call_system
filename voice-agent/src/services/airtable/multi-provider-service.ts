@@ -92,9 +92,18 @@ export class MultiProviderService {
           type: 'multi_provider_single'
         });
         
+        // Fetch the single provider's details
+        let singleProvider = null;
+        if (providerIds.length === 1) {
+          const providerRecord = await airtableClient.getProviderById(providerIds[0]);
+          if (providerRecord && providerRecord.fields['Active'] !== false) {
+            singleProvider = transformProviderForSelection(providerRecord, 0);
+          }
+        }
+        
         return {
           hasMultipleProviders: false,
-          providers: [],
+          providers: singleProvider ? [singleProvider] : [],
           totalProviders: providerIds.length
         };
       }

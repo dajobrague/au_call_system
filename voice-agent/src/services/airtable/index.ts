@@ -18,6 +18,7 @@ export { employeeService } from './employee-service';
 export { jobService } from './job-service';
 export { jobOccurrenceService } from './job-occurrence-service';
 export { multiProviderService } from './multi-provider-service';
+export * from './call-log-service';
 
 // Types
 export type {

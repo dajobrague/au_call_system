@@ -1,0 +1,4 @@
+﻿CallSid,Provider,Employee,Patient,Related Occurrence,Direction,Started At,Ended At,Seconds,Recording URL (Twilio/S3),Transcript URL,Detected Intent/Action,Raw Payload,Notes
+TESTSID001,Bay Area Family Practice,David Kim,Amelia Johnson,050505 — 2025-09-15 00:00,Inbound,10/1/2025,10/1/2025,190,https://example.com/recording1.mp3,https://example.com/transcript1.txt,Appointment confirmation,"{""call"":""test payload 1""}",Test call log 1
+TESTSID002,Atlantic Care Network,Linda Wu,Isla Thompson,070707 — 2025-09-13 00:00,Outbound,10/2/2025,10/2/2025,120,https://example.com/recording2.mp3,https://example.com/transcript2.txt,Follow-up call,"{""call"":""test payload 2""}",Test call log 2
+TESTSID003,Great Plains Health,Maria Lopez,Benjamin Evans,101010 — 2025-09-14 00:00,Inbound,10/3/2025,10/3/2025,160,https://example.com/recording3.mp3,https://example.com/transcript3.txt,Billing inquiry,"{""call"":""test payload 3""}",Test call log 3

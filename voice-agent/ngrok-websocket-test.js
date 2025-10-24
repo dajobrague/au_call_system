@@ -44,6 +44,129 @@ function makeUlawTone440(durationMs = 2000) {
 }
 
 /**
+ * Generate professional beep tone for speech collection
+ */
+function generateBeepTone(durationMs = 300) {
+  const sr = 8000;
+  const frequency = 800; // Professional beep frequency
+  const n = Math.floor(sr * (durationMs / 1000));
+  const pcm = new Int16Array(n);
+  
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    // Create a pleasant beep with fade in/out
+    const fadeIn = Math.min(1, i / (sr * 0.05)); // 50ms fade in
+    const fadeOut = Math.min(1, (n - i) / (sr * 0.05)); // 50ms fade out
+    const envelope = fadeIn * fadeOut;
+    
+    pcm[i] = Math.round(Math.sin(2 * Math.PI * frequency * t) * 0x2000 * envelope); // Lower volume
+  }
+  
+  const ulaw = linear16ToMulaw(pcm);
+  return sliceInto20msFrames(ulaw);
+}
+
+/**
+ * Generate pleasant hold music (soft melody)
+ */
+function generateHoldMusic(durationMs = 10000) {
+  const sr = 8000;
+  const n = Math.floor(sr * (durationMs / 1000));
+  const pcm = new Int16Array(n);
+  
+  // Create a pleasant melody with multiple harmonics
+  // Using a simple chord progression: C-E-G (major chord)
+  const frequencies = [261.63, 329.63, 392.00]; // C4, E4, G4
+  
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    
+    // Mix multiple frequencies for a richer sound
+    let sample = 0;
+    frequencies.forEach((freq, idx) => {
+      const amplitude = 0x1000 / frequencies.length; // Divide amplitude among frequencies
+      sample += Math.sin(2 * Math.PI * freq * t) * amplitude;
+    });
+    
+    // Add a slow fade in/out for smooth looping
+    const fadeLength = sr * 0.5; // 0.5 second fade
+    let envelope = 1;
+    if (i < fadeLength) {
+      envelope = i / fadeLength;
+    } else if (i > n - fadeLength) {
+      envelope = (n - i) / fadeLength;
+    }
+    
+    pcm[i] = Math.round(sample * envelope);
+  }
+  
+  const ulaw = linear16ToMulaw(pcm);
+  return sliceInto20msFrames(ulaw);
+}
+
+/**
+ * Play hold music in a loop over WebSocket
+ */
+function playHoldMusic(ws) {
+  if (!ws || ws.readyState !== 1) {
+    console.log('⚠️ WebSocket not ready for hold music');
+    return;
+  }
+  
+  console.log('🎵 Starting hold music playback...');
+  
+  // Generate 10 seconds of hold music
+  const musicFrames = generateHoldMusic(10000);
+  
+  let frameIndex = 0;
+  
+  // Clear any existing hold music interval
+  if (ws.holdMusicInterval) {
+    clearInterval(ws.holdMusicInterval);
+  }
+  
+  // Send frames at 20ms intervals (50 frames per second)
+  ws.holdMusicInterval = setInterval(() => {
+    if (!ws || ws.readyState !== 1) {
+      clearInterval(ws.holdMusicInterval);
+      console.log('🛑 Hold music stopped - WebSocket closed');
+      return;
+    }
+    
+    // Send current frame
+    const frame = musicFrames[frameIndex];
+    if (frame) {
+      const b64 = Buffer.from(frame).toString('base64');
+      ws.send(JSON.stringify({
+        event: 'media',
+        streamSid: ws.streamSid,
+        media: { payload: b64 }
+      }));
+    }
+    
+    // Move to next frame, loop back to start if at end
+    frameIndex++;
+    if (frameIndex >= musicFrames.length) {
+      frameIndex = 0;
+      console.log('🔄 Hold music loop restarted');
+    }
+  }, 20); // 20ms per frame
+  
+  console.log(`✅ Hold music started (${musicFrames.length} frames, looping)`);
+}
+
+/**
+ * Stop hold music playback
+ */
+function stopHoldMusic(ws) {
+  if (ws && ws.holdMusicInterval) {
+    clearInterval(ws.holdMusicInterval);
+    ws.holdMusicInterval = null;
+    console.log('🛑 Hold music stopped');
+  }
+}
+
+/**
  * High-quality linear interpolation resampling with anti-aliasing
  */
 function resampleTo8k(audioBuffer, fromSampleRate) {
@@ -131,15 +254,22 @@ let multiProviderService = null;
 let stateManager = null;
 let phoneFormatter = null;
 
-// Speech-to-text processing with voice activity detection
+// Professional speech collection system
 let speechBuffer = Buffer.alloc(0);
 let speechTimeout = null;
-let lastAudioLevel = 0;
-let speechDetected = false;
-const SPEECH_SILENCE_TIMEOUT = 1000; // 1 second of silence to process speech
+const SPEECH_STATES = {
+  IDLE: 'idle',
+  PROMPT_PLAYING: 'prompt_playing',
+  WAITING_FOR_BEEP: 'waiting_for_beep', 
+  BEEP_PLAYING: 'beep_playing',
+  RECORDING: 'recording',
+  PROCESSING: 'processing'
+};
+
+// Speech collection settings
 const MIN_SPEECH_DURATION = 800; // Minimum 100ms of actual speech
-const MAX_SPEECH_DURATION = 8000; // Maximum 1 second of speech
-const SPEECH_VOLUME_THRESHOLD = 100; // Minimum volume to consider as speech
+const MAX_SPEECH_DURATION = 80000; // Maximum 10 seconds of speech
+const RECORDING_TIMEOUT = 10000; // Auto-stop recording after 10 seconds
 
 // Initialize FSM services using ts-node for TypeScript compatibility
 async function initializeFSMServices() {
@@ -207,7 +337,7 @@ async function getVoicePrompt(callSid) {
 }
 
 // Optimized Redis state operations with minimal calls
-async function getCallStateOptimized(callSid) {
+async function getCallStateOptimized(ws, callSid) {
   // Use cached state if available and recent (< 5 seconds old)
   if (ws.cachedState && ws.cachedState.sid === callSid && 
       (Date.now() - ws.cachedStateTime) < 5000) {
@@ -333,8 +463,8 @@ async function speechToText(audioBuffer) {
     form.append('temperature', '0'); // Reduce hallucination with low temperature
     form.append('prompt', 'This is a healthcare scheduling call. User is saying dates, times, or brief reasons. Common words: Monday Tuesday Wednesday Thursday Friday Saturday Sunday tomorrow next January February March April May June July August September October November December morning afternoon evening AM PM sick emergency personal family'); // Constrain vocabulary
     
-    // Use node-fetch for proper multipart form handling
-    const fetch = require('node-fetch');
+    // Use dynamic import for node-fetch (ESM module)
+    const { default: fetch } = await import('node-fetch');
     
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
@@ -429,55 +559,346 @@ function detectVoiceActivity(audioBuffer) {
   };
 }
 
-// Parse spoken date into structured format
-function parseSpokenDate(spokenText) {
-  const text = spokenText.toLowerCase();
-  
-  // Common date patterns
-  const patterns = [
-    // "tomorrow" -> next day
-    /\btomorrow\b/,
-    // "next monday", "next tuesday", etc.
-    /\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/,
-    // "monday", "tuesday", etc. (this week or next)
-    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/,
-    // "december 15th", "january 3rd", etc.
-    /\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(st|nd|rd|th)?\b/,
-    // "15th of december", "3rd of january", etc.
-    /\b(\d{1,2})(st|nd|rd|th)?\s+of\s+(january|february|march|april|may|june|july|august|september|october|november|december)\b/
+// AI response classification for safety
+function classifyAIResponse(aiResponse) {
+  const questionIndicators = [
+    'what time', 'when', 'which day', '?', 'for example',
+    'please clarify', 'could you', 'would you', 'can you specify',
+    'what day', 'which time', 'more specific'
   ];
   
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match) {
-      console.log(`📅 Date pattern matched: "${match[0]}"`);
-      return {
-        success: true,
-        originalText: spokenText,
-        parsedDate: match[0],
-        confidence: 'high'
-      };
-    }
-  }
+  const confirmationIndicators = [
+    'perfect', 'great', 'excellent', 'confirmed', 'scheduled',
+    'i heard', 'got it', 'understood', 'all set'
+  ];
   
-  // Fallback - look for any date-like words
-  const dateWords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-  const foundDateWord = dateWords.find(word => text.includes(word));
+  const lowerResponse = aiResponse.toLowerCase();
   
-  if (foundDateWord) {
-    return {
-      success: true,
-      originalText: spokenText,
-      parsedDate: foundDateWord,
-      confidence: 'medium'
-    };
-  }
+  const hasQuestion = questionIndicators.some(indicator => 
+    lowerResponse.includes(indicator)
+  );
+  
+  const hasConfirmation = confirmationIndicators.some(indicator => 
+    lowerResponse.includes(indicator)
+  );
   
   return {
-    success: false,
-    originalText: spokenText,
-    error: 'No date pattern recognized'
+    isQuestion: hasQuestion,
+    isConfirmation: hasConfirmation,
+    needsMoreInfo: hasQuestion && !hasConfirmation,
+    isComplete: hasConfirmation && !hasQuestion,
+    originalResponse: aiResponse
   };
+}
+
+// Extract and validate actual date/time from user speech
+function extractAndValidateDateTime(userSpeech) {
+  const text = userSpeech.toLowerCase();
+  
+  // Date patterns
+  const datePatterns = [
+    { pattern: /\btomorrow\b/, type: 'relative' },
+    { pattern: /\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/, type: 'next_weekday' },
+    { pattern: /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/, type: 'weekday' },
+    { pattern: /\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(st|nd|rd|th)?\b/, type: 'month_day' }
+  ];
+  
+  // Time patterns
+  const timePatterns = [
+    { pattern: /\b(\d{1,2})\s*(am|pm)\b/, type: 'hour_ampm' },
+    { pattern: /\b(\d{1,2}):(\d{2})\s*(am|pm)\b/, type: 'hour_minute_ampm' },
+    { pattern: /\b(morning|afternoon|evening)\b/, type: 'period' }
+  ];
+  
+  const dayMatch = datePatterns.find(p => text.match(p.pattern));
+  const timeMatch = timePatterns.find(p => text.match(p.pattern));
+  
+  const hasValidDay = !!dayMatch;
+  const hasValidTime = timeMatch && timeMatch.type !== 'period'; // Exclude vague periods
+  const hasVagueTime = timeMatch && timeMatch.type === 'period';
+  
+  return {
+    isValid: hasValidDay && hasValidTime,
+    hasDay: hasValidDay,
+    hasTime: hasValidTime,
+    hasVagueTime: hasVagueTime,
+    dayText: dayMatch ? text.match(dayMatch.pattern)[0] : null,
+    timeText: timeMatch ? text.match(timeMatch.pattern)[0] : null,
+    originalText: userSpeech,
+    confidence: (hasValidDay && hasValidTime) ? 'high' : 'partial'
+  };
+}
+
+// Generate AI-powered intelligent response using existing conversation services
+async function generateIntelligentDateTimeResponse(userSpeech, context) {
+  try {
+    // Use dynamic import for node-fetch (ESM module)
+    const { default: fetch } = await import('node-fetch');
+    
+    const prompt = `You are a healthcare scheduling assistant. The user is trying to reschedule an appointment.
+
+Context:
+- Patient: ${context.patientName || 'the patient'}
+- Current appointment: ${context.appointmentDate || 'an appointment'}
+- Job type: ${context.jobTitle || 'healthcare service'}
+- User said: "${userSpeech}"
+
+Task: Analyze what the user said and respond appropriately:
+
+If complete (day + time like "Monday 2 PM"): Confirm → "Perfect! I heard [day] at [time]. Is that correct?"
+If day only (like "Monday" or "tomorrow"): Ask for time → "Great! What time on [day] works for you?"
+If vague time (like "Monday afternoon"): Ask for specifics → "What time [day] [timeperiod]? For example, 2 PM or 4 PM?"
+If unclear or incomplete: Ask for clarification → "I didn't catch that clearly. Please say the day and time, like 'Monday 2 PM'."
+
+Keep response under 20 words, professional but friendly tone, always end with instruction to "speak after the tone and press pound when finished" if asking for more input.
+
+Response:`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 100,
+        temperature: 0.3
+      })
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      const aiResponse = result.choices[0].message.content.trim();
+      console.log(`🤖 AI response generated: "${aiResponse}"`);
+      return aiResponse;
+    } else {
+      console.error('❌ OpenAI API error:', response.status);
+      return null;
+    }
+    
+  } catch (error) {
+    console.error('❌ AI response generation error:', error);
+    return null;
+  }
+}
+
+// Professional speech collection functions
+function startSpeechCollection(ws, prompt, context = {}, speechGenerator) {
+  console.log(`🎤 Starting speech collection: "${prompt}"`);
+  
+  // Store speech generator function on WebSocket for access
+  ws.generateSpeech = speechGenerator;
+  
+  // Initialize speech collection state
+  ws.speechState = SPEECH_STATES.PROMPT_PLAYING;
+  ws.speechContext = context;
+  speechBuffer = Buffer.alloc(0);
+  
+  // Play instruction with beep cue
+  const fullPrompt = prompt.includes('speak after the tone') 
+    ? prompt 
+    : `${prompt} Please speak after the tone and press pound when finished.`;
+  
+  speechGenerator(fullPrompt);
+  
+  // Schedule beep after prompt finishes
+  setTimeout(() => {
+    if (ws.speechState === SPEECH_STATES.PROMPT_PLAYING) {
+      playBeepAndStartRecording(ws);
+    }
+  }, estimateAudioDuration(fullPrompt) + 500); // Add 500ms buffer
+}
+
+function playBeepAndStartRecording(ws) {
+  console.log('🔔 Playing beep tone...');
+  ws.speechState = SPEECH_STATES.BEEP_PLAYING;
+  
+  // Generate and play beep
+  const beepFrames = generateBeepTone(300);
+  beepFrames.forEach((frame, index) => {
+    const twilioMessage = {
+      event: 'media',
+      streamSid: ws.streamSid, // Use WebSocket-stored streamSid
+      media: {
+        payload: Buffer.from(frame).toString('base64')
+      }
+    };
+    
+    setTimeout(() => {
+      ws.send(JSON.stringify(twilioMessage));
+    }, index * 20);
+  });
+  
+  // Start recording after beep
+  setTimeout(() => {
+    console.log('🎙️ Recording started - speak now!');
+    ws.speechState = SPEECH_STATES.RECORDING;
+    
+    // Auto-stop recording after timeout
+    ws.recordingTimeout = setTimeout(() => {
+      if (ws.speechState === SPEECH_STATES.RECORDING) {
+        console.log('⏰ Recording timeout - processing speech');
+        stopRecordingAndProcess(ws);
+      }
+    }, RECORDING_TIMEOUT);
+    
+  }, 400); // 300ms beep + 100ms buffer
+}
+
+function stopRecordingAndProcess(ws) {
+  if (ws.speechState !== SPEECH_STATES.RECORDING) return;
+  
+  console.log('🛑 Recording stopped - processing speech...');
+  ws.speechState = SPEECH_STATES.PROCESSING;
+  
+  // Clear timeout
+  if (ws.recordingTimeout) {
+    clearTimeout(ws.recordingTimeout);
+    ws.recordingTimeout = null;
+  }
+  
+  // Process collected speech
+  processSpeechWithAI(ws);
+}
+
+// Process speech with AI and safety validation
+async function processSpeechWithAI(ws) {
+  if (speechBuffer.length < MIN_SPEECH_DURATION) {
+    console.log(`⚠️ Speech too short: ${speechBuffer.length} bytes`);
+    ws.speechState = SPEECH_STATES.IDLE;
+    ws.generateSpeech("I didn't hear anything. Please try again.");
+    return;
+  }
+  
+  try {
+    console.log(`🎤 Processing ${speechBuffer.length} bytes of speech...`);
+    
+    // Convert speech to text
+    const userSpeech = await speechToText(speechBuffer);
+    
+    if (!userSpeech) {
+      console.log(`❌ No speech recognized`);
+      ws.speechState = SPEECH_STATES.IDLE;
+      ws.generateSpeech("I didn't catch that. Please speak clearly after the tone and press pound when finished.");
+      return;
+    }
+    
+    console.log(`🎤 User said: "${userSpeech}"`);
+    
+    // Generate AI response with context
+    const context = {
+      patientName: ws.speechContext?.patientName || 'the patient',
+      appointmentDate: ws.speechContext?.appointmentDate || 'the appointment',
+      jobTitle: ws.speechContext?.jobTitle || 'healthcare service'
+    };
+    
+    const aiResponse = await generateIntelligentDateTimeResponse(userSpeech, context);
+    
+    if (!aiResponse) {
+      console.log(`❌ AI response generation failed`);
+      ws.speechState = SPEECH_STATES.IDLE;
+      ws.generateSpeech("I'm having trouble processing that. Please say the day and time clearly.");
+      return;
+    }
+    
+    // CRITICAL: Classify AI response for safety
+    const classification = classifyAIResponse(aiResponse);
+    console.log(`🔍 AI response classification:`, classification);
+    
+    if (classification.needsMoreInfo) {
+      // AI is asking for more information - continue conversation
+      console.log(`🤖 AI requesting more info: "${aiResponse}"`);
+      ws.speechState = SPEECH_STATES.IDLE;
+      
+      // Start new speech collection for follow-up
+      setTimeout(() => {
+        startSpeechCollection(ws, aiResponse, context, ws.generateSpeech);
+      }, 500);
+      
+    } else if (classification.isComplete) {
+      // AI confirmed - validate actual user data
+      console.log(`✅ AI confirmed data: "${aiResponse}"`);
+      
+      const validation = extractAndValidateDateTime(userSpeech);
+      console.log(`🔍 Data validation:`, validation);
+      
+      if (validation.isValid) {
+        // SAFE: Valid date/time data extracted from user speech
+        console.log(`✅ Valid date/time: ${validation.dayText} ${validation.timeText}`);
+        ws.speechState = SPEECH_STATES.IDLE;
+        
+        // Continue with FSM using validated data
+        await continueWithValidatedDateTime(ws, validation, aiResponse);
+        
+      } else {
+        // Invalid data - ask for clarification
+        console.log(`❌ Invalid date/time data, asking for clarification`);
+        ws.speechState = SPEECH_STATES.IDLE;
+        
+        const clarificationPrompt = "I need both the day and time. Please say something like 'Monday 2 PM' or 'Tomorrow at 3 PM'.";
+        setTimeout(() => {
+          startSpeechCollection(ws, clarificationPrompt, context, ws.generateSpeech);
+        }, 500);
+      }
+      
+    } else {
+      // Unclear AI response - safe fallback
+      console.log(`⚠️ Unclear AI response: "${aiResponse}"`);
+      ws.speechState = SPEECH_STATES.IDLE;
+      ws.generateSpeech("Let me help you with that. Please say the day and time you'd like, like 'Monday 2 PM'.");
+    }
+    
+  } catch (error) {
+    console.error('❌ Speech processing error:', error);
+    ws.speechState = SPEECH_STATES.IDLE;
+    ws.generateSpeech("I'm having trouble with that. Please try again.");
+  } finally {
+    // Always reset speech buffer
+    speechBuffer = Buffer.alloc(0);
+  }
+}
+
+// Continue FSM with validated date/time data
+async function continueWithValidatedDateTime(ws, validation, aiResponse) {
+  try {
+    // Load current state
+    const callSid = ws.callSid;
+    const currentState = await getCallStateOptimized(ws, callSid);
+    
+    // Generate confirmation response
+    ws.generateSpeech(aiResponse);
+    
+    // Update state with collected date/time (would integrate with existing FSM phases)
+    const updatedState = {
+      ...currentState,
+      dateTimeInput: {
+        day: validation.dayText,
+        time: validation.timeText,
+        originalSpeech: validation.originalText
+      },
+      phase: 'confirm_datetime', // Move to confirmation phase
+      updatedAt: new Date().toISOString()
+    };
+    
+    saveCallStateOptimized(ws, updatedState);
+    console.log(`✅ Date/time data safely collected and stored`);
+    
+  } catch (error) {
+    console.error('❌ Error continuing with validated data:', error);
+    ws.generateSpeech("I've noted that information. Let me continue with your request.");
+  }
+}
+
+// Estimate audio duration for timing (rough calculation)
+function estimateAudioDuration(text) {
+  // Rough estimate: ~150 words per minute, ~2.5 chars per word
+  const wordsPerMinute = 150;
+  const charsPerWord = 2.5;
+  const estimatedWords = text.length / charsPerWord;
+  const durationMs = (estimatedWords / wordsPerMinute) * 60 * 1000;
+  return Math.max(1000, Math.min(10000, durationMs)); // Between 1-10 seconds
 }
 
 const app = express();
@@ -563,6 +984,9 @@ wss.on('connection', (ws, request) => {
   
   // Generate speech using ElevenLabs HTTP streaming API
   function generateElevenLabsSpeech(text) {
+    // Stop hold music before speaking
+    stopHoldMusic(ws);
+    
     const voiceId = process.env.ELEVENLABS_VOICE_ID || 'aGkVQvWUZi16EH8aZJvT';
     const apiKey = process.env.ELEVENLABS_API_KEY;
     
@@ -643,6 +1067,13 @@ wss.on('connection', (ws, request) => {
         
       } else {
         console.error('❌ ElevenLabs API error:', res.statusCode);
+        if (res.statusCode === 401) {
+          console.error('❌ ElevenLabs authentication failed - check API key');
+        }
+        // Try to read error response
+        res.on('data', (chunk) => {
+          console.error('❌ ElevenLabs error details:', chunk.toString());
+        });
       }
     });
     
@@ -667,12 +1098,21 @@ wss.on('connection', (ws, request) => {
       if (data.event === 'start') {
         streamSid = data.streamSid;
         ws.callSid = data.start?.callSid; // Store callSid on WebSocket for DTMF handling
+        ws.streamSid = data.streamSid; // Store streamSid on WebSocket for speech collection
         
         console.log('✅ Twilio stream started:', {
           callSid: data.start?.callSid,
           streamSid: streamSid,
           media: data.media
         });
+        
+        // FIRST: Play recording disclaimer message
+        console.log('📢 Playing recording disclaimer message...');
+        const disclaimerText = 'This call may be recorded for quality and compliance purposes.';
+        generateElevenLabsSpeech(disclaimerText);
+        
+        // Run phone authentication in the background while disclaimer plays
+        console.log('🔍 Starting background authentication during disclaimer...');
         
         // Run phone authentication directly within WebSocket
         const callSid = data.start?.callSid;
@@ -723,25 +1163,26 @@ wss.on('connection', (ws, request) => {
                 updatedAt: new Date().toISOString()
               };
               
-              await stateManager.saveCallState(callState);
+              saveCallStateOptimized(ws, callState);
               
               // OPTIMIZATION: Start comprehensive background data prefetching
               console.log('🚀 Starting comprehensive background data prefetching...');
+              const jobServiceModule = require('./src/services/airtable/job-service.ts');
+              const jobService = jobServiceModule.jobService;
+              
               const backgroundDataPromise = Promise.all([
                 multiProviderService.getEmployeeProviders(authResult.employee),
-                // Prefetch job templates for this employee (for faster job code validation)
-                employeeService.getEmployeeJobTemplates ? employeeService.getEmployeeJobTemplates(authResult.employee) : Promise.resolve([]),
-                // Prefetch recent patient data (for context)
-                employeeService.getRecentPatients ? employeeService.getRecentPatients(authResult.employee) : Promise.resolve([])
-              ]).then(([providerResult, jobTemplates, recentPatients]) => {
+                // Prefetch employee's job list (NEW - replaces job code entry)
+                // Pass provider ID if available to filter jobs by provider
+                jobService.getEmployeeJobs(authResult.employee, authResult.employee.providerId)
+              ]).then(([providerResult, employeeJobsResult]) => {
                 // Cache all results on the WebSocket for instant access
                 ws.cachedData = {
                   providers: providerResult,
-                  jobTemplates: jobTemplates || [],
-                  recentPatients: recentPatients || [],
+                  employeeJobs: employeeJobsResult.jobs || [],
                   loadedAt: Date.now()
                 };
-                console.log(`✅ Background data loaded: ${providerResult?.providers?.length || 0} providers, ${jobTemplates?.length || 0} job templates, ${recentPatients?.length || 0} patients`);
+                console.log(`✅ Background data loaded: ${providerResult?.providers?.length || 0} providers, ${employeeJobsResult.jobs?.length || 0} jobs`);
                 return ws.cachedData;
               }).catch(error => {
                 console.error('❌ Background data loading error:', error);
@@ -765,14 +1206,40 @@ wss.on('connection', (ws, request) => {
                 console.log(`🏢 Provider check: hasMultiple=${providerResult.hasMultipleProviders}, total=${providerResult.totalProviders}`);
                 
                 if (!providerResult.hasMultipleProviders) {
-                  // Single provider - use provider greeting + ask for job code
+                  // Single provider - use provider greeting + present job list
                   const provider = providerResult.providers[0];
                   const providerGreeting = provider?.greeting || 'Welcome to Healthcare Services';
-                  const fullGreeting = `Hi ${authResult.employee.name}. ${providerGreeting}. Please use your keypad to enter your job code followed by the pound key.`;
                   
-                  console.log(`🎤 Single provider greeting: "${fullGreeting}"`);
+                  // Get employee jobs from cached data
+                  const employeeJobs = ws.cachedData?.employeeJobs || [];
                   
-                  // Update state to provider_greeting phase
+                  if (employeeJobs.length === 0) {
+                    console.error('❌ No jobs found for employee');
+                    const errorGreeting = `Hi ${authResult.employee.name}. ${providerGreeting}. You currently have no assigned jobs in the system. Please contact your supervisor.`;
+                    generateElevenLabsSpeech(errorGreeting);
+                    return;
+                  }
+                  
+                  // Generate job list message with last name only and job title
+                  let jobListMessage = '';
+                  if (employeeJobs.length === 1) {
+                    const job = employeeJobs[0];
+                    const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
+                    jobListMessage = `You have one job: ${job.jobTemplate.title} for ${patientLastName}. Press 1 to select this job.`;
+                  } else {
+                    jobListMessage = `You have ${employeeJobs.length} jobs. `;
+                    employeeJobs.forEach((job, index) => {
+                      const number = index + 1;
+                      const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
+                      jobListMessage += `Press ${number} for ${job.jobTemplate.title} for ${patientLastName}. `;
+                    });
+                  }
+                  
+                  const fullGreeting = `Hi ${authResult.employee.name}. ${providerGreeting}. ${jobListMessage}`;
+                  
+                  console.log(`🎤 Single provider greeting with job list: "${fullGreeting}"`);
+                  
+                  // Update state to job_selection phase with job list
                   callState = {
                     ...callState,
                     provider: provider ? {
@@ -780,27 +1247,28 @@ wss.on('connection', (ws, request) => {
                       name: provider.name,
                       greeting: provider.greeting
                     } : null,
-                    phase: 'provider_greeting',
+                    phase: 'job_selection',
+                    employeeJobs: employeeJobs.map((job, index) => ({
+                      index: index + 1,
+                      jobTemplate: {
+                        id: job.jobTemplate.id,
+                        jobCode: job.jobTemplate.jobCode,
+                        title: job.jobTemplate.title,
+                        serviceType: job.jobTemplate.serviceType,
+                        patientId: job.jobTemplate.patientId,
+                        occurrenceIds: job.jobTemplate.occurrenceIds || []
+                      },
+                      patient: job.patient ? {
+                        id: job.patient.id,
+                        name: job.patient.name,
+                        patientId: job.patient.patientId
+                      } : null
+                    })),
                     updatedAt: new Date().toISOString()
                   };
                   
                   saveCallStateOptimized(ws, callState);
                   generateElevenLabsSpeech(fullGreeting);
-                  
-                  // OPTIMIZATION: Prefetch job templates while greeting plays
-                  if (authResult.employee.jobTemplateIds && authResult.employee.jobTemplateIds.length > 0) {
-                    console.log('🚀 Prefetching job templates while greeting plays...');
-                    setTimeout(async () => {
-                      try {
-                        const jobService = require('./src/services/airtable/job-service.ts');
-                        const jobTemplates = await jobService.getJobTemplatesByIds(authResult.employee.jobTemplateIds);
-                        ws.cachedJobTemplates = jobTemplates;
-                        console.log(`✅ Prefetched ${jobTemplates?.length || 0} job templates`);
-                      } catch (error) {
-                        console.error('❌ Job template prefetch error:', error);
-                      }
-                    }, 100); // Start immediately while audio plays
-                  }
                   
                 } else {
                   // Multiple providers - ask for selection
@@ -847,7 +1315,7 @@ wss.on('connection', (ws, request) => {
                 updatedAt: new Date().toISOString()
               };
               
-              await stateManager.saveCallState(callState);
+              saveCallStateOptimized(ws, callState);
               generateElevenLabsSpeech(pinPrompt);
             }
             
@@ -868,16 +1336,28 @@ wss.on('connection', (ws, request) => {
         
         if (digit && employeeService && stateManager) {
           try {
+            // Handle # key for speech recording control
+            if (digit === '#' && ws.speechState === SPEECH_STATES.RECORDING) {
+              console.log('🛑 # pressed - stopping speech recording');
+              stopRecordingAndProcess(ws);
+              return;
+            }
+            
             // Use the stored callSid from the start event
             const callSid = ws.callSid || data.streamSid;
             console.log(`🔍 Loading state for callSid: ${callSid}`);
             
-            const currentState = await getCallStateOptimized(callSid);
+            const currentState = await getCallStateOptimized(ws, callSid);
             console.log(`📊 Processing DTMF for phase: ${currentState.phase}`);
             
             // Initialize job code collection if not exists
             if (!ws.jobCodeDigits) {
               ws.jobCodeDigits = '';
+            }
+            
+            // Initialize speech state if not exists
+            if (!ws.speechState) {
+              ws.speechState = SPEECH_STATES.IDLE;
             }
             
             if (currentState.phase === 'provider_selection' && currentState.availableProviders) {
@@ -888,7 +1368,41 @@ wss.on('connection', (ws, request) => {
               if (selectedProvider) {
                 console.log(`✅ Provider selected: ${selectedProvider.name}`);
                 
-                // Update state with selected provider and move to provider greeting
+                // Fetch jobs for this employee and provider
+                const employeeJobs = ws.cachedData?.employeeJobs || [];
+                
+                // Filter jobs by selected provider
+                const providerJobs = employeeJobs.filter(job => 
+                  job.jobTemplate.providerId === selectedProvider.id
+                );
+                
+                console.log(`📋 Found ${providerJobs.length} jobs for provider ${selectedProvider.name}`);
+                
+                if (providerJobs.length === 0) {
+                  const errorGreeting = `${selectedProvider.greeting || `Welcome to ${selectedProvider.name}`}. You currently have no assigned jobs for this provider. Please contact your supervisor.`;
+                  generateElevenLabsSpeech(errorGreeting);
+                  return;
+                }
+                
+                // Generate job list message with last name only and job title
+                let jobListMessage = '';
+                if (providerJobs.length === 1) {
+                  const job = providerJobs[0];
+                  const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
+                  jobListMessage = `You have one job: ${job.jobTemplate.title} for ${patientLastName}. Press 1 to select this job.`;
+                } else {
+                  jobListMessage = `You have ${providerJobs.length} jobs. `;
+                  providerJobs.forEach((job, index) => {
+                    const number = index + 1;
+                    const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
+                    jobListMessage += `Press ${number} for ${job.jobTemplate.title} for ${patientLastName}. `;
+                  });
+                }
+                
+                const providerGreeting = selectedProvider.greeting || `Welcome to ${selectedProvider.name}`;
+                const fullGreeting = `${providerGreeting}. ${jobListMessage}`;
+                
+                // Update state with selected provider and job list
                 const updatedState = {
                   ...currentState,
                   provider: {
@@ -896,22 +1410,291 @@ wss.on('connection', (ws, request) => {
                     name: selectedProvider.name,
                     greeting: selectedProvider.greeting
                   },
-                  phase: 'provider_greeting',
+                  phase: 'job_selection',
+                  employeeJobs: providerJobs.map((job, index) => ({
+                    index: index + 1,
+                    jobTemplate: {
+                      id: job.jobTemplate.id,
+                      jobCode: job.jobTemplate.jobCode,
+                      title: job.jobTemplate.title,
+                      serviceType: job.jobTemplate.serviceType,
+                      patientId: job.jobTemplate.patientId,
+                      occurrenceIds: job.jobTemplate.occurrenceIds || []
+                    },
+                    patient: job.patient ? {
+                      id: job.patient.id,
+                      name: job.patient.name,
+                      patientId: job.patient.patientId
+                    } : null
+                  })),
                   updatedAt: new Date().toISOString()
                 };
                 
-                await stateManager.saveCallState(updatedState);
+                saveCallStateOptimized(ws, updatedState);
                 
-                // Generate provider greeting + job code request
-                const providerGreeting = selectedProvider.greeting || `Welcome to ${selectedProvider.name}`;
-                const fullGreeting = `${providerGreeting}. Please use your keypad to enter your job code followed by the pound key.`;
-                
-                console.log(`🎤 Provider greeting: "${fullGreeting}"`);
+                console.log(`🎤 Provider greeting with job list: "${fullGreeting}"`);
                 generateElevenLabsSpeech(fullGreeting);
                 
               } else {
                 console.log(`❌ Invalid provider selection: ${digit}`);
                 generateElevenLabsSpeech("Invalid selection. Please press 1 for Sunrise Health Group or 2 for Pacific Wellness.");
+              }
+              
+            } else if (currentState.phase === 'job_selection' && currentState.employeeJobs) {
+              // Handle job selection
+              const selectionNum = parseInt(digit, 10);
+              const selectedJob = currentState.employeeJobs.find(j => j.index === selectionNum);
+              
+              if (selectedJob) {
+                console.log(`✅ Job selected: ${selectedJob.jobTemplate.jobCode} - ${selectedJob.jobTemplate.title}`);
+                
+                // Update state with selected job and move to job options
+                const updatedState = {
+                  ...currentState,
+                  phase: 'job_options',
+                  jobTemplate: selectedJob.jobTemplate,
+                  patient: selectedJob.patient || undefined,
+                  updatedAt: new Date().toISOString()
+                };
+                
+                saveCallStateOptimized(ws, updatedState);
+                
+                // Generate job options message with last name only
+                const patientLastName = selectedJob.patient?.name ? selectedJob.patient.name.split(' ').pop() : 'the patient';
+                const jobTitle = selectedJob.jobTemplate.title;
+                const optionsMessage = `You selected ${jobTitle} for ${patientLastName}. What would you like to do? Press 1 to reschedule, Press 2 to leave the job open for someone else, Press 3 to talk to a representative, or Press 4 to select a different job.`;
+                
+                console.log(`🎤 Job options: "${optionsMessage}"`);
+                generateElevenLabsSpeech(optionsMessage);
+                
+              } else {
+                console.log(`❌ Invalid job selection: ${digit}`);
+                const maxJobs = currentState.employeeJobs.length;
+                generateElevenLabsSpeech(`Invalid selection. Please press a number from 1 to ${maxJobs} to select your job.`);
+              }
+              
+            } else if (currentState.phase === 'job_options') {
+              // Handle job options selection (1, 2, 3, or 4)
+              console.log(`🎯 Job option selected: ${digit}`);
+              
+              if (digit === '3') {
+                // Transfer to representative with queue
+                console.log(`📞 Transferring to representative with queue system...`);
+                
+                // Update state to representative_transfer phase
+                const updatedState = {
+                  ...currentState,
+                  phase: 'representative_transfer',
+                  selectedOption: '3',
+                  updatedAt: new Date().toISOString()
+                };
+                
+                saveCallStateOptimized(ws, updatedState);
+                
+                // Generate transfer message
+                generateElevenLabsSpeech("Let me connect you to a representative. Please hold.");
+                
+                // Use real queue system
+                setTimeout(async () => {
+                  try {
+                    console.log(`🔄 Checking representative availability...`);
+                    
+                    // Import queue services
+                    const { checkPhoneAvailability } = require('./src/services/queue/twilio-availability.ts');
+                    const { callQueueService } = require('./src/services/queue/call-queue-service.ts');
+                    
+                    const REPRESENTATIVE_PHONE = '+522281957913';
+                    
+                    // Check if representative is available
+                    const availability = await checkPhoneAvailability(REPRESENTATIVE_PHONE);
+                    console.log(`📊 Availability check: ${availability.isAvailable ? 'Available' : 'Busy'} (${availability.activeCallsCount} active calls)`);
+                    
+                    if (availability.isAvailable) {
+                      // Representative is available - transfer immediately using Twilio API
+                      console.log(`✅ Representative available - initiating in-call transfer`);
+                      generateElevenLabsSpeech("A representative is available. Transferring you now. Please hold while I connect your call.");
+                      
+                      // Wait for speech to complete, then create outbound call to representative
+                      setTimeout(async () => {
+                        try {
+                          console.log(`🔄 Creating outbound call to representative...`);
+                          
+                          // Import Twilio client
+                          const twilio = require('twilio');
+                          const { twilioConfig } = require('./src/config/twilio.ts');
+                          const twilioClient = twilio(twilioConfig.accountSid, twilioConfig.authToken);
+                          
+                          // Create an outbound call to the representative
+                          const outboundCall = await twilioClient.calls.create({
+                            to: REPRESENTATIVE_PHONE,
+                            from: twilioConfig.phoneNumber,
+                            twiml: `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Amy">You have an incoming call from an employee. Connecting now.</Say>
+  <Dial>
+    <Conference 
+      beep="false"
+      startConferenceOnEnter="true"
+      endConferenceOnExit="true"
+      statusCallback="https://sam-voice-agent.vercel.app/api/queue/conference-status"
+      statusCallbackEvent="start end join leave"
+    >transfer-${callSid}</Conference>
+  </Dial>
+</Response>`,
+                            statusCallback: 'https://sam-voice-agent.vercel.app/api/queue/transfer-status',
+                            statusCallbackEvent: ['answered', 'completed'],
+                            timeout: 30
+                          });
+                          
+                          console.log(`📞 Outbound call created: ${outboundCall.sid}`);
+                          
+                          // Wait a moment for representative to be connected, then join the caller
+                          setTimeout(async () => {
+                            try {
+                              console.log(`🔗 Joining caller to conference...`);
+                              
+                              // Update the original call to join the conference
+                              await twilioClient.calls(callSid).update({
+                                twiml: `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Amy">Connecting you now.</Say>
+  <Dial>
+                    <Conference 
+                      beep="false"
+                      startConferenceOnEnter="true"
+                      endConferenceOnExit="true"
+                    >transfer-${callSid}</Conference>
+                  </Dial>
+                  <Say voice="Polly.Amy">The call has ended. Thank you.</Say>
+                  <Hangup/>
+</Response>`
+                              });
+                              
+                              console.log(`✅ Caller joined conference - transfer complete!`);
+                              
+                            } catch (error) {
+                              console.error('❌ Error joining caller to conference:', error.message);
+                              generateElevenLabsSpeech("I'm having trouble completing the transfer. Please try again later.");
+                            }
+                          }, 2000); // Wait 2 seconds for representative to join conference
+                          
+                        } catch (error) {
+                          console.error('❌ Error creating outbound call:', error.message);
+                          if (error.stack) {
+                            console.error('Stack:', error.stack);
+                          }
+                          generateElevenLabsSpeech("I'm having trouble connecting you to a representative. Please try again later.");
+                        }
+                      }, 5000); // Wait 5 seconds for speech to complete
+                      
+                    } else {
+                      // Representative busy - enqueue the caller
+                      console.log(`⏳ Representative busy - enqueueing caller`);
+                      
+                      const jobTitle = currentState.jobTemplate?.title || 'Unknown Job';
+                      const patientName = currentState.patient?.name || 'Unknown Patient';
+                      const callerPhone = currentState.employee?.phone || 'Unknown';
+                      const callerName = currentState.employee?.name;
+                      
+                      const queueResult = await callQueueService.enqueueCall(
+                        callSid,
+                        callerPhone,
+                        callerName,
+                        { jobTitle, patientName }
+                      );
+                      
+                      console.log(`✅ Added to queue - Position: ${queueResult.position}, Queue size: ${queueResult.queueSize}`);
+                      
+                      // Calculate estimated wait time
+                      const estimatedWaitSeconds = await callQueueService.getEstimatedWaitTime(queueResult.position);
+                      const estimatedWaitMinutes = Math.ceil(estimatedWaitSeconds / 60);
+                      
+                      // Announce queue position
+                      let queueMessage;
+                      if (queueResult.position === 1) {
+                        queueMessage = "All representatives are currently assisting other callers. You are next in line. A representative will be with you shortly. Please stay on the line.";
+                      } else {
+                        queueMessage = `All representatives are currently assisting other callers. You are number ${queueResult.position} in the queue. Your estimated wait time is approximately ${estimatedWaitMinutes} ${estimatedWaitMinutes === 1 ? 'minute' : 'minutes'}. Please stay on the line. Your call is important to us.`;
+                      }
+                      
+                      generateElevenLabsSpeech(queueMessage);
+                      
+                      // Play hold music after announcement
+                      setTimeout(() => {
+                        console.log(`🎵 Playing hold music...`);
+                        // Play hold music in a loop
+                        playHoldMusic(ws);
+                        
+                        // Periodic queue updates every 30 seconds
+                        const queueUpdateInterval = setInterval(async () => {
+                          try {
+                            const currentPosition = await callQueueService.getCallPosition(callSid);
+                            
+                            if (currentPosition === null) {
+                              // Call removed from queue (transferred or disconnected)
+                              console.log(`📞 Call removed from queue`);
+                              clearInterval(queueUpdateInterval);
+                              return;
+                            }
+                            
+                            console.log(`📊 Queue update - Current position: ${currentPosition}`);
+                            
+                            if (currentPosition === 1) {
+                              generateElevenLabsSpeech("You are next in line. A representative will be with you shortly. Thank you for your patience.");
+                            } else {
+                              const waitTime = await callQueueService.getEstimatedWaitTime(currentPosition);
+                              const waitMinutes = Math.ceil(waitTime / 60);
+                              generateElevenLabsSpeech(`You are number ${currentPosition} in the queue. Estimated wait time is ${waitMinutes} ${waitMinutes === 1 ? 'minute' : 'minutes'}. Thank you for your patience.`);
+                            }
+                            
+                            // Resume hold music after announcement
+                            setTimeout(() => {
+                              playHoldMusic(ws);
+                            }, 5000);
+                            
+                          } catch (error) {
+                            console.error('❌ Queue update error:', error);
+                          }
+                        }, 30000); // Update every 30 seconds
+                        
+                        // Store interval ID on WebSocket for cleanup
+                        ws.queueUpdateInterval = queueUpdateInterval;
+                      }, 5000); // Start hold music 5 seconds after queue announcement
+                    }
+                    
+                  } catch (error) {
+                    console.error('❌ Queue system error:', error);
+                    generateElevenLabsSpeech("I'm having trouble connecting you to a representative. Please try again later.");
+                  }
+                }, 1000);
+                
+              } else if (digit === '1' || digit === '2' || digit === '4') {
+                // Handle other job options
+                console.log(`🎯 Processing job option ${digit}...`);
+                
+                try {
+                  const jobOptionsPhase = require('./src/fsm/phases/job-options-phase.ts');
+                  const jobOptionsResult = await jobOptionsPhase.processJobOptionsPhase(currentState, digit, true, 'dtmf');
+                  
+                  console.log(`📊 Job options result: action=${jobOptionsResult.result.action}, phase=${jobOptionsResult.newState.phase}`);
+                  
+                  // Save the new state
+                  saveCallStateOptimized(ws, jobOptionsResult.newState);
+                  
+                  // Generate response
+                  const responseText = extractResponseText(jobOptionsResult.result);
+                  if (responseText) {
+                    generateElevenLabsSpeech(responseText);
+                  }
+                  
+                } catch (error) {
+                  console.error('❌ Job options processing error:', error);
+                  generateElevenLabsSpeech("I'm having trouble processing that option. Please try again.");
+                }
+                
+              } else {
+                console.log(`❌ Invalid job option: ${digit}`);
+                generateElevenLabsSpeech("Invalid selection. Please press 1 to reschedule, 2 to leave open, 3 to talk to a representative, or 4 to select a different job.");
               }
               
             } else if (currentState.phase === 'provider_greeting' || currentState.phase === 'collect_job_code') {
@@ -939,7 +1722,7 @@ wss.on('connection', (ws, request) => {
                     console.log(`🏢 Job code result: action=${jobCodeResult.result.action}`);
                     
                     // Save the new state
-                    await stateManager.saveCallState(jobCodeResult.newState);
+                    saveCallStateOptimized(ws, jobCodeResult.newState);
                     
                     // Generate response based on job code validation
                     if (jobCodeResult.result.action === 'transition') {
@@ -974,7 +1757,7 @@ wss.on('connection', (ws, request) => {
                           console.log(`🎯 Job options result: action=${jobOptionsResult.result.action}`);
                           
                           // Save the new state
-                          await stateManager.saveCallState(jobOptionsResult.newState);
+                          saveCallStateOptimized(ws, jobOptionsResult.newState);
                           
                           // Generate more natural job options response
                           let optionsText = extractResponseText(jobOptionsResult.result);
@@ -1050,7 +1833,7 @@ wss.on('connection', (ws, request) => {
                   const occurrenceResult = await occurrencePhase.processOccurrenceSelectionPhase(updatedState, '', false);
                   console.log(`📅 Occurrence result: action=${occurrenceResult.result.action}`);
                   
-                  await stateManager.saveCallState(occurrenceResult.newState);
+                  saveCallStateOptimized(ws, occurrenceResult.newState);
                   
                   const occurrenceText = extractResponseText(occurrenceResult.result) || "You have multiple appointments available. Please select one.";
                   console.log(`🎤 Occurrence options: "${occurrenceText}"`);
@@ -1075,7 +1858,7 @@ wss.on('connection', (ws, request) => {
                     updatedAt: new Date().toISOString()
                   };
                   
-                  await stateManager.saveCallState(updatedState);
+                  saveCallStateOptimized(ws, updatedState);
                   
                   const reasonPrompt = "Please tell me the reason why you cannot take this job. Speak clearly after the tone.";
                   console.log(`🎤 Reason collection: "${reasonPrompt}"`);
@@ -1110,7 +1893,7 @@ wss.on('connection', (ws, request) => {
                   updatedAt: new Date().toISOString()
                 };
                 
-                await stateManager.saveCallState(updatedState);
+                saveCallStateOptimized(ws, updatedState);
                 
                 const newJobCodePrompt = "Please enter a different job code followed by the pound key.";
                 console.log(`🎤 New job code request: "${newJobCodePrompt}"`);
@@ -1133,11 +1916,30 @@ wss.on('connection', (ws, request) => {
                 const occurrenceResult = await occurrencePhase.processOccurrenceSelectionPhase(currentState, digit, true);
                 console.log(`📅 Occurrence selection result: action=${occurrenceResult.result.action}`);
                 
-                await stateManager.saveCallState(occurrenceResult.newState);
+                saveCallStateOptimized(ws, occurrenceResult.newState);
                 
                 const responseText = extractResponseText(occurrenceResult.result) || "Appointment selection processed.";
                 console.log(`🎤 Occurrence response: "${responseText}"`);
-                generateElevenLabsSpeech(responseText);
+                
+                // Check if this transitions to date collection (speech input needed)
+                if (occurrenceResult.newState.phase === 'collect_day' || 
+                    occurrenceResult.newState.phase === 'collect_month' || 
+                    occurrenceResult.newState.phase === 'collect_time') {
+                  
+                  // Use professional speech collection for date/time input
+                  const speechContext = {
+                    patientName: occurrenceResult.newState.patient?.name || 'the patient',
+                    appointmentDate: occurrenceResult.newState.selectedOccurrence?.displayDate || 'the appointment',
+                    jobTitle: occurrenceResult.newState.jobTemplate?.title || 'healthcare service'
+                  };
+                  
+                  console.log(`🎤 Starting professional speech collection for ${occurrenceResult.newState.phase}`);
+                  startSpeechCollection(ws, responseText, speechContext, generateElevenLabsSpeech);
+                  
+                } else {
+                  // Regular response for non-speech phases
+                  generateElevenLabsSpeech(responseText);
+                }
                 
               } catch (error) {
                 console.error('❌ Occurrence selection error:', error);
@@ -1145,35 +1947,24 @@ wss.on('connection', (ws, request) => {
               }
               
             } else if (currentState.phase === 'collect_day' || currentState.phase === 'collect_month' || currentState.phase === 'collect_time') {
-              // Handle date/time collection
-              console.log(`📅 Date/time input: ${digit} for phase ${currentState.phase}`);
+              // These phases should use speech collection, not DTMF
+              console.log(`🎤 Date/time phase detected: ${currentState.phase} - should use speech collection`);
               
-              try {
-                // Import datetime phase
-                const datetimePhase = require('./src/fsm/phases/datetime-phase.ts');
-                
-                let phaseResult;
-                if (currentState.phase === 'collect_day') {
-                  phaseResult = datetimePhase.processCollectDayPhase(currentState, digit, true);
-                } else if (currentState.phase === 'collect_month') {
-                  phaseResult = datetimePhase.processCollectMonthPhase(currentState, digit, true);
-                } else if (currentState.phase === 'collect_time') {
-                  phaseResult = datetimePhase.processCollectTimePhase(currentState, digit, true);
-                }
-                
-                if (phaseResult) {
-                  console.log(`📅 DateTime result: action=${phaseResult.result.action}`);
-                  await stateManager.saveCallState(phaseResult.newState);
-                  
-                  const responseText = extractResponseText(phaseResult.result) || "Date/time processed.";
-                  console.log(`🎤 DateTime response: "${responseText}"`);
-                  generateElevenLabsSpeech(responseText);
-                }
-                
-              } catch (error) {
-                console.error('❌ Date/time processing error:', error);
-                generateElevenLabsSpeech("I'm having trouble with the date and time. Please try again.");
-              }
+              // If we get DTMF in a speech phase, guide user to speech input
+              const speechPrompt = currentState.phase === 'collect_day' 
+                ? "What day would you like to reschedule to? Please speak after the tone and press pound when finished."
+                : currentState.phase === 'collect_time'
+                ? "What time works for you? Please speak after the tone and press pound when finished."
+                : "Please tell me the date and time. Speak after the tone and press pound when finished.";
+              
+              const speechContext = {
+                patientName: currentState.patient?.name || 'the patient',
+                appointmentDate: currentState.selectedOccurrence?.displayDate || 'the appointment',
+                jobTitle: currentState.jobTemplate?.title || 'healthcare service'
+              };
+              
+              console.log(`🎤 Redirecting to professional speech collection`);
+              startSpeechCollection(ws, speechPrompt, speechContext, generateElevenLabsSpeech);
               
             } else if (currentState.phase === 'confirm_datetime' || currentState.phase === 'confirm_leave_open') {
               // Handle confirmations (1=yes, 2=no)
@@ -1188,7 +1979,7 @@ wss.on('connection', (ws, request) => {
                     const datetimePhase = require('./src/fsm/phases/datetime-phase.ts');
                     const confirmResult = await datetimePhase.processConfirmDateTimePhase(currentState, '1', true);
                     
-                    await stateManager.saveCallState(confirmResult.newState);
+                    saveCallStateOptimized(ws, confirmResult.newState);
                     const responseText = extractResponseText(confirmResult.result) || "Appointment confirmed. Thank you!";
                     generateElevenLabsSpeech(responseText);
                     
@@ -1196,7 +1987,7 @@ wss.on('connection', (ws, request) => {
                     const reasonPhase = require('./src/fsm/phases/reason-phase.ts');
                     const confirmResult = await reasonPhase.processConfirmLeaveOpenPhase(currentState, '1', true);
                     
-                    await stateManager.saveCallState(confirmResult.newState);
+                    saveCallStateOptimized(ws, confirmResult.newState);
                     const responseText = extractResponseText(confirmResult.result) || "Job marked as open. Thank you!";
                     generateElevenLabsSpeech(responseText);
                   }
@@ -1226,114 +2017,16 @@ wss.on('connection', (ws, request) => {
         }
         
       } else if (data.event === 'media') {
-        // Handle audio for speech recognition in date collection phases
-        const callSid = ws.callSid;
-        
-        if (callSid && stateManager) {
-          // Check if we're in a speech collection phase
-          const currentState = await stateManager.loadCallState(callSid);
+        // Professional speech collection - only record during active recording state
+        if (ws.speechState === SPEECH_STATES.RECORDING) {
+          // Decode and buffer audio during active recording
+          const audioData = Buffer.from(data.media.payload, 'base64');
+          speechBuffer = Buffer.concat([speechBuffer, audioData]);
           
-          if (currentState.phase === 'collect_day' || currentState.phase === 'collect_month' || 
-              currentState.phase === 'collect_time' || currentState.phase === 'collect_reason') {
-            
-            // Decode audio and check for voice activity
-            const audioData = Buffer.from(data.media.payload, 'base64');
-            const voiceActivity = detectVoiceActivity(audioData);
-            
-            // Only buffer audio if voice is detected
-            if (voiceActivity.hasVoice) {
-              speechBuffer = Buffer.concat([speechBuffer, audioData]);
-              speechDetected = true;
-              
-              // Prevent buffer from getting too large
-              if (speechBuffer.length > MAX_SPEECH_DURATION) {
-                console.log(`⚠️ Speech buffer too large (${speechBuffer.length} bytes), processing early`);
-                // Process immediately if buffer gets too large
-                processCollectedSpeech();
-                return;
-              }
-            }
-            
-            // Reset speech timeout when voice is detected
-            if (voiceActivity.hasVoice) {
-              if (speechTimeout) {
-                clearTimeout(speechTimeout);
-              }
-              
-              // Process speech after silence
-              speechTimeout = setTimeout(processCollectedSpeech, SPEECH_SILENCE_TIMEOUT);
-            }
-            
-            // Define speech processing function
-            async function processCollectedSpeech() {
-              if (speechBuffer.length > MIN_SPEECH_DURATION && speechDetected) { // At least 100ms of actual speech
-                console.log(`🎤 Processing ${speechBuffer.length} bytes of speech for ${currentState.phase}`);
-                
-                try {
-                  const spokenText = await speechToText(speechBuffer);
-                  
-                  if (spokenText) {
-                    // Parse the spoken input based on current phase
-                    if (currentState.phase === 'collect_day' || currentState.phase === 'collect_month' || currentState.phase === 'collect_time') {
-                      // Parse date/time input
-                      const dateResult = parseSpokenDate(spokenText);
-                      
-                      if (dateResult.success) {
-                        console.log(`📅 Date parsed: "${dateResult.parsedDate}"`);
-                        
-                        // Process through datetime phase
-                        const datetimePhase = require('./src/fsm/phases/datetime-phase.ts');
-                        let phaseResult;
-                        
-                        if (currentState.phase === 'collect_day') {
-                          phaseResult = datetimePhase.processCollectDayPhase(currentState, dateResult.parsedDate, true);
-                        } else if (currentState.phase === 'collect_month') {
-                          phaseResult = datetimePhase.processCollectMonthPhase(currentState, dateResult.parsedDate, true);
-                        } else if (currentState.phase === 'collect_time') {
-                          phaseResult = datetimePhase.processCollectTimePhase(currentState, dateResult.parsedDate, true);
-                        }
-                        
-                        if (phaseResult) {
-                          await stateManager.saveCallState(phaseResult.newState);
-                          const responseText = extractResponseText(phaseResult.result) || `I heard ${dateResult.parsedDate}. Is that correct?`;
-                          generateElevenLabsSpeech(responseText);
-                        }
-                        
-                      } else {
-                        console.log(`❌ Could not parse date from: "${spokenText}"`);
-                        generateElevenLabsSpeech("I didn't catch that date. Could you say it again? For example, say 'next Monday' or 'December 15th'.");
-                      }
-                      
-                    } else if (currentState.phase === 'collect_reason') {
-                      // Process reason input
-                      console.log(`💬 Reason collected: "${spokenText}"`);
-                      
-                      const reasonPhase = require('./src/fsm/phases/reason-phase.ts');
-                      const reasonResult = reasonPhase.processCollectReasonPhase(currentState, spokenText, true, 'speech');
-                      
-                      await stateManager.saveCallState(reasonResult.newState);
-                      const responseText = extractResponseText(reasonResult.result) || "Thank you for letting me know. I'll mark this job as open.";
-                      generateElevenLabsSpeech(responseText);
-                    }
-                  } else {
-                    console.log(`❌ No speech recognized`);
-                    generateElevenLabsSpeech("I didn't hear anything. Could you please repeat that?");
-                  }
-                  
-                } catch (error) {
-                  console.error('❌ Speech processing error:', error);
-                  generateElevenLabsSpeech("I'm having trouble understanding. Could you please repeat that?");
-                }
-                
-                // Reset speech buffer and detection flag
-                speechBuffer = Buffer.alloc(0);
-                speechDetected = false;
-              } else {
-                console.log(`⚠️ Speech buffer too small or no voice detected: ${speechBuffer.length} bytes`);
-                speechBuffer = Buffer.alloc(0);
-                speechDetected = false;
-              }
-            }
+          // Prevent buffer from getting too large
+          if (speechBuffer.length > MAX_SPEECH_DURATION) {
+            console.log(`⚠️ Speech buffer reached maximum size, auto-stopping recording`);
+            stopRecordingAndProcess(ws);
           }
         }
         
@@ -1353,8 +2046,29 @@ wss.on('connection', (ws, request) => {
     }
   });
 
-  ws.on('close', (code, reason) => {
+  ws.on('close', async (code, reason) => {
     console.log('🔚 WebSocket closed:', { callSid, code, reason: reason.toString() });
+    
+    // Clean up hold music
+    stopHoldMusic(ws);
+    
+    // Clean up queue update interval
+    if (ws.queueUpdateInterval) {
+      clearInterval(ws.queueUpdateInterval);
+      ws.queueUpdateInterval = null;
+      console.log('🛑 Queue update interval cleared');
+    }
+    
+    // Remove from queue if present
+    try {
+      const { callQueueService } = require('./src/services/queue/call-queue-service.ts');
+      const removed = await callQueueService.removeFromQueue(callSid);
+      if (removed) {
+        console.log('📞 Call removed from queue on disconnect');
+      }
+    } catch (error) {
+      console.error('❌ Error removing call from queue:', error);
+    }
     
     // Clean up ElevenLabs connection
     if (elevenLabsWS && elevenLabsWS.readyState === WebSocket.OPEN) {

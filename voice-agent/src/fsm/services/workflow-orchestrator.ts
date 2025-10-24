@@ -113,6 +113,13 @@ export async function processCallState(webhookData: TwilioWebhookData): Promise<
         ({ newState, result } = await processProviderSelectionPhase(state, input, hasInput));
         break;
         
+      case PHASES.JOB_SELECTION: {
+        // New job selection phase - presents list of employee's jobs
+        const { processJobSelectionPhase } = await import('../phases/job-selection-phase');
+        ({ newState, result } = await processJobSelectionPhase(state, input, hasInput));
+        break;
+      }
+        
       case PHASES.PROVIDER_GREETING:
         // This phase should transition immediately to job code collection
         // If we hit this, it means we need to collect job code

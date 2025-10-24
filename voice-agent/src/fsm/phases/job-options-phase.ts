@@ -113,34 +113,46 @@ export function processJobOptionsPhase(state: CallState, input: string, hasInput
         },
       };
     } else if (selectedOption === '3') {
-      console.log('Option 3 selected, completing workflow (representative)');
-      // Option 3 - talk to representative (complete workflow)
+      console.log('Option 3 selected, transferring to representative with queue');
+      // Option 3 - talk to representative (transfer with queue system)
       const newState: CallState = {
         ...state,
         selectedOption: selectedOption,
-        phase: PHASES.WORKFLOW_COMPLETE,
+        phase: PHASES.REPRESENTATIVE_TRANSFER,
       };
+      
+      // Build job info for queue context
+      const jobTitle = state.jobTemplate?.title || 'Unknown Job';
+      const patientName = state.patient?.name || 'Unknown Patient';
+      
+      // Redirect to queue transfer endpoint which will handle availability check and queueing
+      const transferTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Amy">Let me connect you to a representative.</Say>
+  <Redirect method="POST">/api/queue/initiate-transfer?JobTitle=${encodeURIComponent(jobTitle)}&amp;PatientName=${encodeURIComponent(patientName)}</Redirect>
+</Response>`;
       
       return {
         newState,
         result: {
-          twiml: generateTwiML(telephonyConfig.prompts.workflow_complete, false),
-          action: 'confirm',
-          shouldDeleteState: true,
+          twiml: transferTwiml,
+          action: 'transfer',
+          shouldDeleteState: false,
         },
       };
     } else if (selectedOption === '4') {
-      console.log('Option 4 selected, going back to job code entry');
-      // Option 4 - go back to job code entry
+      console.log('Option 4 selected, going back to job selection');
+      // Option 4 - go back to job selection
       const newState: CallState = {
         ...state,
-        phase: PHASES.COLLECT_JOB_CODE,
+        phase: PHASES.JOB_SELECTION,
         jobCode: null,           // Clear current job code
         jobTemplate: undefined,  // Clear current job template
         patient: undefined,      // Clear current patient
+        employeeJobs: undefined, // Clear job list to force refresh
         attempts: {
           ...state.attempts,
-          jobNumber: 1,          // Reset job code attempts
+          jobNumber: 1,          // Reset job selection attempts
           confirmClientId: 0,    // Reset confirmation attempts
           jobOptions: 0,         // Reset job options attempts
         },
@@ -149,7 +161,7 @@ export function processJobOptionsPhase(state: CallState, input: string, hasInput
       return {
         newState,
         result: {
-          twiml: generateTwiML('Please use your keypad to enter your job code followed by the pound key.', true),
+          twiml: generateTwiML('Let me show you your job list again.', true),
           action: 'restart',
           shouldDeleteState: false,
         },

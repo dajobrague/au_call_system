@@ -2,11 +2,11 @@
  * FSM types for call state management
  */
 
-export type CallPhase = 'phone_auth' | 'pin_auth' | 'provider_selection' | 'provider_greeting' | 'collect_job_code' | 'confirm_job_code' | 'job_options' | 'occurrence_selection' | 'collect_reason' | 'confirm_leave_open' | 'collect_day' | 'collect_month' | 'collect_time' | 'confirm_datetime' | 'schedule_new_occurrence' | 'workflow_complete' | 'done' | 'error';
+export type CallPhase = 'phone_auth' | 'pin_auth' | 'provider_selection' | 'provider_greeting' | 'job_selection' | 'collect_job_code' | 'confirm_job_code' | 'job_options' | 'occurrence_selection' | 'no_occurrences_found' | 'collect_reason' | 'confirm_leave_open' | 'collect_day' | 'collect_month' | 'collect_time' | 'confirm_datetime' | 'schedule_new_occurrence' | 'representative_transfer' | 'workflow_complete' | 'done' | 'error';
 
 export type InputSource = 'speech' | 'dtmf' | 'none';
 
-export type StateAction = 'prompt' | 'reprompt' | 'transition' | 'confirm' | 'goodbye' | 'error' | 'duplicate' | 'restart' | 'phone_auth_success' | 'phone_auth_failed' | 'pin_auth_success' | 'pin_auth_failed' | 'pin_auth_max_attempts' | 'pin_auth_reprompt' | 'pin_auth_invalid_format' | 'pin_auth_invalid_reprompt' | 'pin_auth_not_found' | 'pin_auth_not_found_reprompt' | 'system_error' | 'schedule_new_not_implemented' | 'voice_pin_failed' | 'voice_pin_reprompt';
+export type StateAction = 'prompt' | 'reprompt' | 'transition' | 'confirm' | 'goodbye' | 'error' | 'duplicate' | 'restart' | 'transfer' | 'phone_auth_success' | 'phone_auth_failed' | 'pin_auth_success' | 'pin_auth_failed' | 'pin_auth_max_attempts' | 'pin_auth_reprompt' | 'pin_auth_invalid_format' | 'pin_auth_invalid_reprompt' | 'pin_auth_not_found' | 'pin_auth_not_found_reprompt' | 'system_error' | 'schedule_new_not_implemented' | 'voice_pin_failed' | 'voice_pin_reprompt' | 'job_list_presented' | 'job_selected';
 
 export interface CallAttempts {
   clientId: number;        // Reused for PIN attempts
@@ -58,6 +58,22 @@ export interface CallState {
     name: string;
     patientId: number;
   };
+  employeeJobs?: Array<{          // List of employee's assigned jobs
+    index: number;                // 1-based index for DTMF selection
+    jobTemplate: {
+      id: string;
+      jobCode: string;
+      title: string;
+      serviceType: string;
+      patientId: string;
+      occurrenceIds: string[];
+    };
+    patient: {
+      id: string;
+      name: string;
+      patientId: number;
+    } | null;
+  }>;
   jobOccurrences?: Array<{        // Future occurrences for current job
     id: string;
     occurrenceId: string;

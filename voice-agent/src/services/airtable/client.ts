@@ -229,6 +229,71 @@ export class AirtableClient {
   }
 
   /**
+   * Get employee by record ID
+   */
+  async getEmployeeById(employeeId: string): Promise<EmployeeRecord | null> {
+    return withRetry(async () => {
+      const path = `/v0/${airtableConfig.baseId}/${encodeURIComponent('Employees')}/${employeeId}`;
+      
+      return new Promise<EmployeeRecord | null>((resolve, reject) => {
+        const requestOptions = {
+          hostname: 'api.airtable.com',
+          port: 443,
+          path,
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${airtableConfig.apiKey}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'VoiceAgent/1.0',
+          },
+          timeout: REQUEST_TIMEOUT,
+        };
+
+        const req = https.request(requestOptions, (res) => {
+          let data = '';
+          
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+          
+          res.on('end', () => {
+            try {
+              const jsonData = JSON.parse(data);
+              
+              if (jsonData.error) {
+                if (jsonData.error.type === 'NOT_FOUND') {
+                  resolve(null);
+                  return;
+                }
+                
+                logger.error('Employee lookup error', {
+                  employeeId,
+                  error: jsonData.error.message,
+                  type: 'airtable_employee_error'
+                });
+                reject(new Error(`Employee lookup error: ${jsonData.error.message}`));
+                return;
+              }
+              
+              resolve(jsonData as EmployeeRecord);
+            } catch (parseError) {
+              reject(new Error(`Failed to parse employee response: ${parseError}`));
+            }
+          });
+        });
+
+        req.on('error', reject);
+        req.on('timeout', () => {
+          req.destroy();
+          reject(new Error('Employee lookup timeout'));
+        });
+
+        req.end();
+      });
+    }, `getEmployeeById(${employeeId})`);
+  }
+
+  /**
    * Get provider by record ID
    */
   async getProviderById(providerId: string): Promise<ProviderRecord | null> {
@@ -314,6 +379,90 @@ export class AirtableClient {
       
       return response.records.length > 0 ? response.records[0] as JobTemplateRecord : null;
     }, `findJobTemplateByCode(${jobCode})`);
+  }
+
+  /**
+   * Find job templates by custom filter formula
+   */
+  async findJobTemplatesByFilter(filterFormula: string): Promise<JobTemplateRecord[]> {
+    return withRetry(async () => {
+      const response = await makeAirtableRequest<JobTemplateRecord['fields']>('Job Templates', {
+        filterByFormula: filterFormula,
+        fields: [
+          'Job Code', 'Title', 'Service Type', 'Priority', 
+          'Time Window Start', 'Time Window End', 'Patient', 
+          'Provider', 'Default Employee', 'Active', 'Unique Job Number',
+          'Occurrences', 'recordId (from Default Employee)', 'recordId (from Provider)'
+        ]
+      });
+      
+      return response.records as JobTemplateRecord[];
+    }, `findJobTemplatesByFilter`);
+  }
+
+  /**
+   * Get job template by record ID
+   */
+  async getJobTemplateById(jobTemplateId: string): Promise<JobTemplateRecord | null> {
+    return withRetry(async () => {
+      const path = `/v0/${airtableConfig.baseId}/${encodeURIComponent('Job Templates')}/${jobTemplateId}`;
+      
+      return new Promise<JobTemplateRecord | null>((resolve, reject) => {
+        const requestOptions = {
+          hostname: 'api.airtable.com',
+          port: 443,
+          path,
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${airtableConfig.apiKey}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'VoiceAgent/1.0',
+          },
+          timeout: REQUEST_TIMEOUT,
+        };
+
+        const req = https.request(requestOptions, (res) => {
+          let data = '';
+          
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+          
+          res.on('end', () => {
+            try {
+              const jsonData = JSON.parse(data);
+              
+              if (jsonData.error) {
+                if (jsonData.error.type === 'NOT_FOUND') {
+                  resolve(null);
+                  return;
+                }
+                
+                logger.error('Job template lookup error', {
+                  jobTemplateId,
+                  error: jsonData.error.message,
+                  type: 'airtable_job_template_error'
+                });
+                reject(new Error(`Job template lookup error: ${jsonData.error.message}`));
+                return;
+              }
+              
+              resolve(jsonData as JobTemplateRecord);
+            } catch (parseError) {
+              reject(new Error(`Failed to parse job template response: ${parseError}`));
+            }
+          });
+        });
+
+        req.on('error', reject);
+        req.on('timeout', () => {
+          req.destroy();
+          reject(new Error('Job template lookup timeout'));
+        });
+
+        req.end();
+      });
+    }, `getJobTemplateById(${jobTemplateId})`);
   }
 
   /**
@@ -583,6 +732,270 @@ export class AirtableClient {
       
       return response.records as EmployeeRecord[];
     }, `findEmployeesByProvider(${providerId})`);
+  }
+
+  /**
+   * Find records in a table by filter formula
+   */
+  async findRecords(tableIdOrName: string, filterFormula?: string, options?: { maxRecords?: number }): Promise<any[]> {
+    return withRetry(async () => {
+      const response = await makeAirtableRequest<any>(tableIdOrName, {
+        filterByFormula: filterFormula,
+        maxRecords: options?.maxRecords || 100
+      });
+      
+      return response.records || [];
+    }, `findRecords(${tableIdOrName})`);
+  }
+
+  /**
+   * Get a single record by ID
+   */
+  async getRecord(tableIdOrName: string, recordId: string): Promise<any> {
+    return withRetry(async () => {
+      const path = `/v0/${airtableConfig.baseId}/${encodeURIComponent(tableIdOrName)}/${recordId}`;
+      
+      return new Promise<any>((resolve, reject) => {
+        const requestOptions = {
+          hostname: 'api.airtable.com',
+          port: 443,
+          path,
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${airtableConfig.apiKey}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'VoiceAgent/1.0',
+          },
+          timeout: REQUEST_TIMEOUT,
+        };
+
+        const req = https.request(requestOptions, (res) => {
+          let data = '';
+          
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+          
+          res.on('end', () => {
+            try {
+              const jsonData = JSON.parse(data);
+              
+              if (jsonData.error) {
+                if (jsonData.error.type === 'NOT_FOUND') {
+                  resolve(null);
+                  return;
+                }
+                reject(new Error(`Record lookup error: ${jsonData.error.message}`));
+                return;
+              }
+              
+              resolve(jsonData);
+            } catch (parseError) {
+              reject(new Error(`Failed to parse record response: ${parseError}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(error);
+        });
+
+        req.on('timeout', () => {
+          req.destroy();
+          reject(new Error('Record lookup timeout'));
+        });
+
+        req.end();
+      });
+    }, `getRecord(${tableIdOrName}, ${recordId})`);
+  }
+
+  /**
+   * Create a new record in a table
+   */
+  async createRecord(tableIdOrName: string, fields: Record<string, any>): Promise<any> {
+    return withRetry(async () => {
+      const path = `/v0/${airtableConfig.baseId}/${encodeURIComponent(tableIdOrName)}`;
+      
+      const createData = {
+        fields
+      };
+      
+      return new Promise<any>((resolve, reject) => {
+        const postData = JSON.stringify(createData);
+        
+        const requestOptions = {
+          hostname: 'api.airtable.com',
+          port: 443,
+          path,
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${airtableConfig.apiKey}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'VoiceAgent/1.0',
+            'Content-Length': Buffer.byteLength(postData),
+          },
+          timeout: REQUEST_TIMEOUT,
+        };
+
+        logger.info('Creating Airtable record', {
+          table: tableIdOrName,
+          type: 'airtable_create_record'
+        });
+
+        const req = https.request(requestOptions, (res) => {
+          let data = '';
+          
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+          
+          res.on('end', () => {
+            try {
+              const jsonData = JSON.parse(data);
+              
+              if (jsonData.error) {
+                logger.error('Record creation error', {
+                  table: tableIdOrName,
+                  error: jsonData.error.message,
+                  type: 'airtable_create_error'
+                });
+                reject(new Error(`Record creation error: ${jsonData.error.message}`));
+                return;
+              }
+              
+              logger.info('Record created successfully', {
+                table: tableIdOrName,
+                recordId: jsonData.id,
+                type: 'airtable_create_success'
+              });
+              
+              resolve(jsonData);
+            } catch (parseError) {
+              reject(new Error(`Failed to parse create response: ${parseError}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          logger.error('Record creation request error', {
+            table: tableIdOrName,
+            error: error.message,
+            type: 'airtable_create_request_error'
+          });
+          reject(error);
+        });
+
+        req.on('timeout', () => {
+          req.destroy();
+          logger.error('Record creation timeout', {
+            table: tableIdOrName,
+            timeout: REQUEST_TIMEOUT,
+            type: 'airtable_create_timeout'
+          });
+          reject(new Error('Record creation timeout'));
+        });
+
+        req.write(postData);
+        req.end();
+      });
+    }, `createRecord(${tableIdOrName})`);
+  }
+
+  /**
+   * Update a record in a table
+   */
+  async updateRecord(tableIdOrName: string, recordId: string, fields: Record<string, any>): Promise<any> {
+    return withRetry(async () => {
+      const path = `/v0/${airtableConfig.baseId}/${encodeURIComponent(tableIdOrName)}/${recordId}`;
+      
+      const updateData = {
+        fields
+      };
+      
+      return new Promise<any>((resolve, reject) => {
+        const postData = JSON.stringify(updateData);
+        
+        const requestOptions = {
+          hostname: 'api.airtable.com',
+          port: 443,
+          path,
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${airtableConfig.apiKey}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'VoiceAgent/1.0',
+            'Content-Length': Buffer.byteLength(postData),
+          },
+          timeout: REQUEST_TIMEOUT,
+        };
+
+        logger.info('Updating Airtable record', {
+          table: tableIdOrName,
+          recordId,
+          type: 'airtable_update_record'
+        });
+
+        const req = https.request(requestOptions, (res) => {
+          let data = '';
+          
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+          
+          res.on('end', () => {
+            try {
+              const jsonData = JSON.parse(data);
+              
+              if (jsonData.error) {
+                logger.error('Record update error', {
+                  table: tableIdOrName,
+                  recordId,
+                  error: jsonData.error.message,
+                  type: 'airtable_update_error'
+                });
+                reject(new Error(`Record update error: ${jsonData.error.message}`));
+                return;
+              }
+              
+              logger.info('Record updated successfully', {
+                table: tableIdOrName,
+                recordId,
+                type: 'airtable_update_success'
+              });
+              
+              resolve(jsonData);
+            } catch (parseError) {
+              reject(new Error(`Failed to parse update response: ${parseError}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          logger.error('Record update request error', {
+            table: tableIdOrName,
+            recordId,
+            error: error.message,
+            type: 'airtable_update_request_error'
+          });
+          reject(error);
+        });
+
+        req.on('timeout', () => {
+          req.destroy();
+          logger.error('Record update timeout', {
+            table: tableIdOrName,
+            recordId,
+            timeout: REQUEST_TIMEOUT,
+            type: 'airtable_update_timeout'
+          });
+          reject(new Error('Record update timeout'));
+        });
+
+        req.write(postData);
+        req.end();
+      });
+    }, `updateRecord(${tableIdOrName}, ${recordId})`);
   }
 
   /**

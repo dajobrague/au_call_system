@@ -79,16 +79,16 @@ export async function processOccurrenceSelectionPhase(state: CallState, input: s
       );
       
       if (occurrenceLookup.hasNoFutureOccurrences) {
-        // No future occurrences - offer to schedule new one
+        // No future occurrences - offer to talk to representative or go back
         const updatedState: CallState = {
           ...newState,
-          phase: PHASES.SCHEDULE_NEW_OCCURRENCE,
+          phase: PHASES.NO_OCCURRENCES_FOUND,
         };
         
         return {
           newState: updatedState,
           result: {
-            twiml: generateConfirmationTwiML('No upcoming appointments found for this job. Would you like to schedule one? Press 1 for yes, or 2 to speak with a representative.'),
+            twiml: generateConfirmationTwiML('No upcoming appointments found for this job. Press 1 to talk to a representative, or press 2 to go back.'),
             action: 'transition',
             shouldDeleteState: false,
           },

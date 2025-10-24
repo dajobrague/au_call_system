@@ -15,36 +15,43 @@ export class CallSession implements DurableObject {
     const url = new URL(request.url);
     this.callSid = url.searchParams.get("callSid") ?? "unknown";
 
-    const upgrade = request.headers.get("Upgrade");
-    const hasWebSocketKey = request.headers.has("Sec-WebSocket-Key");
-    const hasWebSocketVersion = request.headers.has("Sec-WebSocket-Version");
+    // Cloudflare requires the Upgrade header to return a WebSocket
+    const upgradeHeader = request.headers.get("Upgrade");
     
-    console.log("📋 Upgrade header:", JSON.stringify(upgrade));
-    console.log("📋 Connection header:", JSON.stringify(request.headers.get("Connection")));
-    console.log("📋 Has WebSocket Key:", hasWebSocketKey);
-    console.log("📋 Has WebSocket Version:", hasWebSocketVersion);
-
-    // Handle Twilio's Media Streams API - it sends WebSocket-like headers but not always Upgrade: websocket
-    const isTwilioStream = hasWebSocketKey && hasWebSocketVersion;
-    const isStandardWebSocket = upgrade && upgrade.toLowerCase() === "websocket";
+    console.log(`[${this.callSid}] Headers:`, {
+      upgrade: upgradeHeader,
+      connection: request.headers.get("Connection"),
+      wsKey: request.headers.has("Sec-WebSocket-Key"),
+      wsVersion: request.headers.has("Sec-WebSocket-Version"),
+    });
     
-    if (!isTwilioStream && !isStandardWebSocket) {
-      return new Response("Expected WebSocket or Twilio Stream", {
+    // Check if this is a proper WebSocket upgrade request
+    if (upgradeHeader !== "websocket") {
+      console.log(`[${this.callSid}] Rejecting - Upgrade header is not 'websocket'`);
+      return new Response("Expected Upgrade: websocket header", { 
         status: 426,
-        headers: { "Upgrade": "websocket" },
+        headers: { "Upgrade": "websocket" }
       });
     }
+    
+    console.log(`[${this.callSid}] Creating WebSocket pair for Twilio call...`);
 
     // Set up WebSocket pair and bind server to DO lifecycle
-    console.log("🔗 Accepting WebSocket for call:", this.callSid);
     const pair = new WebSocketPair();
-    const [client, server] = Object.values(pair);
+    const client = pair[0];
+    const server = pair[1];
 
-    // Attach backpressure-safe ping/pong later if needed
+    // Accept the WebSocket connection on the server end
     this.state.acceptWebSocket(server);
 
+    console.log(`[${this.callSid}] ✅ WebSocket accepted, returning 101 response`);
+
     // Return 101 Switching Protocols with the client socket
-    return new Response(null, { status: 101, webSocket: client });
+    // @ts-expect-error - webSocket is a valid Cloudflare Workers Response property
+    return new Response(null, {
+      status: 101,
+      webSocket: client,
+    });
   }
 
   // Twilio sends JSON messages with event types: start, media, mark, stop

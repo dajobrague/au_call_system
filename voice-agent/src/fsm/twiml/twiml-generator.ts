@@ -68,24 +68,33 @@ export function generateConfirmationTwiML(prompt: string): string {
 
 /**
  * Get dynamic WebSocket URL for current environment
+ * Priority: WEBSOCKET_URL > CLOUDFLARE_VOICE_PROXY_URL > fallback
  */
 function getDynamicWebSocketUrl(): string {
-  // Temporarily use ngrok for testing Twilio WebSocket compatibility
-  const cloudflareWorkerUrl = process.env.CLOUDFLARE_VOICE_PROXY_URL || 'wss://climbing-merely-joey.ngrok-free.app/stream';
-  
-  // Check if we're in a production environment or Voice AI is enabled
-  const isProduction = process.env.NODE_ENV === 'production';
-  const voiceAiEnabled = process.env.VOICE_AI_ENABLED === 'true';
-  
-  if (voiceAiEnabled) {
-    // Use Cloudflare Workers for all Voice AI WebSocket connections
-    return cloudflareWorkerUrl;
-  } else {
-    // Fallback to local WebSocket for development without Voice AI
-    const baseUrl = process.env.APP_URL || process.env.VERCEL_URL || 'localhost:3000';
-    const protocol = baseUrl.includes('localhost') ? 'ws' : 'wss';
-    return `${protocol}://${baseUrl}/api/twilio/media-stream`;
+  // Check for explicit WEBSOCKET_URL first (highest priority)
+  const explicitUrl = process.env.WEBSOCKET_URL;
+  if (explicitUrl) {
+    return explicitUrl;
   }
+  
+  // Fallback to CLOUDFLARE_VOICE_PROXY_URL for backward compatibility
+  const cloudflareUrl = process.env.CLOUDFLARE_VOICE_PROXY_URL;
+  if (cloudflareUrl) {
+    return cloudflareUrl;
+  }
+  
+  // Development fallback (ngrok)
+  if (process.env.NODE_ENV === 'development') {
+    return 'wss://climbing-merely-joey.ngrok-free.app/stream';
+  }
+  
+  // Production fallback (Cloudflare WebSocket subdomain)
+  if (process.env.NODE_ENV === 'production') {
+    return 'wss://websocket.oncallafterhours.app/stream';
+  }
+  
+  // Final fallback
+  throw new Error('WEBSOCKET_URL must be set. Configure it in your environment variables.');
 }
 
 /**

@@ -34,7 +34,7 @@ export async function processProviderSelectionPhase(state: CallState, input: str
           providerGreeting = providerResult.providers[0].greeting || 'Welcome to Healthcare Services';
         }
         
-        // Single provider - continue directly to provider greeting
+        // Single provider - continue directly to job selection
         const newState: CallState = {
           ...state,
           provider: providerResult.providers.length > 0 ? {
@@ -42,11 +42,11 @@ export async function processProviderSelectionPhase(state: CallState, input: str
             name: providerResult.providers[0].name,
             greeting: providerResult.providers[0].greeting,
           } : null,
-          phase: PHASES.PROVIDER_GREETING,
+          phase: PHASES.JOB_SELECTION,
         };
         
-        // Don't repeat the name - just give provider greeting and ask for job code
-        const greeting = `${providerGreeting}. Please use your keypad to enter your job code followed by the pound key.`;
+        // Transition to job selection - the job selection phase will handle presenting the job list
+        const greeting = `${providerGreeting}. Please wait while I retrieve your job list.`;
         
         return {
           newState,
@@ -86,14 +86,14 @@ export async function processProviderSelectionPhase(state: CallState, input: str
       
     } catch (error) {
       console.error('Error checking multiple providers:', error);
-      // Fallback to single provider flow
+      // Fallback to job selection flow
       const newState: CallState = {
         ...state,
-        phase: PHASES.PROVIDER_GREETING,
+        phase: PHASES.JOB_SELECTION,
       };
       
-      // Don't repeat the name - just give generic greeting and ask for job code
-      const greeting = `Welcome to Healthcare Services. Please use your keypad to enter your job code followed by the pound key.`;
+      // Don't repeat the name - just give generic greeting and transition to job selection
+      const greeting = `Welcome to Healthcare Services. Please wait while I retrieve your job list.`;
       
       return {
         newState,
@@ -169,12 +169,12 @@ export async function processProviderSelectionPhase(state: CallState, input: str
         name: selectedProvider.name,
         greeting: selectedProvider.greeting,
       },
-      phase: PHASES.PROVIDER_GREETING,
+      phase: PHASES.JOB_SELECTION,
     };
     
-    // Generate greeting with selected provider (no name repetition)
+    // Generate greeting with selected provider and transition to job selection
     const providerGreeting = selectedProvider.greeting || 'Welcome to Healthcare Services';
-    const greeting = `${providerGreeting}. Please use your keypad to enter your job code followed by the pound key.`;
+    const greeting = `${providerGreeting}. Please wait while I retrieve your job list.`;
     
     return {
       newState,

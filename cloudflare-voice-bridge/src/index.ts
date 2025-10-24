@@ -25,3 +25,4 @@ export default {
 
 // Export the Durable Object
 export { CallSession } from './do/CallSession';
+// export { CallSessionSimple as CallSession } from './do/CallSession-simple';
