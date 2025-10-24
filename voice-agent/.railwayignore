@@ -1,0 +1,12 @@
+# Ignore unnecessary files for Railway deployment
+node_modules/
+.next/
+.git/
+.env.local
+.env
+temp-audio/
+debug-audio/
+dist/
+*.log
+.vercel/
+

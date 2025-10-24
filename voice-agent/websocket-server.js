@@ -23,7 +23,8 @@ require('ts-node').register({
 const { createWebSocketServer } = require('./src/websocket/server.ts');
 const { logger } = require('./src/lib/logger.ts');
 
-const PORT = process.env.WEBSOCKET_PORT || 3001;
+// Railway provides PORT environment variable
+const PORT = process.env.PORT || process.env.WEBSOCKET_PORT || 3001;
 
 // Validate required environment variables
 const requiredEnvVars = [
@@ -58,7 +59,8 @@ if ((process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL) &&
 try {
   const { app, server, wss } = createWebSocketServer(PORT);
 
-  server.listen(PORT, () => {
+  // Bind to 0.0.0.0 for Railway (accepts external connections)
+  server.listen(PORT, '0.0.0.0', () => {
     console.log('');
     console.log('🚀 ========================================');
     console.log('🎙️  Voice Agent WebSocket Server');
