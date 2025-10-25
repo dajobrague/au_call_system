@@ -1,9 +1,10 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "cd voice-agent && npm install"
+buildCommand = "npm install --prefix voice-agent"
+watchPatterns = ["voice-agent/**"]
 
 [deploy]
-startCommand = "cd voice-agent && node websocket-server.js"
+startCommand = "node voice-agent/websocket-server.js"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
