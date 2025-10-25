@@ -1,15 +1,12 @@
-[build]
-workDir = "voice-agent"
-
 [phases.setup]
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm install"]
+cmds = ["cd voice-agent && npm install"]
 
 [phases.build]
 cmds = []
 
 [start]
-cmd = "node websocket-server.js"
+cmd = "cd voice-agent && node websocket-server.js"
 
