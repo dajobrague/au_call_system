@@ -121,7 +121,7 @@ export function generateVoiceTwiMLWithPrompt(prompt: string, streamUrl?: string,
   
   // Add caller phone as URL parameter for WebSocket to extract
   const urlWithParams = callerPhone 
-    ? `${defaultStreamUrl}?from=${encodeURIComponent(callerPhone)}`
+    ? `${defaultStreamUrl}?phone=${encodeURIComponent(callerPhone)}`
     : defaultStreamUrl;
   
   return `<?xml version="1.0" encoding="UTF-8"?>

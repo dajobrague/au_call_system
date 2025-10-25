@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "echo 'No build needed for websocket server'",
+    "start": "node websocket-server.js",
     "lint": "next lint",
     "local": "NODE_ENV=development ./start-voice-agent.sh"
   },
@@ -15,30 +15,32 @@
     "@deepgram/sdk": "^4.11.2",
     "@elevenlabs/elevenlabs-js": "^2.15.0",
     "@twilio/voice-sdk": "^2.15.0",
+    "@types/express": "^5.0.3",
+    "@types/node": "^20.0.0",
     "@types/ws": "^8.18.1",
     "@upstash/redis": "^1.35.3",
     "alawmulaw": "^6.0.0",
     "aws-sdk": "^2.1692.0",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
     "form-data": "^4.0.4",
     "next": "14.0.0",
     "node-fetch": "^3.3.2",
     "puppeteer": "^23.10.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "ts-node": "^10.9.2",
     "twilio": "^5.10.0",
+    "typescript": "^5.0.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {
-    "@types/express": "^5.0.3",
-    "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.0.0"
+    "tailwindcss": "^3.4.17"
   }
 }
