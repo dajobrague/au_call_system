@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     });
 
     // For Voice AI mode, return TwiML to stream to Railway WebSocket
-    const WEBSOCKET_URL = env.WEBSOCKET_URL || process.env.WEBSOCKET_URL || 'wss://aucallsystem-ivr-system.up.railway.app/stream';
+    const WEBSOCKET_URL = 'wss://aucallsystem-ivr-system.up.railway.app/stream';
     
     // Generate TwiML with WebSocket stream URL and phone number parameter
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
