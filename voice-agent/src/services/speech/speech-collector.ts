@@ -439,7 +439,7 @@ async function processSpeechWithAI(ws: WebSocketWithSpeech): Promise<void> {
           phase: 'confirm_datetime',
           dateTimeInput: {
             fullDate: extraction.dateISO,
-            time: extraction.timeISO.replace(':', ''), // Convert "10:00" to "1000"
+            time: extraction.timeISO?.replace(':', '') || '', // Convert "10:00" to "1000"
             displayDateTime: extraction.displayText
           }
         });
