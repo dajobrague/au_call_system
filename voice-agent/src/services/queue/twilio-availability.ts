@@ -3,7 +3,7 @@
  * Checks if representative phone is available for transfer
  */
 
-import twilio from 'twilio';
+const twilio = require('twilio');
 import { twilioConfig } from '../../config/twilio';
 import { logger } from '../../lib/logger';
 

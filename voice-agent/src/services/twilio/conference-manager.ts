@@ -3,7 +3,7 @@
  * Handles conference creation and call bridging for transfers
  */
 
-import twilio from 'twilio';
+const twilio = require('twilio');
 import { twilioConfig } from '../../config/twilio';
 import { logger } from '../../lib/logger';
 
