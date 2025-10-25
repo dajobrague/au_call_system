@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "echo 'No build needed for websocket server'",
-    "start": "node websocket-server.js",
+    "build": "next build",
+    "start": "next start",
     "lint": "next lint",
     "local": "NODE_ENV=development ./start-voice-agent.sh"
   },
