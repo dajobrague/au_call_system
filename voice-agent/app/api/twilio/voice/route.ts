@@ -96,28 +96,34 @@ export async function POST(request: NextRequest) {
       inputSource: webhookData.SpeechResult ? 'speech' : webhookData.Digits ? 'dtmf' : 'none',
     });
 
-    // Process through FSM
-    const result = await processCallState(webhookData);
-    const latencyMs = Date.now() - startTime;
+    // For Voice AI mode, return TwiML to stream to Railway WebSocket
+    const WEBSOCKET_URL = env.WEBSOCKET_URL || process.env.WEBSOCKET_URL || 'wss://aucallsystem-ivr-system.up.railway.app/stream';
+    
+    // Generate TwiML with WebSocket stream URL and phone number parameter
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Connect>
+    <Stream url="${WEBSOCKET_URL}?phone=${encodeURIComponent(webhookData.From)}&callSid=${webhookData.CallSid}" />
+  </Connect>
+</Response>`;
 
-    // Log state transition
-    logger.stateTransition({
-      ...result.logData,
-      sid: webhookData.CallSid,
+    const latencyMs = Date.now() - startTime;
+    
+    logger.info('Returning TwiML for WebSocket stream', {
+      callSid: webhookData.CallSid,
       from: webhookData.From,
-      to: webhookData.To,
-      latencyMs,
+      websocketUrl: WEBSOCKET_URL,
+      latencyMs
     });
 
     // Record call metrics
     if (callSid) {
-      const isSuccessful = result.action !== 'error';
-      voiceMetrics.recordCallCompletion(callSid, latencyMs, isSuccessful);
-      voiceMetrics.recordPerformanceMetrics(latencyMs, 1); // Simplified concurrent call count
+      voiceMetrics.recordCallCompletion(callSid, latencyMs, true);
+      voiceMetrics.recordPerformanceMetrics(latencyMs, 1);
     }
 
     // Return TwiML response
-    return new NextResponse(result.twiml, {
+    return new NextResponse(twiml, {
       status: 200,
       headers: {
         'Content-Type': 'application/xml',
