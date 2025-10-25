@@ -41,8 +41,7 @@ export function createSpeechState(
 ): SpeechCollectionState {
   return {
     state: SpeechState.IDLE,
-    context,
-    attemptNumber: context.attemptNumber || 1
+    context
   };
 }
 
