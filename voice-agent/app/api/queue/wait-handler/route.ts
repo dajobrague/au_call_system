@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callQueueService } from '@/services/queue/call-queue-service';
 import { logger } from '@/lib/logger';
-import twilio from 'twilio';
+const twilio = require('twilio');
 
 const VoiceResponse = twilio.twiml.VoiceResponse;
 
