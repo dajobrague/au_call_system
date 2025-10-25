@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { logger } from '@/src/lib/logger';
+import { logger } from '@/lib/logger';
 
 /**
  * Get WebSocket URL based on environment

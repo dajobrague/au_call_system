@@ -4,9 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { callQueueService } from '@/src/services/queue/call-queue-service';
-import { checkPhoneAvailability } from '@/src/services/queue/twilio-availability';
-import { logger } from '@/src/lib/logger';
+import { callQueueService } from '@/services/queue/call-queue-service';
+import { checkPhoneAvailability } from '@/services/queue/twilio-availability';
+import { logger } from '@/lib/logger';
 import twilio from 'twilio';
 
 const VoiceResponse = twilio.twiml.VoiceResponse;
