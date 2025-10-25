@@ -106,7 +106,7 @@ async function handleQueueWait(request: NextRequest) {
     
   } catch (error) {
     logger.error('Error in queue wait handler', {
-      callSid,
+      callSid: callSid || undefined,
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
       duration: Date.now() - startTime,
