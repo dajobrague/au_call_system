@@ -60,7 +60,7 @@ export class CallQueueService {
       queue.push(queuedCall);
       
       // Save updated queue
-      await setState(QUEUE_KEY, JSON.stringify(queue), 3600); // 1 hour TTL
+      await setState(QUEUE_KEY, JSON.stringify(queue));
       
       logger.info('Call added to queue', {
         callSid,
@@ -115,7 +115,7 @@ export class CallQueueService {
       });
       
       // Save updated queue
-      await setState(QUEUE_KEY, JSON.stringify(queue), 3600);
+      await setState(QUEUE_KEY, JSON.stringify(queue));
       
       logger.info('Call dequeued', {
         callSid: dequeuedCall.callSid,
@@ -164,7 +164,7 @@ export class CallQueueService {
       });
       
       // Save updated queue
-      await setState(QUEUE_KEY, JSON.stringify(updatedQueue), 3600);
+      await setState(QUEUE_KEY, JSON.stringify(updatedQueue));
       
       logger.info('Call removed from queue', {
         callSid,
