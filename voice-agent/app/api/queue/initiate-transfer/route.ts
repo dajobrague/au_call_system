@@ -7,9 +7,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callQueueService } from '@/services/queue/call-queue-service';
 import { checkPhoneAvailability } from '@/services/queue/twilio-availability';
 import { logger } from '@/lib/logger';
-import twilio from 'twilio';
+import { twiml } from 'twilio';
 
-const VoiceResponse = twilio.twiml.VoiceResponse;
+const VoiceResponse = twiml.VoiceResponse;
 
 const REPRESENTATIVE_PHONE = '+522281957913';
 
