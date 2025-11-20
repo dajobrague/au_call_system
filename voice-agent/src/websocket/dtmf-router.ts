@@ -533,8 +533,7 @@ async function handleBackToJobSelection(context: DTMFRoutingContext): Promise<vo
   
   await saveState(updatedState);
   
-  // Limit to 2 shifts and generate job list message with date/time
-  const jobsToPresent = filteredJobs.slice(0, 2);
+  // Generate job list message with date/time
   let jobListMessage = '';
   if (jobsToPresent.length === 1) {
     const job = jobsToPresent[0];

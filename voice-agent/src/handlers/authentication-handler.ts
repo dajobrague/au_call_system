@@ -6,6 +6,7 @@
 import { employeeService } from '../services/airtable/employee-service';
 import { multiProviderService } from '../services/airtable/multi-provider-service';
 import { jobService } from '../services/airtable/job-service';
+import { jobOccurrenceService } from '../services/airtable/job-occurrence-service';
 import { logger } from '../lib/logger';
 
 export interface AuthenticationResult {
@@ -104,18 +105,28 @@ export async function prefetchBackgroundData(employee: any): Promise<BackgroundD
     ]);
     
     // Enrich each job with its next occurrence for better prompts
-    const enrichedJobs = await Promise.all(
+    let enrichedJobs;
+    try {
+      enrichedJobs = await Promise.all(
       (employeeJobsResult.jobs || []).map(async (job: any) => {
         try {
-          // Fetch future occurrences for this job
-          const { jobOccurrenceService } = await import('../services/airtable');
+          // Safely add occurrence data to job
+          if (!job.jobTemplate) {
+            logger.warn('Job missing jobTemplate, skipping occurrence fetch', {
+              employeeId: employee.id,
+              job,
+              type: 'occurrence_fetch_skipped'
+            });
+            return { ...job, nextOccurrence: null };
+          }
+          
           const fullJobTemplate = {
             ...job.jobTemplate,
-            priority: 'Normal',
-            providerId: employee.providerId || '',
-            defaultEmployeeId: employee.id,
-            uniqueJobNumber: 0,
-            active: true,
+            priority: job.jobTemplate.priority || 'Normal',
+            providerId: job.jobTemplate.providerId || employee.providerId || '',
+            defaultEmployeeId: job.jobTemplate.defaultEmployeeId || employee.id,
+            uniqueJobNumber: job.jobTemplate.uniqueJobNumber || 0,
+            active: job.jobTemplate.active !== undefined ? job.jobTemplate.active : true,
           };
           
           const occurrenceResult = await jobOccurrenceService.getFutureOccurrences(
@@ -130,10 +141,25 @@ export async function prefetchBackgroundData(employee: any): Promise<BackgroundD
           };
         } catch (error) {
           // If occurrence fetch fails, return job without occurrence data
+          logger.warn('Failed to fetch occurrence for job', {
+            employeeId: employee.id,
+            jobTemplateId: job.jobTemplate?.id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            type: 'occurrence_fetch_error'
+          });
           return { ...job, nextOccurrence: null };
         }
       })
-    );
+      );
+    } catch (error) {
+      // If enrichment fails completely, use jobs without occurrence data
+      logger.error('Failed to enrich jobs with occurrences, using jobs without occurrence data', {
+        employeeId: employee.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        type: 'occurrence_enrichment_failed'
+      });
+      enrichedJobs = (employeeJobsResult.jobs || []).map((job: any) => ({ ...job, nextOccurrence: null }));
+    }
     
     logger.info('Background data prefetch complete', {
       employeeId: employee.id,
