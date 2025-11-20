@@ -59,7 +59,7 @@ export function generateJobOptionsMessage(job: any): JobOptionsMessage {
   const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
   const jobTitle = job.jobTemplate.title;
   
-  const message = `You selected ${jobTitle} for ${patientLastName}. What would you like to do? Press 1 to reschedule, Press 2 to leave the job open for someone else, Press 3 to talk to a representative, or Press 4 to select a different job.`;
+  const message = `You selected ${jobTitle} for ${patientLastName}. Confirm: press 1 if you want to leave this shift open for someone else, or press 2 to connect with a representative.`;
   
   return {
     message,

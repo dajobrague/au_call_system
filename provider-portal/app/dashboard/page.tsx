@@ -9,9 +9,7 @@ import {
   Users, 
   Hospital, 
   ClipboardList, 
-  Calendar, 
-  Phone, 
-  FileText 
+  Calendar 
 } from 'lucide-react';
 
 export default async function DashboardPage() {
@@ -52,20 +50,6 @@ export default async function DashboardPage() {
       description: 'View scheduled occurrences',
       color: 'text-orange-600 bg-orange-50'
     },
-    { 
-      title: 'Call Logs', 
-      path: '/dashboard/call-logs', 
-      icon: Phone, 
-      description: 'View call history',
-      color: 'text-indigo-600 bg-indigo-50'
-    },
-    { 
-      title: 'Reports', 
-      path: '/dashboard/reports', 
-      icon: FileText, 
-      description: 'View generated reports',
-      color: 'text-red-600 bg-red-50'
-    },
   ];
   
   return (
@@ -76,7 +60,7 @@ export default async function DashboardPage() {
         </h1>
         {provider && (
           <p className="text-gray-600 mt-2">
-            {provider.fields.Name || 'Provider Dashboard'}
+            {(provider.fields.Name as string) || 'Provider Dashboard'}
           </p>
         )}
       </div>

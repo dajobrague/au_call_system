@@ -36,21 +36,48 @@ const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'aEO01A4wXwd1O8GP
 export function createWebSocketServer(port: number = 3001): { app: express.Application; server: http.Server; wss: WebSocketServer } {
   const app = express();
   const server = http.createServer(app);
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({ 
+    server,
+    path: '/stream'  // Explicitly handle /stream path
+  });
 
   // Health check endpoint
   app.get('/health', (req: Request, res: Response) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
+  // Log all incoming HTTP requests for debugging
+  server.on('request', (req, res) => {
+    const isWebSocketUpgrade = req.headers.upgrade === 'websocket';
+    logger.info('HTTP Request received', {
+      method: req.method,
+      url: req.url,
+      headers: {
+        upgrade: req.headers.upgrade,
+        connection: req.headers.connection,
+        userAgent: req.headers['user-agent']
+      },
+      isWebSocketUpgrade,
+      type: 'http_request'
+    });
+  });
+
   // WebSocket connection handler
   wss.on('connection', (ws: WebSocketWithExtensions, req: http.IncomingMessage) => {
     const parsedUrl = url.parse(req.url || '', true);
-    const from = parsedUrl.query.from as string || 'Unknown';
+    // Extract phone from URL parameters (sent by Vercel)
+    const from = parsedUrl.query.phone as string || parsedUrl.query.from as string || 'Unknown';
 
-    logger.info('New WebSocket connection', {
-      from,
-      type: 'ws_new_connection'
+    // DEEP DEBUG: Log URL parsing details
+    logger.info('🔍 DEEP DEBUG: New WebSocket connection', {
+      rawUrl: req.url,
+      parsedQuery: parsedUrl.query,
+      phoneParam: parsedUrl.query.phone,
+      fromParam: parsedUrl.query.from,
+      extractedFrom: from,
+      fromLength: from.length,
+      fromCharCodes: Array.from(from).map(c => c.charCodeAt(0)),
+      type: 'ws_new_connection_debug'
     });
 
     handleConnectionOpen(ws);
@@ -83,7 +110,17 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
         ws.streamSid = message.start.streamSid;
         ws.callSid = message.start.callSid;
 
-        let callerPhone = message.start.customParameters?.from || from;
+        // Extract phone from Twilio's customParameters (set via <Parameter> in TwiML)
+        let callerPhone = (message.start.customParameters as any)?.phone || message.start.customParameters?.from || from;
+
+        // DEEP DEBUG: Log parameter extraction
+        logger.info('🔍 DEEP DEBUG: Start message received', {
+          callSid: ws.callSid,
+          customParameters: message.start.customParameters,
+          extractedPhone: callerPhone,
+          fallbackFrom: from,
+          type: 'start_message_debug'
+        });
 
         logger.info('Call started', {
           callSid: ws.callSid,
@@ -176,8 +213,8 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
           }
         })();
 
-        // Play recording disclaimer while authentication happens in background
-        await generateAndSpeak('This call may be recorded for quality and compliance purposes.');
+        // Play short disclaimer while authentication happens in background
+        await generateAndSpeak('This call may be recorded.');
 
         // Wait for authentication to complete
         const authResult = await authPromise;
@@ -190,7 +227,36 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
               phone: callerPhone
             });
           }
-          await generateAndSpeak('I could not find your phone number in our system. Please contact your supervisor. Goodbye.');
+          
+          // Fall back to PIN authentication instead of hanging up
+          logger.info('Phone auth failed, falling back to PIN', {
+            callSid: ws.callSid,
+            phone: callerPhone,
+            type: 'phone_auth_fallback_to_pin'
+          });
+          
+          // Create call state for PIN authentication phase
+          const pinAuthState = {
+            sid: ws.callSid!,
+            phase: 'pin_auth',
+            authMethod: 'pin_pending',
+            pinBuffer: '', // Will collect PIN digits here
+            attempts: {
+              clientId: 0, // Used for PIN attempts
+              confirmClientId: 0,
+              jobNumber: 0,
+              confirmJobNumber: 0,
+              jobOptions: 0,
+              occurrenceSelection: 0
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          await saveCallState(ws, pinAuthState);
+          
+          await generateAndSpeak('I could not find your phone number in our system. Please use your keypad to enter your employee PIN followed by the pound key.');
+          
           return;
         }
 
@@ -397,6 +463,15 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
     // Handle errors
     ws.on('error', (error) => {
       handleConnectionError(ws, error);
+    });
+  });
+
+  // Log WebSocket server errors
+  wss.on('error', (error) => {
+    logger.error('WebSocket server error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      type: 'wss_server_error'
     });
   });
 

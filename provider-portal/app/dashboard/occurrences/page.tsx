@@ -4,13 +4,24 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import DataTable from '@/components/DataTable';
 import { Filter } from 'lucide-react';
 
+interface OccurrenceRecord {
+  id: string;
+  fields: {
+    'Patient TXT'?: string;
+    'Employee TXT'?: string;
+    'Scheduled At'?: string;
+    'Time'?: string;
+    'Status'?: string;
+  };
+}
+
 export default function OccurrencesPage() {
-  const [occurrences, setOccurrences] = useState([]);
-  const [filteredOccurrences, setFilteredOccurrences] = useState([]);
+  const [occurrences, setOccurrences] = useState<OccurrenceRecord[]>([]);
+  const [filteredOccurrences, setFilteredOccurrences] = useState<OccurrenceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -23,13 +34,45 @@ export default function OccurrencesPage() {
   const [employees, setEmployees] = useState<string[]>([]);
   const [patients, setPatients] = useState<string[]>([]);
   
+  const applyFilters = useCallback(() => {
+    let filtered = [...occurrences];
+    
+    // Filter by employee
+    if (selectedEmployee) {
+      filtered = filtered.filter(
+        (occ) => occ.fields['Employee TXT'] === selectedEmployee
+      );
+    }
+    
+    // Filter by patient
+    if (selectedPatient) {
+      filtered = filtered.filter(
+        (occ) => occ.fields['Patient TXT'] === selectedPatient
+      );
+    }
+    
+    // Filter by date
+    if (selectedDate) {
+      filtered = filtered.filter((occ) => {
+        const occDate = occ.fields['Scheduled At'];
+        if (!occDate) return false;
+        
+        // Compare just the date part (YYYY-MM-DD)
+        const occDateStr = new Date(occDate).toISOString().split('T')[0];
+        return occDateStr === selectedDate;
+      });
+    }
+    
+    setFilteredOccurrences(filtered);
+  }, [occurrences, selectedEmployee, selectedPatient, selectedDate]);
+  
   useEffect(() => {
     fetchOccurrences();
   }, []);
   
   useEffect(() => {
     applyFilters();
-  }, [occurrences, selectedEmployee, selectedPatient, selectedDate]);
+  }, [applyFilters]);
   
   const fetchOccurrences = async () => {
     try {
@@ -43,16 +86,16 @@ export default function OccurrencesPage() {
         const uniqueEmployees = Array.from(
           new Set(
             data.data
-              .map((occ: any) => occ.fields['Employee TXT'])
-              .filter((name: string) => name)
+              .map((occ: OccurrenceRecord) => occ.fields['Employee TXT'])
+              .filter((name: string | undefined): name is string => !!name)
           )
         ) as string[];
         
         const uniquePatients = Array.from(
           new Set(
             data.data
-              .map((occ: any) => occ.fields['Patient TXT'])
-              .filter((name: string) => name)
+              .map((occ: OccurrenceRecord) => occ.fields['Patient TXT'])
+              .filter((name: string | undefined): name is string => !!name)
           )
         ) as string[];
         
@@ -61,43 +104,11 @@ export default function OccurrencesPage() {
       } else {
         setError(data.error || 'Failed to fetch occurrences');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred while fetching occurrences');
     } finally {
       setLoading(false);
     }
-  };
-  
-  const applyFilters = () => {
-    let filtered = [...occurrences];
-    
-    // Filter by employee
-    if (selectedEmployee) {
-      filtered = filtered.filter(
-        (occ: any) => occ.fields['Employee TXT'] === selectedEmployee
-      );
-    }
-    
-    // Filter by patient
-    if (selectedPatient) {
-      filtered = filtered.filter(
-        (occ: any) => occ.fields['Patient TXT'] === selectedPatient
-      );
-    }
-    
-    // Filter by date
-    if (selectedDate) {
-      filtered = filtered.filter((occ: any) => {
-        const occDate = occ.fields['Scheduled At'];
-        if (!occDate) return false;
-        
-        // Compare just the date part (YYYY-MM-DD)
-        const occDateStr = new Date(occDate).toISOString().split('T')[0];
-        return occDateStr === selectedDate;
-      });
-    }
-    
-    setFilteredOccurrences(filtered);
   };
   
   const clearFilters = () => {
@@ -118,7 +129,7 @@ export default function OccurrencesPage() {
     { 
       key: 'Scheduled At', 
       label: 'Scheduled At',
-      render: (value: string) => value ? new Date(value).toLocaleDateString() : '-'
+      render: (value: unknown) => value ? new Date(value as string).toLocaleDateString() : '-'
     },
     { 
       key: 'Time', 
@@ -127,16 +138,19 @@ export default function OccurrencesPage() {
     { 
       key: 'Status', 
       label: 'Status',
-      render: (value: string) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          value === 'Scheduled' ? 'bg-blue-100 text-blue-800' :
-          value === 'Completed' ? 'bg-green-100 text-green-800' :
-          value === 'Cancelled' ? 'bg-red-100 text-red-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {value || '-'}
-        </span>
-      )
+      render: (value: unknown) => {
+        const status = value as string;
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            status === 'Scheduled' ? 'bg-blue-100 text-blue-800' :
+            status === 'Completed' ? 'bg-green-100 text-green-800' :
+            status === 'Cancelled' ? 'bg-red-100 text-red-800' :
+            'bg-gray-100 text-gray-800'
+          }`}>
+            {status || '-'}
+          </span>
+        );
+      }
     },
   ];
   

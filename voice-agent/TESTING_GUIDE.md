@@ -1,13 +1,13 @@
 # Voice Agent Testing Guide
 
-Complete guide for testing both local (ngrok) and production (Cloudflare) WebSocket configurations.
+Complete guide for testing both local (ngrok) and production (Railway) WebSocket configurations.
 
 ## Quick Reference
 
 | Environment | Command | WebSocket URL |
 |------------|---------|---------------|
 | **Local** | `npm run local` | `wss://climbing-merely-joey.ngrok-free.app/stream` |
-| **Production** | Deploy to Vercel | `wss://sam.netmtion.io/stream` |
+| **Production** | Deploy to Railway | `wss://your-service.up.railway.app/stream` |
 
 ## Local Testing (ngrok)
 
@@ -109,25 +109,25 @@ This stops both the WebSocket server and ngrok tunnel.
 
 ---
 
-## Production Testing (Cloudflare)
+## Production Testing (Railway)
 
 ### Prerequisites
 
-- Cloudflare Worker deployed to `sam.netmtion.io`
-- Custom domain configured and SSL active
+- Railway WebSocket server deployed
+- Railway service URL active
 - Vercel environment variables set
 
 ### Setup Steps
 
-1. **Verify Cloudflare Deployment**
+1. **Verify Railway Deployment**
 
 ```bash
 # Health check
-curl https://sam.netmtion.io/health
-# Expected: OK
+curl https://your-service.up.railway.app/health
+# Expected: {"status":"ok","timestamp":"..."}
 
-# WebSocket endpoint
-curl -i https://sam.netmtion.io/stream
+# WebSocket endpoint (optional test)
+curl -i https://your-service.up.railway.app/stream
 # Expected: 426 Upgrade Required (this is correct for WebSocket endpoints)
 ```
 
@@ -136,7 +136,7 @@ curl -i https://sam.netmtion.io/stream
    In [Vercel Dashboard](https://vercel.com) → Your Project → Settings → Environment Variables:
 
    ```env
-   WEBSOCKET_URL=wss://sam.netmtion.io/stream
+   WEBSOCKET_URL=wss://your-service.up.railway.app/stream
    NODE_ENV=production
    ```
 
@@ -148,44 +148,42 @@ curl -i https://sam.netmtion.io/stream
 
    Set webhook to:
    ```
-   https://sam-voice-agent.vercel.app/api/twilio/voice-websocket
+   https://your-app.vercel.app/api/twilio/voice-websocket
    ```
 
 ### Testing Production WebSocket
 
-**Test 1: Cloudflare Worker Health**
+**Test 1: Railway Server Health**
 
 ```bash
-curl https://sam.netmtion.io/health
-# Expected: OK
+curl https://your-service.up.railway.app/health
+# Expected: {"status":"ok","timestamp":"..."}
 ```
 
-**Test 2: Monitor Cloudflare Logs**
+**Test 2: Monitor Railway Logs**
 
-```bash
-cd cloudflare-voice-bridge
-npx wrangler tail
-```
-
-This streams real-time logs from your Cloudflare Worker.
+In Railway dashboard:
+1. Go to your project
+2. Click on your service
+3. View the "Logs" tab for real-time logs
 
 **Test 3: Make a Test Call**
 
 1. Call your Twilio number
-2. Watch Cloudflare logs (from `wrangler tail`)
+2. Watch Railway logs in dashboard
 3. Watch Vercel logs in dashboard
 
 **Expected Log Flow:**
 
-**Cloudflare Worker Logs:**
+**Railway Server Logs:**
 ```
-🔗 Accepting WebSocket for call: CAxxxxxxxxx
-✅ Twilio start: { callSid: 'CAxxxxxxxxx', streamSid: 'MZxxxxxxxxx' }
-🎧 media frame bytes ~ 120
-🎧 media frame bytes ~ 120
+🚀 WebSocket server listening on port 3001
+📡 New WebSocket connection
+✅ Twilio stream started: CAxxxxxxxxx
+🎧 Processing audio chunks
 ...
-🛑 Twilio stop: { callSid: 'CAxxxxxxxxx' }
-🔚 socket closed
+🛑 Twilio stream stopped
+🔚 Connection closed
 ```
 
 **Vercel Logs:**
@@ -202,7 +200,7 @@ You can test the production WebSocket configuration locally before deploying:
 
 ```env
 NODE_ENV=production
-WEBSOCKET_URL=wss://sam.netmtion.io/stream
+WEBSOCKET_URL=wss://your-service.up.railway.app/stream
 ```
 
 2. **Run Dev Server**
@@ -257,25 +255,26 @@ brew install ngrok
 - `/health` should return 200 OK
 - WebSocket endpoints always return 426 for non-WebSocket requests
 
-#### Issue: Cloudflare Worker not receiving connections
+#### Issue: Railway server not receiving connections
 
 **Check:**
-1. DNS propagation: `dig sam.netmtion.io`
-2. SSL certificate: `curl -v https://sam.netmtion.io/health`
-3. Custom domain in Cloudflare dashboard
+1. Railway service is deployed and running
+2. Health endpoint responds: `curl https://your-service.up.railway.app/health`
+3. WebSocket URL in Vercel is correct
 4. Vercel environment variables set correctly
 
 **Solution:**
 ```bash
-# Verify DNS
-nslookup sam.netmtion.io
+# Verify Railway service
+curl https://your-service.up.railway.app/health
+# Expected: {"status":"ok","timestamp":"..."}
 
-# Check SSL
-openssl s_client -connect sam.netmtion.io:443 -servername sam.netmtion.io
+# Check Railway logs in dashboard
+# Go to Railway → Your Project → Your Service → Logs tab
 
-# View logs
-cd cloudflare-voice-bridge
-npx wrangler tail
+# Check Vercel environment variables
+# Go to Vercel Dashboard → Your Project → Settings → Environment Variables
+# Verify WEBSOCKET_URL is set correctly
 ```
 
 #### Issue: Twilio can't connect to WebSocket
@@ -292,15 +291,16 @@ curl -H "Upgrade: websocket" \
      -H "Connection: Upgrade" \
      -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
      -H "Sec-WebSocket-Version: 13" \
-     https://sam.netmtion.io/stream?callSid=test
+     https://your-service.up.railway.app/stream?callSid=test
 ```
 
 #### Issue: Audio not streaming
 
 **Check:**
-1. Cloudflare Worker logs: `npx wrangler tail`
+1. Railway server logs in dashboard
 2. MediaStream events in logs
 3. ElevenLabs API key in environment variables
+4. WebSocket connection is established
 
 ---
 
@@ -309,9 +309,9 @@ curl -H "Upgrade: websocket" \
 ### Before Production Deployment
 
 - [ ] Local testing with `npm run local` works
-- [ ] Health check responds: `curl https://sam.netmtion.io/health`
-- [ ] Cloudflare Worker deployed successfully
-- [ ] Custom domain SSL active
+- [ ] Health check responds: `curl https://your-service.up.railway.app/health`
+- [ ] Railway WebSocket server deployed successfully
+- [ ] Railway service URL is accessible
 - [ ] Vercel environment variables set
 - [ ] Twilio webhook updated to production URL
 - [ ] Test call completes successfully
@@ -321,7 +321,7 @@ curl -H "Upgrade: websocket" \
 ### After Production Deployment
 
 - [ ] Make 3-5 test calls
-- [ ] Monitor Cloudflare logs: `npx wrangler tail`
+- [ ] Monitor Railway logs in dashboard
 - [ ] Check Vercel logs for errors
 - [ ] Verify call recordings in S3
 - [ ] Test all call flow options (reschedule, leave open, etc.)
@@ -342,8 +342,7 @@ WEBSOCKET_URL=wss://climbing-merely-joey.ngrok-free.app/stream
 
 ```env
 NODE_ENV=production
-WEBSOCKET_URL=wss://sam.netmtion.io/stream
-CLOUDFLARE_VOICE_PROXY_URL=wss://sam.netmtion.io/stream
+WEBSOCKET_URL=wss://your-service.up.railway.app/stream
 ```
 
 ---
@@ -361,16 +360,10 @@ npm run local
 curl https://climbing-merely-joey.ngrok-free.app/health
 
 # Test health endpoint (production)
-curl https://sam.netmtion.io/health
+curl https://your-service.up.railway.app/health
 
-# Monitor Cloudflare logs
-cd cloudflare-voice-bridge && npx wrangler tail
-
-# Deploy to Cloudflare
-cd cloudflare-voice-bridge && npx wrangler deploy
-
-# Check Cloudflare account
-cd cloudflare-voice-bridge && npx wrangler whoami
+# Monitor Railway logs
+# Visit Railway dashboard → Your Project → Service → Logs tab
 ```
 
 ---

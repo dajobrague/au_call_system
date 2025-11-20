@@ -63,9 +63,15 @@ export class EmployeeService {
     const normalizedPhone = normalizePhoneNumber(phoneNumber);
     const startTime = Date.now();
     
-    logger.info('Phone authentication attempt', {
-      phone: normalizedPhone,
-      type: 'auth_attempt_phone'
+    // DEEP DEBUG: Log normalization process
+    logger.info('🔍 DEEP DEBUG: Phone authentication attempt', {
+      originalPhone: phoneNumber,
+      normalizedPhone: normalizedPhone,
+      originalLength: phoneNumber.length,
+      normalizedLength: normalizedPhone.length,
+      originalCharCodes: Array.from(phoneNumber).map(c => c.charCodeAt(0)),
+      normalizedCharCodes: Array.from(normalizedPhone).map(c => c.charCodeAt(0)),
+      type: 'auth_attempt_phone_debug'
     });
 
     try {

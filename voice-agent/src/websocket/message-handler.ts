@@ -8,7 +8,7 @@ import { processAudioChunk, isRecording } from '../services/speech';
 import { WebSocketWithExtensions } from './connection-handler';
 
 export type WebSocketMessage = {
-  event: 'start' | 'media' | 'dtmf' | 'stop';
+  event: 'connected' | 'start' | 'media' | 'dtmf' | 'stop';
   sequenceNumber?: string;
   streamSid?: string;
   start?: {
@@ -23,6 +23,8 @@ export type WebSocketMessage = {
     };
     customParameters?: {
       from?: string;
+      phone?: string;
+      callSid?: string;
     };
   };
   media?: {
@@ -60,6 +62,15 @@ export async function handleWebSocketMessage(
     const message: WebSocketMessage = JSON.parse(data);
     
     switch (message.event) {
+      case 'connected':
+        // Twilio sends this when WebSocket is first established
+        logger.info('Twilio WebSocket connected', {
+          protocol: (message as any).protocol,
+          version: (message as any).version,
+          type: 'ws_connected'
+        });
+        break;
+        
       case 'start':
         logger.info('WebSocket stream started', {
           callSid: message.start?.callSid,
@@ -73,27 +84,6 @@ export async function handleWebSocketMessage(
         // Media frames - handled silently for performance
         // Check if we're actively recording speech AND it's the inbound track (user speech)
         const wsExt = ws as WebSocketWithExtensions;
-        
-        // 🔍 DEBUG: Log track info when recording
-        if (wsExt.speechState && isRecording(wsExt.speechState)) {
-          // Initialize frame counters if not present
-          if (!(wsExt as any).trackFrameCount) {
-            (wsExt as any).trackFrameCount = { inbound: 0, outbound: 0 };
-          }
-          
-          const track = message.media?.track;
-          if (track === 'inbound') {
-            (wsExt as any).trackFrameCount.inbound++;
-          } else if (track === 'outbound') {
-            (wsExt as any).trackFrameCount.outbound++;
-          }
-          
-          // Log every 50 frames
-          const totalFrames = (wsExt as any).trackFrameCount.inbound + (wsExt as any).trackFrameCount.outbound;
-          if (totalFrames % 50 === 0) {
-            console.log(`📻 Track stats: inbound=${(wsExt as any).trackFrameCount.inbound}, outbound=${(wsExt as any).trackFrameCount.outbound}, current=${track}`);
-          }
-        }
         
         if (wsExt.speechState && 
             isRecording(wsExt.speechState) && 

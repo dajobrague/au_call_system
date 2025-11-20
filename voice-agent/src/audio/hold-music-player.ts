@@ -16,11 +16,8 @@ interface WebSocketWithMusic extends WebSocket {
  */
 export function playHoldMusic(ws: WebSocketWithMusic): void {
   if (!ws || ws.readyState !== 1) {
-    console.log('⚠️ WebSocket not ready for hold music');
     return;
   }
-  
-  console.log('🎵 Starting hold music playback...');
   
   // Generate 10 seconds of hold music
   const musicFrames = generateHoldMusic(10000);
@@ -36,7 +33,6 @@ export function playHoldMusic(ws: WebSocketWithMusic): void {
   ws.holdMusicInterval = setInterval(() => {
     if (!ws || ws.readyState !== 1) {
       clearInterval(ws.holdMusicInterval);
-      console.log('🛑 Hold music stopped - WebSocket closed');
       return;
     }
     
@@ -55,11 +51,8 @@ export function playHoldMusic(ws: WebSocketWithMusic): void {
     frameIndex++;
     if (frameIndex >= musicFrames.length) {
       frameIndex = 0;
-      console.log('🔄 Hold music loop restarted');
     }
   }, 20); // 20ms per frame
-  
-  console.log(`✅ Hold music started (${musicFrames.length} frames, looping)`);
 }
 
 /**
@@ -70,6 +63,5 @@ export function stopHoldMusic(ws: WebSocketWithMusic): void {
   if (ws && ws.holdMusicInterval) {
     clearInterval(ws.holdMusicInterval);
     ws.holdMusicInterval = undefined;
-    console.log('🛑 Hold music stopped');
   }
 }

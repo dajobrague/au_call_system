@@ -30,9 +30,13 @@ export async function authenticateByPhone(callerPhone: string): Promise<Authenti
   const startTime = Date.now();
   
   try {
-    logger.info('Phone authentication attempt', {
-      phone: callerPhone,
-      type: 'auth_attempt_phone'
+    // DEEP DEBUG: Log what authentication handler receives
+    logger.info('🔍 DEEP DEBUG: Authentication handler called', {
+      callerPhone,
+      phoneType: typeof callerPhone,
+      phoneLength: callerPhone?.length || 0,
+      phoneCharCodes: callerPhone ? Array.from(callerPhone).map(c => c.charCodeAt(0)) : [],
+      type: 'auth_handler_debug'
     });
     
     const authResult = await employeeService.authenticateByPhone(callerPhone);
@@ -80,9 +84,9 @@ export async function authenticateByPhone(callerPhone: string): Promise<Authenti
 
 /**
  * Prefetch background data for authenticated employee
- * Loads provider and job information in parallel
+ * Loads provider and job information in parallel, enriched with next occurrence
  * @param employee - Authenticated employee
- * @returns Background data including providers and jobs
+ * @returns Background data including providers and jobs with occurrence info
  */
 export async function prefetchBackgroundData(employee: any): Promise<BackgroundDataResult> {
   const startTime = Date.now();
@@ -99,17 +103,49 @@ export async function prefetchBackgroundData(employee: any): Promise<BackgroundD
       jobService.getEmployeeJobs(employee, employee.providerId)
     ]);
     
+    // Enrich each job with its next occurrence for better prompts
+    const enrichedJobs = await Promise.all(
+      (employeeJobsResult.jobs || []).map(async (job: any) => {
+        try {
+          // Fetch future occurrences for this job
+          const { jobOccurrenceService } = await import('../services/airtable');
+          const fullJobTemplate = {
+            ...job.jobTemplate,
+            priority: 'Normal',
+            providerId: employee.providerId || '',
+            defaultEmployeeId: employee.id,
+            uniqueJobNumber: 0,
+            active: true,
+          };
+          
+          const occurrenceResult = await jobOccurrenceService.getFutureOccurrences(
+            fullJobTemplate,
+            employee.id
+          );
+          
+          // Add the next occurrence to the job object
+          return {
+            ...job,
+            nextOccurrence: occurrenceResult.occurrences?.[0] || null
+          };
+        } catch (error) {
+          // If occurrence fetch fails, return job without occurrence data
+          return { ...job, nextOccurrence: null };
+        }
+      })
+    );
+    
     logger.info('Background data prefetch complete', {
       employeeId: employee.id,
       providersCount: providerResult?.providers?.length || 0,
-      jobsCount: employeeJobsResult.jobs?.length || 0,
+      jobsCount: enrichedJobs.length,
       duration: Date.now() - startTime,
       type: 'background_data_complete'
     });
     
     return {
       providers: providerResult,
-      employeeJobs: employeeJobsResult.jobs || [],
+      employeeJobs: enrichedJobs,
       loadedAt: Date.now()
     };
   } catch (error) {

@@ -14,8 +14,23 @@ export interface SessionData {
   isLoggedIn: boolean;
 }
 
+// Helper function to get and validate session secret
+function getSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  
+  // Only validate during runtime (when not building)
+  if (typeof window === 'undefined' && process.env.NEXT_PHASE !== 'phase-production-build') {
+    if (!secret || secret.length < 32) {
+      throw new Error('SESSION_SECRET must be at least 32 characters long');
+    }
+  }
+  
+  // Return a placeholder during build, actual secret at runtime
+  return secret || 'build-time-placeholder-do-not-use-in-production-min-32-chars';
+}
+
 export const sessionOptions: SessionOptions = {
-  password: process.env.SESSION_SECRET as string,
+  password: getSessionSecret(),
   cookieName: 'provider-portal-session',
   cookieOptions: {
     secure: process.env.NODE_ENV === 'production',
@@ -24,11 +39,6 @@ export const sessionOptions: SessionOptions = {
     sameSite: 'lax',
   },
 };
-
-// Validate session secret on module load
-if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
-  throw new Error('SESSION_SECRET must be at least 32 characters long');
-}
 
 
 

@@ -4,15 +4,20 @@
 
 'use client';
 
+interface AirtableRecord {
+  id: string;
+  fields: Record<string, unknown>;
+}
+
 interface Column {
   key: string;
   label: string;
-  render?: (value: any, record: any) => React.ReactNode;
+  render?: (value: unknown, record: AirtableRecord) => React.ReactNode;
 }
 
 interface DataTableProps {
   columns: Column[];
-  data: any[];
+  data: AirtableRecord[];
   loading?: boolean;
   emptyMessage?: string;
 }
@@ -57,17 +62,20 @@ export default function DataTable({
         <tbody className="bg-white divide-y divide-gray-200">
           {data.map((record, index) => (
             <tr key={record.id || index} className="hover:bg-gray-50">
-              {columns.map((column) => (
-                <td
-                  key={column.key}
-                  className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
-                >
-                  {column.render 
-                    ? column.render(record.fields[column.key], record)
-                    : record.fields[column.key] || '-'
-                  }
-                </td>
-              ))}
+              {columns.map((column) => {
+                const value = record.fields[column.key];
+                return (
+                  <td
+                    key={column.key}
+                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                  >
+                    {column.render 
+                      ? column.render(value, record)
+                      : (value as string) || '-'
+                    }
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
@@ -75,6 +83,8 @@ export default function DataTable({
     </div>
   );
 }
+
+
 
 
 

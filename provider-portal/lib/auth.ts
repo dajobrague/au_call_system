@@ -38,13 +38,17 @@ export async function authenticateUser(email: string, password: string) {
       return { success: false, error: 'User is not associated with a provider' };
     }
     
+    // Extract and validate user fields
+    const userEmail = user.fields.Email as string;
+    const userFirstName = (user.fields['First Name'] as string) || 'User';
+    
     // Return user data
     return {
       success: true,
       user: {
         id: user.id,
-        email: user.fields.Email,
-        firstName: user.fields['First Name'] || 'User',
+        email: userEmail,
+        firstName: userFirstName,
         providerId,
       },
     };
@@ -94,6 +98,8 @@ export async function getCurrentUser() {
   const session = await getSession();
   return session.user;
 }
+
+
 
 
 

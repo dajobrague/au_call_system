@@ -26,7 +26,7 @@ export default function EmployeesPage() {
       } else {
         setError(data.error || 'Failed to fetch employees');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred while fetching employees');
     } finally {
       setLoading(false);
@@ -49,27 +49,33 @@ export default function EmployeesPage() {
     { 
       key: 'Phone', 
       label: 'Phone',
-      render: (value: string) => formatPhoneNumber(value)
+      render: (value: unknown) => formatPhoneNumber(value as string)
     },
     { 
       key: 'Active', 
       label: 'Status',
-      render: (value: boolean) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-        }`}>
-          {value ? 'Active' : 'Inactive'}
-        </span>
-      )
+      render: (value: unknown) => {
+        const isActive = value as boolean;
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+          }`}>
+            {isActive ? 'Active' : 'Inactive'}
+          </span>
+        );
+      }
     },
     { 
       key: 'Notes', 
       label: 'Notes',
-      render: (value: string) => (
-        <span className="truncate max-w-xs block" title={value}>
-          {value || '-'}
-        </span>
-      )
+      render: (value: unknown) => {
+        const notes = value as string;
+        return (
+          <span className="truncate max-w-xs block" title={notes}>
+            {notes || '-'}
+          </span>
+        );
+      }
     },
   ];
   

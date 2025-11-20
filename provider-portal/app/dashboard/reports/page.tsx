@@ -26,7 +26,7 @@ export default function ReportsPage() {
       } else {
         setError(data.error || 'Failed to fetch reports');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred while fetching reports');
     } finally {
       setLoading(false);
@@ -39,14 +39,14 @@ export default function ReportsPage() {
     { 
       key: 'Created At', 
       label: 'Generated',
-      render: (value: string) => value ? new Date(value).toLocaleString() : '-'
+      render: (value: unknown) => value ? new Date(value as string).toLocaleString() : '-'
     },
     { 
       key: 'PDF URL', 
       label: 'Download',
-      render: (value: string) => value ? (
+      render: (value: unknown) => value ? (
         <a 
-          href={value} 
+          href={value as string} 
           target="_blank" 
           rel="noopener noreferrer"
           className="text-blue-600 hover:text-blue-800 underline"

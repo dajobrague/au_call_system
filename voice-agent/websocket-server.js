@@ -1,124 +1,70 @@
 #!/usr/bin/env node
+
 /**
- * WebSocket Server Entry Point
- * Clean, production-ready WebSocket server using refactored modules
- * 
- * This is the new modular implementation.
- * The original ngrok-websocket-test.js is kept as reference.
+ * Standalone WebSocket Server for Local Testing
+ * Starts the WebSocket server on port 3001 for local development
  */
 
-require('dotenv').config({ path: '.env.local' });
-
-// Register ts-node to handle TypeScript files
+// Register ts-node for TypeScript support
 require('ts-node').register({
   transpileOnly: true,
   compilerOptions: {
     module: 'commonjs',
     moduleResolution: 'node',
     esModuleInterop: true,
-    allowSyntheticDefaultImports: true
+    allowSyntheticDefaultImports: true,
+    skipLibCheck: true,
+    resolveJsonModule: true,
   }
 });
 
-const { createWebSocketServer } = require('./src/websocket/server.ts');
-const { logger } = require('./src/lib/logger.ts');
+// Load environment variables
+require('dotenv').config({ path: '.env.local' });
 
-// Railway provides PORT environment variable
-const PORT = process.env.PORT || process.env.WEBSOCKET_PORT || 3001;
+// Import the WebSocket server creator (TypeScript file)
+const { createWebSocketServer } = require('./src/websocket/server');
 
-// Validate required environment variables
-const requiredEnvVars = [
-  'ELEVENLABS_API_KEY',
-  'TWILIO_ACCOUNT_SID',
-  'TWILIO_AUTH_TOKEN'
-];
+const PORT = process.env.WEBSOCKET_PORT || 3001;
 
-const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+console.log('🚀 Starting Voice Agent WebSocket Server...');
+console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`📞 Twilio Number: ${process.env.TWILIO_PHONE_NUMBER}`);
+console.log('');
 
-if (missingVars.length > 0) {
-  console.error('❌ Missing required environment variables:');
-  missingVars.forEach(varName => {
-    console.error(`   - ${varName}`);
-  });
-  process.exit(1);
-}
-
-// Warn about optional variables
-if (!process.env.REDIS_URL && !process.env.UPSTASH_REDIS_REST_URL) {
-  console.warn('⚠️  Redis not configured - state persistence will be limited');
-}
-
-// Validate Redis token if URL is present
-if ((process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL) && 
-    !process.env.REDIS_TOKEN && !process.env.UPSTASH_REDIS_REST_TOKEN) {
-  console.error('❌ Redis URL is set but token is missing');
-  process.exit(1);
-}
-
-// Create and start server
 try {
+  // Create and start the WebSocket server
   const { app, server, wss } = createWebSocketServer(PORT);
 
-  // Bind to 0.0.0.0 for Railway (accepts external connections)
-  server.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, () => {
+    console.log('✅ WebSocket Server Started Successfully!');
+    console.log(`📡 Listening on port ${PORT}`);
+    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+    console.log(`🔌 WebSocket path: ws://localhost:${PORT}/stream`);
     console.log('');
-    console.log('🚀 ========================================');
-    console.log('🎙️  Voice Agent WebSocket Server');
-    console.log('🚀 ========================================');
+    console.log('📊 Server is ready to accept connections...');
     console.log('');
-    console.log(`📡 WebSocket server listening on port ${PORT}`);
-    console.log(`🔗 WebSocket URL: ws://localhost:${PORT}/stream`);
-    console.log(`💚 Health check: http://localhost:${PORT}/health`);
-    console.log('');
-    console.log('✅ Server ready to accept connections');
-    console.log('');
-    
-    logger.info('WebSocket server started', {
-      port: PORT,
-      type: 'server_start'
-    });
   });
 
   // Graceful shutdown
-  process.on('SIGTERM', () => {
-    console.log('');
-    console.log('🛑 SIGTERM received, shutting down gracefully...');
-    
-    wss.clients.forEach(client => {
-      client.close();
-    });
-    
+  process.on('SIGINT', () => {
+    console.log('\n🛑 Shutting down server...');
     server.close(() => {
-      console.log('✅ Server closed');
-      logger.info('WebSocket server stopped', {
-        type: 'server_stop'
-      });
+      console.log('✅ Server closed successfully');
       process.exit(0);
     });
   });
 
-  process.on('SIGINT', () => {
-    console.log('');
-    console.log('🛑 SIGINT received, shutting down gracefully...');
-    
-    wss.clients.forEach(client => {
-      client.close();
-    });
-    
+  process.on('SIGTERM', () => {
+    console.log('\n🛑 Received SIGTERM, shutting down...');
     server.close(() => {
-      console.log('✅ Server closed');
-      logger.info('WebSocket server stopped', {
-        type: 'server_stop'
-      });
+      console.log('✅ Server closed successfully');
       process.exit(0);
     });
   });
 
 } catch (error) {
-  console.error('❌ Failed to start server:', error);
-  logger.error('Server startup error', {
-    error: error instanceof Error ? error.message : 'Unknown error',
-    type: 'server_startup_error'
-  });
+  console.error('❌ Failed to start WebSocket server:');
+  console.error(error);
   process.exit(1);
 }
+

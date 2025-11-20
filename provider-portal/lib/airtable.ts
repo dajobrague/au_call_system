@@ -21,7 +21,7 @@ const REQUEST_TIMEOUT = 5000;
 
 interface AirtableRecord {
   id: string;
-  fields: Record<string, any>;
+  fields: Record<string, unknown>;
   createdTime: string;
 }
 

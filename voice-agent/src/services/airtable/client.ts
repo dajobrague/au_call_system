@@ -200,11 +200,30 @@ export class AirtableClient {
   async findEmployeeByPhone(phone: string): Promise<EmployeeRecord | null> {
     const filterFormula = `{Phone} = '${phone}'`;
     
+    // DEEP DEBUG: Log exact query details
+    logger.info('🔍 DEEP DEBUG: findEmployeeByPhone called', {
+      phone,
+      phoneLength: phone.length,
+      phoneCharCodes: Array.from(phone).map(c => c.charCodeAt(0)),
+      filterFormula,
+      type: 'debug_phone_lookup'
+    });
+    
     return withRetry(async () => {
       const response = await makeAirtableRequest<EmployeeRecord['fields']>('Employees', {
         filterByFormula: filterFormula,
         maxRecords: 1,
         fields: ['Display Name', 'Employee PIN', 'Provider', 'Phone', 'Job Templates', 'Active', 'Notes']
+      });
+      
+      // DEEP DEBUG: Log results
+      logger.info('🔍 DEEP DEBUG: Airtable query result', {
+        phone,
+        found: response.records.length > 0,
+        recordCount: response.records.length,
+        firstRecordPhone: response.records[0]?.fields?.Phone,
+        firstRecordName: response.records[0]?.fields?.['Display Name'],
+        type: 'debug_phone_result'
       });
       
       return response.records.length > 0 ? response.records[0] as EmployeeRecord : null;

@@ -52,10 +52,6 @@ export async function generateSpeech(
     };
   }
   
-  console.log('🎤 Generating speech with ElevenLabs HTTP API...');
-  console.log('📋 Text:', text);
-  console.log('📋 Voice ID:', voiceId);
-  
   const postData = JSON.stringify({
     text: text,
     model_id: modelId,
@@ -66,7 +62,7 @@ export async function generateSpeech(
       style,
       use_speaker_boost: useSpeakerBoost
     },
-    optimize_streaming_latency: 3
+    optimize_streaming_latency: 4 // Maximum optimization for lowest latency
   });
   
   return new Promise((resolve) => {
@@ -84,15 +80,12 @@ export async function generateSpeech(
     };
     
     const req = https.request(requestOptions, (res) => {
-      console.log(`✅ ElevenLabs response status: ${res.statusCode}`);
-      
       if (res.statusCode !== 200) {
         let errorBody = '';
         res.on('data', (chunk) => {
           errorBody += chunk.toString();
         });
         res.on('end', () => {
-          console.error('❌ ElevenLabs error:', errorBody);
           resolve({
             success: false,
             error: `HTTP ${res.statusCode}: ${errorBody}`
@@ -112,8 +105,6 @@ export async function generateSpeech(
         const ulawArray = new Uint8Array(fullAudio);
         const frames = sliceInto20msFrames(ulawArray);
         
-        console.log(`✅ Speech generated - ${frames.length} frames (${fullAudio.length} bytes)`);
-        
         resolve({
           success: true,
           frames,
@@ -123,7 +114,6 @@ export async function generateSpeech(
     });
     
     req.on('error', (error) => {
-      console.error('❌ ElevenLabs request error:', error);
       resolve({
         success: false,
         error: error.message

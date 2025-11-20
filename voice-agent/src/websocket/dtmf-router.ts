@@ -47,6 +47,10 @@ export async function routeDTMFInput(context: DTMFRoutingContext): Promise<void>
   });
   
   switch (callState.phase) {
+    case 'pin_auth':
+      await handlePinAuthentication(context);
+      break;
+      
     case 'provider_selection':
       await handleProviderSelection(context);
       break;
@@ -81,6 +85,180 @@ export async function routeDTMFInput(context: DTMFRoutingContext): Promise<void>
         digit,
         type: 'dtmf_unhandled_phase'
       });
+  }
+}
+
+/**
+ * Handle PIN authentication DTMF
+ */
+async function handlePinAuthentication(context: DTMFRoutingContext): Promise<void> {
+  const { callState, digit, generateAndSpeak, saveState, ws } = context;
+  
+  // Collect PIN digits until # is pressed
+  if (digit === '#') {
+    // User finished entering PIN
+    const pin = parseInt(callState.pinBuffer || '', 10);
+    
+    if (!pin || callState.pinBuffer.length < 2) {
+      await generateAndSpeak('Invalid PIN. Please enter your employee PIN followed by the pound key.');
+      return;
+    }
+    
+    logger.info('PIN authentication attempt', {
+      pinLength: callState.pinBuffer.length,
+      callSid: callState.sid,
+      type: 'pin_auth_attempt'
+    });
+    
+    // Authenticate with PIN
+    const { authenticateByPhone } = require('../handlers/authentication-handler');
+    const { employeeService } = require('../services/airtable');
+    
+    const authResult = await employeeService.authenticateByPin(pin);
+    
+    if (authResult.success && authResult.employee) {
+      logger.info('PIN authentication successful', {
+        employeeId: authResult.employee.id,
+        employeeName: authResult.employee.name,
+        callSid: callState.sid,
+        type: 'pin_auth_success'
+      });
+      
+      // Track successful auth
+      if (ws.callEvents) {
+        trackCallEvent(ws.callEvents, 'authentication', 'pin_auth_success', {
+          employeeId: authResult.employee.id,
+          employeeName: authResult.employee.name,
+          pin
+        });
+      }
+      
+      // Prefetch background data
+      const { prefetchBackgroundData } = require('../handlers/authentication-handler');
+      const backgroundData = await prefetchBackgroundData(authResult.employee);
+      ws.cachedData = {
+        ...ws.cachedData,
+        ...backgroundData
+      };
+      
+      // Create call log
+      const { createCallLog } = require('../services/airtable/call-log-service');
+      const providerId = authResult.provider?.id || backgroundData.providers?.providers?.[0]?.id;
+      const startedAt = (ws.callStartTime || new Date()).toLocaleString('en-AU', {
+        timeZone: 'Australia/Sydney',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+      
+      const callLogResult = await createCallLog({
+        callSid: callState.sid,
+        employeeId: authResult.employee.id,
+        providerId: providerId,
+        direction: 'Inbound',
+        startedAt
+      });
+      
+      if (callLogResult.success && callLogResult.recordId) {
+        ws.callLogRecordId = callLogResult.recordId;
+        ws.employeeId = authResult.employee.id;
+        ws.providerId = providerId;
+      }
+      
+      // Update state to provider selection
+      const updatedState = {
+        ...callState,
+        phase: 'provider_selection',
+        employee: authResult.employee,
+        provider: authResult.provider,
+        authMethod: 'pin',
+        pinBuffer: undefined, // Clear PIN buffer
+        updatedAt: new Date().toISOString()
+      };
+      
+      await saveState(updatedState);
+      
+      // Generate greeting
+      const { generateSingleProviderGreeting, generateMultiProviderGreeting } = require('../handlers/provider-handler');
+      const providerResult = backgroundData.providers;
+      
+      if (providerResult.providers?.length === 1) {
+        const greeting = generateSingleProviderGreeting(authResult.employee, providerResult.providers[0]);
+        await generateAndSpeak(greeting.message);
+      } else {
+        const greeting = generateMultiProviderGreeting(authResult.employee, providerResult.providers);
+        const updatedStateWithProviders = {
+          ...updatedState,
+          availableProviders: providerResult.providers.map((p: any, index: number) => ({
+            ...p,
+            selectionNumber: index + 1
+          }))
+        };
+        await saveState(updatedStateWithProviders);
+        await generateAndSpeak(greeting);
+      }
+      
+    } else {
+      // PIN authentication failed
+      const newAttempts = (callState.attempts?.clientId || 0) + 1;
+      
+      logger.warn('PIN authentication failed', {
+        attempt: newAttempts,
+        callSid: callState.sid,
+        type: 'pin_auth_failed'
+      });
+      
+      // Track failure
+      if (ws.callEvents) {
+        trackCallEvent(ws.callEvents, 'authentication', 'pin_auth_failed', {
+          pin,
+          attempt: newAttempts
+        });
+      }
+      
+      if (newAttempts >= 3) {
+        await generateAndSpeak('I could not find your PIN after several attempts. Please contact your supervisor. Goodbye.');
+        return;
+      }
+      
+      // Update state with incremented attempts
+      const updatedState = {
+        ...callState,
+        pinBuffer: '', // Clear PIN buffer
+        attempts: {
+          ...callState.attempts,
+          clientId: newAttempts
+        },
+        updatedAt: new Date().toISOString()
+      };
+      
+      await saveState(updatedState);
+      await generateAndSpeak('I could not find that PIN. Please use your keypad to enter your correct employee PIN followed by the pound key.');
+    }
+    
+  } else {
+    // Collect digit
+    const currentBuffer = callState.pinBuffer || '';
+    const newBuffer = currentBuffer + digit;
+    
+    logger.info('PIN digit collected', {
+      bufferLength: newBuffer.length,
+      callSid: callState.sid,
+      type: 'pin_digit_collected'
+    });
+    
+    // Update state with new digit
+    const updatedState = {
+      ...callState,
+      pinBuffer: newBuffer,
+      updatedAt: new Date().toISOString()
+    };
+    
+    await saveState(updatedState);
   }
 }
 
@@ -194,59 +372,47 @@ async function handleJobSelection(context: DTMFRoutingContext): Promise<void> {
 async function handleJobOptions(context: DTMFRoutingContext): Promise<void> {
   const { callState, digit, generateAndSpeak, saveState, ws, streamSid } = context;
   
-  if (digit === '3') {
+  if (digit === '1') {
+    // Leave shift open for someone else
+    try {
+      // Track event
+      if (ws.callEvents) {
+        trackCallEvent(ws.callEvents, 'job_options', 'leave_open_selected', {
+          jobCode: callState.jobTemplate?.jobCode,
+          jobTitle: callState.jobTemplate?.title,
+          patientName: callState.patient?.name
+        });
+      }
+      
+      // Update state to proceed with "leave open" action
+      const updatedState = {
+        ...callState,
+        phase: 'occurrence_selection',
+        actionType: 'leave_open',
+        selectedOption: '1',
+        updatedAt: new Date().toISOString()
+      };
+      
+      await saveState(updatedState);
+      await generateAndSpeak('Please wait while I look up your upcoming shifts.');
+      
+      // Fetch and present occurrences
+      setTimeout(async () => {
+        await handleOccurrenceSelection(context, updatedState);
+      }, 800);
+      
+    } catch (error) {
+      logger.error('Leave open processing error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        type: 'leave_open_error'
+      });
+      await generateAndSpeak("I'm having trouble processing that option. Please press 2 to connect with a representative.");
+    }
+  } else if (digit === '2') {
     // Transfer to representative
     await handleTransferToRepresentative(context);
-  } else if (digit === '4') {
-    // Go back to job selection
-    await handleBackToJobSelection(context);
-  } else if (digit === '1' || digit === '2') {
-    // Reschedule or leave open - use existing FSM logic
-    try {
-      const { processJobOptionsPhase } = require('../fsm/phases/job-options-phase');
-      const { extractResponseText } = require('../utils/text-extractor');
-      
-      const result = await processJobOptionsPhase(callState, digit, true, 'dtmf');
-      
-      logger.info('Job options processed', {
-        digit,
-        action: result.result.action,
-        newPhase: result.newState.phase,
-        type: 'job_options_processed'
-      });
-      
-      // Save the new state
-      await saveState(result.newState);
-      
-      // Extract and speak the response
-      const responseText = extractResponseText(result.result);
-      if (responseText) {
-        await generateAndSpeak(responseText);
-      } else {
-        // Fallback message
-        if (digit === '1') {
-          await generateAndSpeak('Please wait while I look up your upcoming appointments.');
-        } else {
-          await generateAndSpeak('Please provide the reason for leaving this job open.');
-        }
-      }
-      
-      // If transitioned to occurrence_selection, continue processing
-      if (result.newState.phase === 'occurrence_selection') {
-        setTimeout(async () => {
-          await handleOccurrenceSelection(context, result.newState);
-        }, 2000); // Wait for speech to complete
-      }
-    } catch (error) {
-      logger.error('Job options processing error', {
-        digit,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        type: 'job_options_error'
-      });
-      await generateAndSpeak("I'm having trouble processing that option. Please try again.");
-    }
   } else {
-    await generateAndSpeak('Invalid selection. Please press 1 to reschedule, 2 to leave open, 3 to talk to a representative, or 4 to select a different job.');
+    await generateAndSpeak('Invalid selection. Please press 1 to leave this shift open for someone else, or press 2 to connect with a representative.');
   }
 }
 
@@ -273,16 +439,16 @@ async function handleTransferToRepresentative(context: DTMFRoutingContext): Prom
   };
   
   await saveState(updatedState);
-  await generateAndSpeak('Let me connect you to a representative. Please hold.');
+  await generateAndSpeak('Connecting you to a representative now. Please hold.');
   
-  // Wait for speech to complete, then handle transfer
+  // Reduced delay for faster transfer
   setTimeout(async () => {
     try {
       const transferResult = await handleRepresentativeTransfer({
         callSid: callState.sid,
         callerPhone: callState.employee?.phone || '',
         callerName: callState.employee?.name,
-        representativePhone: '+522281957913',
+        representativePhone: '+61490550941',
         jobInfo: {
           jobTitle: callState.jobTemplate?.title || 'Unknown Job',
           patientName: callState.patient?.name || 'Unknown Patient'
@@ -303,37 +469,37 @@ async function handleTransferToRepresentative(context: DTMFRoutingContext): Prom
       // Announce transfer status
       await generateAndSpeak(transferResult.message);
       
-      // If enqueued, play hold music
-      if (transferResult.status === 'enqueued') {
-        setTimeout(() => {
-          playHoldMusic(ws);
-          
-          // Set up periodic queue updates
-          ws.queueUpdateInterval = setInterval(async () => {
-            const updateMessage = await getQueueUpdateMessage(callState.sid);
-            if (updateMessage) {
-              await generateAndSpeak(updateMessage);
-              // Resume hold music after announcement
-              setTimeout(() => {
-                playHoldMusic(ws);
-              }, 5000);
-            } else {
-              // Call removed from queue
-              clearInterval(ws.queueUpdateInterval);
-              ws.queueUpdateInterval = undefined;
-            }
-          }, 30000); // Every 30 seconds
-        }, 5000); // Start hold music 5 seconds after queue announcement
-      }
-    } catch (error) {
-      logger.error('Transfer handling error', {
-        callSid: callState.sid,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        type: 'transfer_handling_error'
-      });
-      await generateAndSpeak("I'm having trouble connecting you to a representative. Please try again later.");
-    }
-  }, 1000);
+          // If enqueued, play hold music
+          if (transferResult.status === 'enqueued') {
+            setTimeout(() => {
+              playHoldMusic(ws);
+              
+              // Set up periodic queue updates
+              ws.queueUpdateInterval = setInterval(async () => {
+                const updateMessage = await getQueueUpdateMessage(callState.sid);
+                if (updateMessage) {
+                  await generateAndSpeak(updateMessage);
+                  // Resume hold music after announcement
+                  setTimeout(() => {
+                    playHoldMusic(ws);
+                  }, 3000);
+                } else {
+                  // Call removed from queue
+                  clearInterval(ws.queueUpdateInterval);
+                  ws.queueUpdateInterval = undefined;
+                }
+              }, 30000); // Every 30 seconds
+            }, 3000); // Start hold music 3 seconds after queue announcement
+          }
+        } catch (error) {
+          logger.error('Transfer handling error', {
+            callSid: callState.sid,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            type: 'transfer_handling_error'
+          });
+          await generateAndSpeak("I'm having trouble connecting you to a representative. Please try again later.");
+        }
+      }, 500);
 }
 
 /**
@@ -350,14 +516,15 @@ async function handleBackToJobSelection(context: DTMFRoutingContext): Promise<vo
     ? filterJobsByProvider(employeeJobs, callState.provider.id)
     : employeeJobs;
   
-  // Update state with job list
+  // Update state with job list (limited to 2 shifts)
+  const jobsToPresent = filteredJobs.slice(0, 2);
   const updatedState = {
     ...callState,
     phase: 'job_selection',
     jobCode: null,
     jobTemplate: undefined,
     patient: undefined,
-    employeeJobs: filteredJobs.map((job: any, index: number) => ({
+    employeeJobs: jobsToPresent.map((job: any, index: number) => ({
       ...job,
       index: index + 1
     })),
@@ -366,18 +533,21 @@ async function handleBackToJobSelection(context: DTMFRoutingContext): Promise<vo
   
   await saveState(updatedState);
   
-  // Generate job list message
+  // Limit to 2 shifts and generate job list message with date/time
+  const jobsToPresent = filteredJobs.slice(0, 2);
   let jobListMessage = '';
-  if (filteredJobs.length === 1) {
-    const job = filteredJobs[0];
-    const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
-    jobListMessage = `You have one job: ${job.jobTemplate.title} for ${patientLastName}. Press 1 to select this job.`;
+  if (jobsToPresent.length === 1) {
+    const job = jobsToPresent[0];
+    const patientFirstName = job.patient?.name ? job.patient.name.split(' ')[0] : 'a patient';
+    const shiftDetails = job.nextOccurrence?.displayDate || 'an upcoming shift';
+    jobListMessage = `You have one shift: ${job.jobTemplate.title} for ${patientFirstName} at ${shiftDetails}. Press 1 to select this shift.`;
   } else {
-    jobListMessage = `You have ${filteredJobs.length} jobs. `;
-    filteredJobs.forEach((job: any, index: number) => {
+    jobListMessage = `You have ${jobsToPresent.length} shifts. `;
+    jobsToPresent.forEach((job: any, index: number) => {
       const number = index + 1;
-      const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
-      jobListMessage += `Press ${number} for ${job.jobTemplate.title} for ${patientLastName}. `;
+      const patientFirstName = job.patient?.name ? job.patient.name.split(' ')[0] : 'a patient';
+      const shiftDetails = job.nextOccurrence?.displayDate || 'an upcoming shift';
+      jobListMessage += `Press ${number} for ${job.jobTemplate.title} for ${patientFirstName} at ${shiftDetails}. `;
     });
   }
   
@@ -713,12 +883,15 @@ async function handleWorkflowComplete(context: DTMFRoutingContext): Promise<void
     const employeeJobs = (ws as any).cachedData?.employeeJobs || callState.employeeJobs || [];
     
     // Filter by provider if set
-    const jobs = callState.provider?.id 
+    const filteredJobs = callState.provider?.id 
       ? filterJobsByProvider(employeeJobs, callState.provider.id)
       : employeeJobs;
     
+    // Limit to 2 shifts
+    const jobs = filteredJobs.slice(0, 2);
+    
     if (jobs.length === 0) {
-      await generateAndSpeak("You don't have any more jobs at the moment. Thank you for calling. Goodbye!");
+      await generateAndSpeak("You don't have any more shifts at the moment. Thank you for calling. Goodbye!");
       return;
     }
     
@@ -740,12 +913,13 @@ async function handleWorkflowComplete(context: DTMFRoutingContext): Promise<void
     
     await saveState(updatedState);
     
-    // Present job list
-    let message = `You have ${jobs.length} job${jobs.length > 1 ? 's' : ''}. `;
+    // Present job list with date/time
+    let message = `You have ${jobs.length} shift${jobs.length > 1 ? 's' : ''}. `;
     jobs.forEach((job: any, index: number) => {
-      const patientName = job.patient?.name ? job.patient.name.split(' ').pop() : 'Patient';
+      const patientFirstName = job.patient?.name ? job.patient.name.split(' ')[0] : 'a patient';
       const jobTitle = job.jobTemplate?.title || job.title || 'Job';
-      message += `Press ${index + 1} for ${jobTitle} for ${patientName}. `;
+      const shiftDetails = job.nextOccurrence?.displayDate || 'an upcoming shift';
+      message += `Press ${index + 1} for ${jobTitle} for ${patientFirstName} at ${shiftDetails}. `;
     });
     
     await generateAndSpeak(message);

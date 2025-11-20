@@ -26,7 +26,7 @@ export default function PatientsPage() {
       } else {
         setError(data.error || 'Failed to fetch patients');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred while fetching patients');
     } finally {
       setLoading(false);
@@ -49,17 +49,20 @@ export default function PatientsPage() {
     { 
       key: 'Phone', 
       label: 'Phone',
-      render: (value: string) => formatPhoneNumber(value)
+      render: (value: unknown) => formatPhoneNumber(value as string)
     },
     { key: 'Address', label: 'Address' },
     { 
       key: 'Important Notes', 
       label: 'Notes',
-      render: (value: string) => (
-        <span className="truncate max-w-xs block" title={value}>
-          {value || '-'}
-        </span>
-      )
+      render: (value: unknown) => {
+        const notes = value as string;
+        return (
+          <span className="truncate max-w-xs block" title={notes}>
+            {notes || '-'}
+          </span>
+        );
+      }
     },
   ];
   

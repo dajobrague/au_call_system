@@ -97,13 +97,17 @@ export async function POST(request: NextRequest) {
     });
 
     // For Voice AI mode, return TwiML to stream to Railway WebSocket
-    const WEBSOCKET_URL = 'wss://aucallsystem-ivr-system.up.railway.app/stream';
+    // Twilio doesn't pass URL query params to WebSocket - must use Parameter tags!
+    const websocketUrl = `wss://aucallsystem-ivr-system.up.railway.app/stream`;
     
-    // Generate TwiML with WebSocket stream URL and phone number parameter
+    // Generate TwiML with WebSocket stream URL and parameters
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
-    <Stream url="${WEBSOCKET_URL}?phone=${encodeURIComponent(webhookData.From)}&callSid=${webhookData.CallSid}" />
+    <Stream url="${websocketUrl}">
+      <Parameter name="phone" value="${webhookData.From}" />
+      <Parameter name="callSid" value="${webhookData.CallSid}" />
+    </Stream>
   </Connect>
 </Response>`;
 
@@ -112,7 +116,8 @@ export async function POST(request: NextRequest) {
     logger.info('Returning TwiML for WebSocket stream', {
       callSid: webhookData.CallSid,
       from: webhookData.From,
-      websocketUrl: WEBSOCKET_URL,
+      websocketUrl: websocketUrl,
+      phone: webhookData.From,
       latencyMs
     });
 

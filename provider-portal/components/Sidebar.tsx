@@ -12,8 +12,6 @@ import {
   Hospital, 
   ClipboardList, 
   Calendar, 
-  Phone, 
-  FileText, 
   LogOut 
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -31,8 +29,6 @@ const navItems: NavItem[] = [
   { name: 'Patients', path: '/dashboard/patients', icon: Hospital },
   { name: 'Job Templates', path: '/dashboard/job-templates', icon: ClipboardList },
   { name: 'Occurrences', path: '/dashboard/occurrences', icon: Calendar },
-  { name: 'Call Logs', path: '/dashboard/call-logs', icon: Phone },
-  { name: 'Reports', path: '/dashboard/reports', icon: FileText },
 ];
 
 export default function Sidebar() {
@@ -47,10 +43,11 @@ export default function Sidebar() {
       .then(res => res.json())
       .then(data => {
         if (data.success && data.provider) {
-          setProviderName(data.provider.fields.Name || 'Provider Portal');
+          setProviderName((data.provider.fields.Name as string) || 'Provider Portal');
           // Check if provider has logo attachment
-          if (data.provider.fields.Logo && Array.isArray(data.provider.fields.Logo) && data.provider.fields.Logo.length > 0) {
-            setProviderLogo(data.provider.fields.Logo[0].url);
+          const logo = data.provider.fields.Logo as Array<{ url: string }> | undefined;
+          if (logo && Array.isArray(logo) && logo.length > 0) {
+            setProviderLogo(logo[0].url);
           }
         }
       })

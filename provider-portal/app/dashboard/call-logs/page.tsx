@@ -26,7 +26,7 @@ export default function CallLogsPage() {
       } else {
         setError(data.error || 'Failed to fetch call logs');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred while fetching call logs');
     } finally {
       setLoading(false);
@@ -40,12 +40,12 @@ export default function CallLogsPage() {
     { 
       key: 'Start Time', 
       label: 'Date/Time',
-      render: (value: string) => value ? new Date(value).toLocaleString() : '-'
+      render: (value: unknown) => value ? new Date(value as string).toLocaleString() : '-'
     },
     { 
       key: 'Duration', 
       label: 'Duration',
-      render: (value: number) => value ? `${Math.floor(value / 60)}:${(value % 60).toString().padStart(2, '0')}` : '-'
+      render: (value: unknown) => value ? `${Math.floor((value as number) / 60)}:${((value as number) % 60).toString().padStart(2, '0')}` : '-'
     },
     { key: 'Status', label: 'Status' },
   ];
@@ -74,6 +74,8 @@ export default function CallLogsPage() {
     </div>
   );
 }
+
+
 
 
 
