@@ -69,6 +69,7 @@ export async function processOccurrenceSelectionPhase(state: CallState, input: s
           scheduledAt: occ.scheduledAt,
           displayDate: occ.displayDate,
           status: occ.status,
+          time: occ.time, // Include time field for HH:MM format
         })),
       };
       
@@ -188,6 +189,7 @@ export async function processOccurrenceSelectionPhase(state: CallState, input: s
           id: selectedOccurrence.id,
           occurrenceId: selectedOccurrence.occurrenceId,
           scheduledAt: selectedOccurrence.scheduledAt,
+          time: selectedOccurrence.time || '00:00',
           displayDate: selectedOccurrence.displayDate,
         },
         phase: useVoiceAI ? PHASES.COLLECT_DAY : PHASES.COLLECT_DAY, // Will be handled differently in voice mode
@@ -232,6 +234,7 @@ export async function processOccurrenceSelectionPhase(state: CallState, input: s
           id: selectedOccurrence.id,
           occurrenceId: selectedOccurrence.occurrenceId,
           scheduledAt: selectedOccurrence.scheduledAt,
+          time: selectedOccurrence.time || '00:00',
           displayDate: selectedOccurrence.displayDate,
         },
         phase: PHASES.COLLECT_REASON,

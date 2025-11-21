@@ -17,7 +17,7 @@ export interface ProviderGreetingResult {
 
 /**
  * Generate greeting message for single provider scenario
- * Includes provider greeting and job list with date/time details
+ * Includes provider greeting and job list
  */
 export function generateSingleProviderGreeting(options: ProviderGreetingOptions): ProviderGreetingResult {
   const { employee, provider, employeeJobs } = options;
@@ -31,23 +31,18 @@ export function generateSingleProviderGreeting(options: ProviderGreetingOptions)
     };
   }
   
-  // Limit to 2 shifts maximum as per requirements
-  const jobsToPresent = employeeJobs.slice(0, 2);
-  
-  // Generate job list message with first name, job title, date and time
+  // Generate job list message with last name only and job title
   let jobListMessage = '';
-  if (jobsToPresent.length === 1) {
-    const job = jobsToPresent[0];
-    const patientFirstName = job.patient?.name ? job.patient.name.split(' ')[0] : 'a patient';
-    const shiftDetails = job.nextOccurrence?.displayDate || 'an upcoming shift';
-    jobListMessage = `You have one shift: ${job.jobTemplate.title} for ${patientFirstName} at ${shiftDetails}. Press 1 to select this shift.`;
+  if (employeeJobs.length === 1) {
+    const job = employeeJobs[0];
+    const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
+    jobListMessage = `You have one job: ${job.jobTemplate.title} for ${patientLastName}. Press 1 to select this job.`;
   } else {
-    jobListMessage = `You have ${jobsToPresent.length} shifts. `;
-    jobsToPresent.forEach((job: any, index: number) => {
+    jobListMessage = `You have ${employeeJobs.length} jobs. `;
+    employeeJobs.forEach((job: any, index: number) => {
       const number = index + 1;
-      const patientFirstName = job.patient?.name ? job.patient.name.split(' ')[0] : 'a patient';
-      const shiftDetails = job.nextOccurrence?.displayDate || 'an upcoming shift';
-      jobListMessage += `Press ${number} for ${job.jobTemplate.title} for ${patientFirstName} at ${shiftDetails}. `;
+      const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
+      jobListMessage += `Press ${number} for ${job.jobTemplate.title} for ${patientLastName}. `;
     });
   }
   
@@ -73,7 +68,7 @@ export function generateMultiProviderGreeting(employee: any, providers: any[]): 
 
 /**
  * Generate greeting after provider selection in multi-provider scenario
- * Includes provider greeting and filtered job list with date/time details
+ * Includes provider greeting and filtered job list
  */
 export function generateProviderSelectionGreeting(
   provider: any,
@@ -88,23 +83,18 @@ export function generateProviderSelectionGreeting(
     };
   }
   
-  // Limit to 2 shifts maximum as per requirements
-  const jobsToPresent = employeeJobs.slice(0, 2);
-  
-  // Generate job list message with first name, job title, date and time
+  // Generate job list message
   let jobListMessage = '';
-  if (jobsToPresent.length === 1) {
-    const job = jobsToPresent[0];
-    const patientFirstName = job.patient?.name ? job.patient.name.split(' ')[0] : 'a patient';
-    const shiftDetails = job.nextOccurrence?.displayDate || 'an upcoming shift';
-    jobListMessage = `You have one shift. Press 1 for ${job.jobTemplate.title} for ${patientFirstName} at ${shiftDetails}. `;
+  if (employeeJobs.length === 1) {
+    const job = employeeJobs[0];
+    const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
+    jobListMessage = `You have one job. Press 1 for ${job.jobTemplate.title} for ${patientLastName}. `;
   } else {
-    jobListMessage = `You have ${jobsToPresent.length} shifts. `;
-    jobsToPresent.forEach((job: any, index: number) => {
+    jobListMessage = `You have ${employeeJobs.length} jobs. `;
+    employeeJobs.forEach((job: any, index: number) => {
       const number = index + 1;
-      const patientFirstName = job.patient?.name ? job.patient.name.split(' ')[0] : 'a patient';
-      const shiftDetails = job.nextOccurrence?.displayDate || 'an upcoming shift';
-      jobListMessage += `Press ${number} for ${job.jobTemplate.title} for ${patientFirstName} at ${shiftDetails}. `;
+      const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
+      jobListMessage += `Press ${number} for ${job.jobTemplate.title} for ${patientLastName}. `;
     });
   }
   

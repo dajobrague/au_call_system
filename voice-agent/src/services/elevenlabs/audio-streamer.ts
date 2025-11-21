@@ -16,6 +16,7 @@ export function stopCurrentAudio(ws: WebSocketWithStream): void {
   if (ws.currentAudioInterval) {
     clearInterval(ws.currentAudioInterval);
     ws.currentAudioInterval = undefined;
+    console.log('🛑 Stopped current audio playback');
   }
 }
 
@@ -32,11 +33,14 @@ export async function streamAudioToTwilio(
   streamSid: string
 ): Promise<void> {
   if (!ws || ws.readyState !== 1) {
+    console.error('❌ WebSocket not ready for streaming');
     return;
   }
   
   // Stop any currently playing audio
   stopCurrentAudio(ws);
+  
+  console.log('🎵 Streaming audio to Twilio...');
   
   let frameIndex = 0;
   
@@ -45,6 +49,7 @@ export async function streamAudioToTwilio(
       if (!ws || ws.readyState !== 1) {
         clearInterval(interval);
         ws.currentAudioInterval = undefined;
+        console.log('🛑 Streaming stopped - WebSocket closed');
         resolve();
         return;
       }
@@ -52,6 +57,7 @@ export async function streamAudioToTwilio(
       if (frameIndex >= frames.length) {
         clearInterval(interval);
         ws.currentAudioInterval = undefined;
+        console.log(`✅ Streaming complete - ${frames.length} frames sent`);
         resolve();
         return;
       }

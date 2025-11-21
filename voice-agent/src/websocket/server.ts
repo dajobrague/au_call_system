@@ -23,6 +23,7 @@ import { generateSpeech, streamAudioToTwilio, stopCurrentAudio } from '../servic
 import { startCallRecording } from '../services/twilio/call-recorder';
 import { twilioConfig } from '../config/twilio';
 import { logger } from '../lib/logger';
+import { initializeDisclaimerCache, playDisclaimerFromCache } from '../audio/disclaimer-cache';
 
 // Use require for twilio to avoid TypeScript import issues
 const twilio = require('twilio');
@@ -39,6 +40,14 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
   const wss = new WebSocketServer({ 
     server,
     path: '/stream'  // Explicitly handle /stream path
+  });
+
+  // Pre-generate disclaimer audio for instant playback
+  initializeDisclaimerCache().catch(error => {
+    logger.error('Failed to initialize disclaimer cache', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      type: 'disclaimer_init_error'
+    });
   });
 
   // Health check endpoint
@@ -213,8 +222,8 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
           }
         })();
 
-        // Play short disclaimer while authentication happens in background
-        await generateAndSpeak('This call may be recorded.');
+        // Play pre-cached disclaimer instantly while authentication happens in background
+        await playDisclaimerFromCache(ws, ws.streamSid!);
 
         // Wait for authentication to complete
         const authResult = await authPromise;

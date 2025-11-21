@@ -18,6 +18,7 @@ import {
   generateNaturalReasonPrompt, 
   generateEmpatheticConfirmation 
 } from '../../services/voice/reason-processor';
+import { jobNotificationService } from '../../services/sms/job-notification-service';
 import { 
   summarizeConversation, 
   detectEmotionalDistress 
@@ -272,8 +273,6 @@ export async function processConfirmLeaveOpenPhase(state: CallState, input: stri
           
           // Trigger instant job redistribution
           try {
-            const { jobNotificationService } = await import('../../services/sms/job-notification-service');
-            
             // We need to reconstruct the full objects for redistribution
             const fullJobTemplate = {
               id: state.jobTemplate?.id || '',
@@ -294,6 +293,7 @@ export async function processConfirmLeaveOpenPhase(state: CallState, input: stri
               occurrenceId: state.selectedOccurrence.occurrenceId,
               jobTemplateId: state.jobTemplate?.id || '',
               scheduledAt: state.selectedOccurrence.scheduledAt,
+              time: state.selectedOccurrence.time || '00:00',
               status: 'Open',
               assignedEmployeeId: '', // Now empty
               occurrenceLabel: state.selectedOccurrence.occurrenceId,

@@ -78,6 +78,7 @@ export interface CallState {
     id: string;
     occurrenceId: string;
     scheduledAt: string;
+    time?: string;                // HH:MM format
     displayDate: string;
     status: string;
   }>;
@@ -85,6 +86,7 @@ export interface CallState {
     id: string;
     occurrenceId: string;
     scheduledAt: string;
+    time: string;                 // HH:MM format
     displayDate: string;
   };
   actionType?: 'reschedule' | 'leave_open'; // Selected action type

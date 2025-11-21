@@ -5,13 +5,15 @@
 
 import { logger } from '../lib/logger';
 import { selectJob, generateJobOptionsMessage, filterJobsByProvider } from '../handlers/job-handler';
-import { generateProviderSelectionGreeting } from '../handlers/provider-handler';
+import { generateProviderSelectionGreeting, generateOccurrenceBasedGreeting } from '../handlers/provider-handler';
 import { handleRepresentativeTransfer, getQueueUpdateMessage } from '../handlers/transfer-handler';
 import { generateSpeech, streamAudioToTwilio } from '../services/elevenlabs';
 import { playHoldMusic } from '../audio/hold-music-player';
 import { stopRecordingAndProcess, isRecording } from '../services/speech';
 import { trackCallEvent } from '../services/airtable/call-log-service';
 import { WebSocketWithExtensions } from './connection-handler';
+import { paginateOccurrences, validateOccurrenceSelection, generateOccurrenceListPrompt } from '../handlers/occurrence-pagination';
+import { jobNotificationService } from '../services/sms/job-notification-service';
 
 export interface DTMFRoutingContext {
   ws: any;
@@ -367,53 +369,195 @@ async function handleJobSelection(context: DTMFRoutingContext): Promise<void> {
 }
 
 /**
- * Handle job options DTMF
+ * Handle job options DTMF (SIMPLIFIED FLOW)
+ * NEW: Only 2 options: 1=leave open, 2=representative
  */
 async function handleJobOptions(context: DTMFRoutingContext): Promise<void> {
-  const { callState, digit, generateAndSpeak, saveState, ws, streamSid } = context;
+  const { callState, digit, generateAndSpeak, saveState, ws } = context;
   
   if (digit === '1') {
-    // Leave shift open for someone else
+    // Leave this shift open for someone else
+    logger.info('User selected to leave shift open', {
+      callSid: callState.sid,
+      occurrenceId: callState.selectedOccurrence?.occurrenceId,
+      type: 'leave_shift_open'
+    });
+    
+    // Track event
+    if (ws.callEvents) {
+      trackCallEvent(ws.callEvents, 'job_options', 'leave_open_selected', {
+        occurrenceId: callState.selectedOccurrence?.occurrenceId,
+        patientFirstName: callState.selectedOccurrence?.patient?.firstName
+      });
+    }
+    
     try {
-      // Track event
-      if (ws.callEvents) {
-        trackCallEvent(ws.callEvents, 'job_options', 'leave_open_selected', {
-          jobCode: callState.jobTemplate?.jobCode,
-          jobTitle: callState.jobTemplate?.title,
-          patientName: callState.patient?.name
+      // Import leave open service
+      const { jobOccurrenceService } = await import('../services/airtable');
+      
+      await generateAndSpeak("Please wait while I update this shift.");
+      
+      // Leave job open in Airtable
+      const result = await jobOccurrenceService.leaveJobOpen(
+        callState.selectedOccurrence?.occurrenceRecordId,
+        callState.employee?.id,
+        'Worker called to leave shift open via voice system'
+      );
+      
+      if (result.success) {
+        logger.info('Shift left open successfully', {
+          occurrenceId: callState.selectedOccurrence?.occurrenceId,
+          type: 'leave_open_success'
         });
+        
+        // Trigger instant job redistribution (non-blocking)
+        try {
+          // Get provider ID from enriched occurrences or cached data
+          const providerId = callState.provider?.id || (ws as any).cachedData?.providers?.providers?.[0]?.id;
+          
+          if (providerId) {
+            // Build full objects for notification service
+            const fullJobTemplate = {
+              id: callState.selectedOccurrence?.jobTemplate?.id || '',
+              jobCode: callState.selectedOccurrence?.jobTemplate?.jobCode || '',
+              title: callState.selectedOccurrence?.jobTemplate?.title || 'Healthcare Service',
+              serviceType: 'Healthcare',
+              priority: 'Normal',
+              patientId: callState.selectedOccurrence?.patient?.id || '',
+              providerId: providerId,
+              defaultEmployeeId: '',
+              uniqueJobNumber: 0,
+              occurrenceIds: [],
+              active: true,
+            };
+            
+            const fullJobOccurrence = {
+              id: callState.selectedOccurrence?.occurrenceRecordId || '',
+              occurrenceId: callState.selectedOccurrence?.occurrenceId || '',
+              jobTemplateId: callState.selectedOccurrence?.jobTemplate?.id || '',
+              scheduledAt: callState.selectedOccurrence?.scheduledAt || '',
+              time: callState.selectedOccurrence?.time || '',
+              status: 'Open',
+              assignedEmployeeId: '',
+              occurrenceLabel: callState.selectedOccurrence?.occurrenceId || '',
+              providerId: providerId,
+              patientId: callState.selectedOccurrence?.patient?.id || '',
+              displayDate: callState.selectedOccurrence?.displayDateTime || '',
+            };
+            
+            const fullPatient = {
+              id: callState.selectedOccurrence?.patient?.id || '',
+              name: callState.selectedOccurrence?.patient?.fullName || 'Unknown Patient',
+              patientId: 0,
+              phone: '',
+              dateOfBirth: '',
+              providerId: providerId,
+              active: true,
+            };
+            
+            // Trigger redistribution without waiting (non-blocking)
+            jobNotificationService.processInstantJobRedistribution(
+              fullJobOccurrence,
+              fullJobTemplate,
+              fullPatient,
+              'Worker called to leave shift open via voice system',
+              callState.employee
+            ).then(redistributionResult => {
+              logger.info('Job redistribution complete', {
+                occurrenceId: callState.selectedOccurrence?.occurrenceId,
+                employeesNotified: redistributionResult.employeesNotified,
+                success: redistributionResult.success,
+                type: 'redistribution_background_complete'
+              });
+            }).catch(redistributionError => {
+              logger.error('Job redistribution failed (non-critical)', {
+                occurrenceId: callState.selectedOccurrence?.occurrenceId,
+                error: redistributionError instanceof Error ? redistributionError.message : 'Unknown error',
+                type: 'redistribution_background_error'
+              });
+            });
+            
+            logger.info('Job redistribution triggered in background', {
+              occurrenceId: callState.selectedOccurrence?.occurrenceId,
+              providerId: providerId,
+              type: 'redistribution_triggered'
+            });
+          } else {
+            logger.warn('Cannot trigger redistribution: provider ID not found', {
+              occurrenceId: callState.selectedOccurrence?.occurrenceId,
+              type: 'redistribution_no_provider'
+            });
+          }
+        } catch (notificationError) {
+          // Log error but don't fail the call
+          logger.error('Failed to trigger job redistribution (non-critical)', {
+            occurrenceId: callState.selectedOccurrence?.occurrenceId,
+            error: notificationError instanceof Error ? notificationError.message : 'Unknown error',
+            type: 'redistribution_trigger_error'
+          });
+        }
+        
+        // Update state to workflow_complete
+        const updatedState = {
+          ...callState,
+          phase: 'workflow_complete',
+          updatedAt: new Date().toISOString()
+        };
+        
+        await saveState(updatedState);
+        
+        const patientFirstName = callState.selectedOccurrence?.patient?.firstName || 'the patient';
+        const displayDateTime = callState.selectedOccurrence?.displayDateTime || 'the shift';
+        
+        await generateAndSpeak(
+          `Done! Your shift with ${patientFirstName} at ${displayDateTime} has been left open. ` +
+          `Your team members are being notified now. ` +
+          `Is there anything else? Press 1 to handle another shift, or press 2 to end this call.`
+        );
+      } else {
+        logger.error('Failed to leave shift open', {
+          occurrenceId: callState.selectedOccurrence?.occurrenceId,
+          error: result.error,
+          type: 'leave_open_failed'
+        });
+        
+        await generateAndSpeak(
+          "I'm sorry, I couldn't update the shift in the system. " +
+          "Press 1 to try again, or press 2 to talk to a representative."
+        );
       }
-      
-      // Update state to proceed with "leave open" action
-      const updatedState = {
-        ...callState,
-        phase: 'occurrence_selection',
-        actionType: 'leave_open',
-        selectedOption: '1',
-        updatedAt: new Date().toISOString()
-      };
-      
-      await saveState(updatedState);
-      await generateAndSpeak('Please wait while I look up your upcoming shifts.');
-      
-      // Fetch and present occurrences
-      setTimeout(async () => {
-        await handleOccurrenceSelection(context, updatedState);
-      }, 800);
-      
     } catch (error) {
-      logger.error('Leave open processing error', {
+      logger.error('Error leaving shift open', {
         error: error instanceof Error ? error.message : 'Unknown error',
         type: 'leave_open_error'
       });
-      await generateAndSpeak("I'm having trouble processing that option. Please press 2 to connect with a representative.");
+      
+      await generateAndSpeak(
+        "I'm sorry, there was a system error. Press 2 to talk to a representative."
+      );
     }
+    
   } else if (digit === '2') {
-    // Transfer to representative
+    // Connect with representative
     await handleTransferToRepresentative(context);
+    
   } else {
-    await generateAndSpeak('Invalid selection. Please press 1 to leave this shift open for someone else, or press 2 to connect with a representative.');
+    // Invalid selection
+    await generateAndSpeak('Invalid selection. Press 1 to leave this shift open, or press 2 to connect with a representative.');
   }
+  
+  // OLD FLOW (commented out - had reschedule option):
+  /*
+  if (digit === '1') {
+    // Reschedule option (removed per client feedback)
+  } else if (digit === '2') {
+    // Leave open
+  } else if (digit === '3') {
+    // Representative
+  } else if (digit === '4') {
+    // Different job
+  }
+  */
 }
 
 /**
@@ -439,9 +583,9 @@ async function handleTransferToRepresentative(context: DTMFRoutingContext): Prom
   };
   
   await saveState(updatedState);
-  await generateAndSpeak('Connecting you to a representative now. Please hold.');
+  await generateAndSpeak('Let me connect you to a representative. Please hold.');
   
-  // Reduced delay for faster transfer
+  // Wait for speech to complete, then handle transfer
   setTimeout(async () => {
     try {
       const transferResult = await handleRepresentativeTransfer({
@@ -469,37 +613,37 @@ async function handleTransferToRepresentative(context: DTMFRoutingContext): Prom
       // Announce transfer status
       await generateAndSpeak(transferResult.message);
       
-          // If enqueued, play hold music
-          if (transferResult.status === 'enqueued') {
-            setTimeout(() => {
-              playHoldMusic(ws);
-              
-              // Set up periodic queue updates
-              ws.queueUpdateInterval = setInterval(async () => {
-                const updateMessage = await getQueueUpdateMessage(callState.sid);
-                if (updateMessage) {
-                  await generateAndSpeak(updateMessage);
-                  // Resume hold music after announcement
-                  setTimeout(() => {
-                    playHoldMusic(ws);
-                  }, 3000);
-                } else {
-                  // Call removed from queue
-                  clearInterval(ws.queueUpdateInterval);
-                  ws.queueUpdateInterval = undefined;
-                }
-              }, 30000); // Every 30 seconds
-            }, 3000); // Start hold music 3 seconds after queue announcement
-          }
-        } catch (error) {
-          logger.error('Transfer handling error', {
-            callSid: callState.sid,
-            error: error instanceof Error ? error.message : 'Unknown error',
-            type: 'transfer_handling_error'
-          });
-          await generateAndSpeak("I'm having trouble connecting you to a representative. Please try again later.");
-        }
-      }, 500);
+      // If enqueued, play hold music
+      if (transferResult.status === 'enqueued') {
+        setTimeout(() => {
+          playHoldMusic(ws);
+          
+          // Set up periodic queue updates
+          ws.queueUpdateInterval = setInterval(async () => {
+            const updateMessage = await getQueueUpdateMessage(callState.sid);
+            if (updateMessage) {
+              await generateAndSpeak(updateMessage);
+              // Resume hold music after announcement
+              setTimeout(() => {
+                playHoldMusic(ws);
+              }, 5000);
+            } else {
+              // Call removed from queue
+              clearInterval(ws.queueUpdateInterval);
+              ws.queueUpdateInterval = undefined;
+            }
+          }, 30000); // Every 30 seconds
+        }, 5000); // Start hold music 5 seconds after queue announcement
+      }
+    } catch (error) {
+      logger.error('Transfer handling error', {
+        callSid: callState.sid,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        type: 'transfer_handling_error'
+      });
+      await generateAndSpeak("I'm having trouble connecting you to a representative. Please try again later.");
+    }
+  }, 1000);
 }
 
 /**
@@ -516,15 +660,14 @@ async function handleBackToJobSelection(context: DTMFRoutingContext): Promise<vo
     ? filterJobsByProvider(employeeJobs, callState.provider.id)
     : employeeJobs;
   
-  // Update state with job list (limited to 2 shifts)
-  const jobsToPresent = filteredJobs.slice(0, 2);
+  // Update state with job list
   const updatedState = {
     ...callState,
     phase: 'job_selection',
     jobCode: null,
     jobTemplate: undefined,
     patient: undefined,
-    employeeJobs: jobsToPresent.map((job: any, index: number) => ({
+    employeeJobs: filteredJobs.map((job: any, index: number) => ({
       ...job,
       index: index + 1
     })),
@@ -533,20 +676,18 @@ async function handleBackToJobSelection(context: DTMFRoutingContext): Promise<vo
   
   await saveState(updatedState);
   
-  // Generate job list message with date/time
+  // Generate job list message
   let jobListMessage = '';
-  if (jobsToPresent.length === 1) {
-    const job = jobsToPresent[0];
-    const patientFirstName = job.patient?.name ? job.patient.name.split(' ')[0] : 'a patient';
-    const shiftDetails = job.nextOccurrence?.displayDate || 'an upcoming shift';
-    jobListMessage = `You have one shift: ${job.jobTemplate.title} for ${patientFirstName} at ${shiftDetails}. Press 1 to select this shift.`;
+  if (filteredJobs.length === 1) {
+    const job = filteredJobs[0];
+    const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
+    jobListMessage = `You have one job: ${job.jobTemplate.title} for ${patientLastName}. Press 1 to select this job.`;
   } else {
-    jobListMessage = `You have ${jobsToPresent.length} shifts. `;
-    jobsToPresent.forEach((job: any, index: number) => {
+    jobListMessage = `You have ${filteredJobs.length} jobs. `;
+    filteredJobs.forEach((job: any, index: number) => {
       const number = index + 1;
-      const patientFirstName = job.patient?.name ? job.patient.name.split(' ')[0] : 'a patient';
-      const shiftDetails = job.nextOccurrence?.displayDate || 'an upcoming shift';
-      jobListMessage += `Press ${number} for ${job.jobTemplate.title} for ${patientFirstName} at ${shiftDetails}. `;
+      const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
+      jobListMessage += `Press ${number} for ${job.jobTemplate.title} for ${patientLastName}. `;
     });
   }
   
@@ -598,7 +739,7 @@ async function handleOccurrenceSelection(context: DTMFRoutingContext, state: any
 }
 
 /**
- * Handle occurrence selection DTMF input
+ * Handle occurrence selection DTMF input (NEW FLOW - with pagination)
  */
 async function handleOccurrenceSelectionDTMF(context: DTMFRoutingContext): Promise<void> {
   const { callState, digit, generateAndSpeak, saveState, ws } = context;
@@ -606,70 +747,96 @@ async function handleOccurrenceSelectionDTMF(context: DTMFRoutingContext): Promi
   try {
     logger.info('Processing occurrence selection', {
       digit,
+      currentPage: callState.currentPage || 1,
       type: 'occurrence_selection_dtmf'
     });
     
-    // Import occurrence phase
-    const { processOccurrenceSelectionPhase } = require('../fsm/phases/occurrence-phase');
-    const { extractResponseText } = require('../utils/text-extractor');
+    const enrichedOccurrences = callState.enrichedOccurrences || [];
+    const currentPage = callState.currentPage || 1;
     
-    // Process the selection
-    const occurrenceResult = await processOccurrenceSelectionPhase(callState, digit, true);
+    // Paginate occurrences
+    const paginationResult = paginateOccurrences(enrichedOccurrences, currentPage);
+    
+    // Validate selection
+    const selectionIndex = validateOccurrenceSelection(
+      digit,
+      paginationResult.pageItems.length,
+      paginationResult.hasNextPage
+    );
+    
+    if (selectionIndex === null) {
+      // Invalid selection
+      await generateAndSpeak(`Invalid selection. Please press a number from 1 to ${paginationResult.pageItems.length}.`);
+      return;
+    }
+    
+    if (selectionIndex === -1) {
+      // "More" option - go to next page
+      const nextPage = currentPage + 1;
+      const nextPaginationResult = paginateOccurrences(enrichedOccurrences, nextPage);
+      
+      logger.info('Moving to next page', {
+        nextPage,
+        itemsOnPage: nextPaginationResult.pageItems.length,
+        type: 'occurrence_pagination_next'
+      });
+      
+      // Update state with new page
+      const updatedState = {
+        ...callState,
+        currentPage: nextPage,
+        updatedAt: new Date().toISOString()
+      };
+      
+      await saveState(updatedState);
+      
+      // Generate prompt for next page
+      const nextPagePrompt = generateOccurrenceListPrompt(
+        nextPaginationResult.pageItems,
+        nextPaginationResult.currentPage,
+        nextPaginationResult.hasNextPage
+      );
+      
+      await generateAndSpeak(nextPagePrompt);
+      return;
+    }
+    
+    // Valid occurrence selection
+    const selectedOccurrence = paginationResult.pageItems[selectionIndex];
     
     logger.info('Occurrence selected', {
-      action: occurrenceResult.result.action,
-      newPhase: occurrenceResult.newState.phase,
+      occurrenceId: selectedOccurrence.occurrenceId,
+      patientFirstName: selectedOccurrence.patient.firstName,
+      displayDateTime: selectedOccurrence.displayDateTime,
       type: 'occurrence_selected'
     });
 
     // Track event
     if (ws.callEvents) {
       trackCallEvent(ws.callEvents, 'occurrence_selection', 'occurrence_selected', {
-        occurrenceId: occurrenceResult.newState.selectedOccurrence?.id,
-        date: occurrenceResult.newState.selectedOccurrence?.scheduledAt
+        occurrenceId: selectedOccurrence.occurrenceId,
+        occurrenceRecordId: selectedOccurrence.occurrenceRecordId,
+        scheduledAt: selectedOccurrence.scheduledAt,
+        patientFirstName: selectedOccurrence.patient.firstName
       });
     }
     
-    // Save the new state
-    await saveState(occurrenceResult.newState);
+    // Update state with selected occurrence and move to job_options phase
+    const updatedState = {
+      ...callState,
+      phase: 'job_options',
+      selectedOccurrence: selectedOccurrence,
+      jobTemplate: selectedOccurrence.jobTemplate,
+      patient: selectedOccurrence.patient,
+      updatedAt: new Date().toISOString()
+    };
     
-    // Check if we need speech collection for date/time
-    if (occurrenceResult.newState.phase === 'collect_day' || 
-        occurrenceResult.newState.phase === 'collect_time') {
-      
-      const { startSpeechCollection } = require('../services/speech');
-      const { generateInitialPrompt } = require('../services/speech/dialog-responses');
-      
-      const speechContext = {
-        patientName: occurrenceResult.newState.patient?.name || 'the patient',
-        appointmentDate: occurrenceResult.newState.selectedOccurrence?.displayDate || 'the appointment',
-        jobTitle: occurrenceResult.newState.jobTemplate?.title || 'healthcare service',
-        phase: occurrenceResult.newState.phase,
-        attemptNumber: 1,
-        callSid: callState.sid,
-        updateState: async (updates: any) => {
-          const updatedState = { ...occurrenceResult.newState, ...updates, updatedAt: new Date().toISOString() };
-          await saveState(updatedState);
-        }
-      };
-      
-      const prompt = generateInitialPrompt(speechContext);
-      
-      logger.info('Starting speech collection for date/time', {
-        phase: occurrenceResult.newState.phase,
-        type: 'speech_collection_triggered'
-      });
-      
-      // Start speech collection
-      await startSpeechCollection(ws, prompt, speechContext, generateAndSpeak);
-      return; // Don't call generateAndSpeak again
-    }
+    await saveState(updatedState);
     
-    // Extract and speak the response for non-speech phases
-    const responseText = extractResponseText(occurrenceResult.result);
-    if (responseText) {
-      await generateAndSpeak(responseText);
-    }
+    // Generate simplified options message
+    const optionsMessage = generateJobOptionsMessage(selectedOccurrence);
+    await generateAndSpeak(optionsMessage.message);
+    
   } catch (error) {
     logger.error('Occurrence selection DTMF error', {
       digit,
@@ -860,7 +1027,7 @@ async function handleDateTimeConfirmation(context: DTMFRoutingContext): Promise<
 }
 
 /**
- * Handle workflow complete options
+ * Handle workflow complete options (NEW FLOW - occurrence based)
  */
 async function handleWorkflowComplete(context: DTMFRoutingContext): Promise<void> {
   const { digit, callState, generateAndSpeak, saveState, ws } = context;
@@ -872,67 +1039,53 @@ async function handleWorkflowComplete(context: DTMFRoutingContext): Promise<void
   });
   
   if (digit === '1') {
-    // Go back to job selection
-    logger.info('User wants to select another job', {
+    // Handle another shift
+    logger.info('User wants to handle another shift', {
       callSid: callState.sid,
-      type: 'select_another_job'
+      type: 'handle_another_shift'
     });
     
-    // Get jobs from cache (stored during initial auth)
-    const employeeJobs = (ws as any).cachedData?.employeeJobs || callState.employeeJobs || [];
+    // Get enriched occurrences from cache
+    const enrichedOccurrences = (ws as any).cachedData?.enrichedOccurrences || callState.enrichedOccurrences || [];
     
-    // Filter by provider if set
-    const filteredJobs = callState.provider?.id 
-      ? filterJobsByProvider(employeeJobs, callState.provider.id)
-      : employeeJobs;
-    
-    // Limit to 2 shifts
-    const jobs = filteredJobs.slice(0, 2);
-    
-    if (jobs.length === 0) {
-      await generateAndSpeak("You don't have any more shifts at the moment. Thank you for calling. Goodbye!");
+    if (enrichedOccurrences.length === 0) {
+      await generateAndSpeak("You don't have any more shifts scheduled. Thank you for calling. Goodbye!");
       return;
     }
     
-    // Reset to job_selection phase
+    // Reset to occurrence_selection phase
     const updatedState = {
       ...callState,
-      phase: 'job_selection',
-      selectedJob: null,
+      phase: 'occurrence_selection',
       selectedOccurrence: null,
       selectedOption: null,
-      actionType: null,
-      dateTimeInput: null,
-      employeeJobs: jobs.map((job: any, index: number) => ({
-        ...job,
-        index: index + 1
-      })),
+      currentPage: 1,
       updatedAt: new Date().toISOString()
     };
     
     await saveState(updatedState);
     
-    // Present job list with date/time
-    let message = `You have ${jobs.length} shift${jobs.length > 1 ? 's' : ''}. `;
-    jobs.forEach((job: any, index: number) => {
-      const patientFirstName = job.patient?.name ? job.patient.name.split(' ')[0] : 'a patient';
-      const jobTitle = job.jobTemplate?.title || job.title || 'Job';
-      const shiftDetails = job.nextOccurrence?.displayDate || 'an upcoming shift';
-      message += `Press ${index + 1} for ${jobTitle} for ${patientFirstName} at ${shiftDetails}. `;
-    });
+    // Generate occurrence list for page 1
+    const paginationResult = paginateOccurrences(enrichedOccurrences, 1);
+    const occurrencePrompt = generateOccurrenceListPrompt(
+      paginationResult.pageItems,
+      paginationResult.currentPage,
+      paginationResult.hasNextPage
+    );
     
-    await generateAndSpeak(message);
+    await generateAndSpeak(occurrencePrompt);
     
   } else if (digit === '2') {
-    // Transfer to representative
-    logger.info('User requested transfer from workflow complete', {
+    // End call
+    logger.info('User ending call', {
       callSid: callState.sid,
-      type: 'transfer_from_complete'
+      type: 'call_end_requested'
     });
     
-    await handleTransferToRepresentative(context);
+    await generateAndSpeak("Thank you for calling. Have a great day! Goodbye.");
+    // The call will naturally end
     
   } else {
-    await generateAndSpeak('Invalid selection. Press 1 to select another job, or press 2 to talk to a representative.');
+    await generateAndSpeak('Invalid selection. Press 1 to handle another shift, or press 2 to end this call.');
   }
 }

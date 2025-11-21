@@ -77,8 +77,8 @@ export async function transferToRepresentative(
       type: 'conference_outbound_created'
     });
     
-    // Wait briefly for representative to join, then add caller to conference
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Wait for representative to join, then add caller to conference
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Add the caller to the conference using Participant API
     // This keeps the MediaStreams WebSocket connection alive

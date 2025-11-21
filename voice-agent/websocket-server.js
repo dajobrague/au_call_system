@@ -1,70 +1,85 @@
-#!/usr/bin/env node
-
 /**
- * Standalone WebSocket Server for Local Testing
- * Starts the WebSocket server on port 3001 for local development
+ * WebSocket Server Entry Point
+ * Production entry point for Railway deployment
  */
 
-// Register ts-node for TypeScript support
+// Register TypeScript loader with server-specific config
 require('ts-node').register({
-  transpileOnly: true,
-  compilerOptions: {
-    module: 'commonjs',
-    moduleResolution: 'node',
-    esModuleInterop: true,
-    allowSyntheticDefaultImports: true,
-    skipLibCheck: true,
-    resolveJsonModule: true,
-  }
+  project: './tsconfig.server.json',
+  transpileOnly: true // Faster startup, skip type checking
 });
 
 // Load environment variables
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config();
 
-// Import the WebSocket server creator (TypeScript file)
 const { createWebSocketServer } = require('./src/websocket/server');
+const { createHttpRoutes } = require('./src/http/server');
+const { logger } = require('./src/lib/logger');
 
-const PORT = process.env.WEBSOCKET_PORT || 3001;
+const PORT = process.env.WEBSOCKET_PORT || process.env.PORT || 3001;
 
-console.log('🚀 Starting Voice Agent WebSocket Server...');
-console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
-console.log(`📞 Twilio Number: ${process.env.TWILIO_PHONE_NUMBER}`);
-console.log('');
+logger.info('Starting unified HTTP + WebSocket server...', {
+  port: PORT,
+  nodeEnv: process.env.NODE_ENV,
+  type: 'server_startup'
+});
 
 try {
-  // Create and start the WebSocket server
-  const { app, server, wss } = createWebSocketServer(PORT);
-
-  server.listen(PORT, () => {
-    console.log('✅ WebSocket Server Started Successfully!');
-    console.log(`📡 Listening on port ${PORT}`);
-    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-    console.log(`🔌 WebSocket path: ws://localhost:${PORT}/stream`);
-    console.log('');
-    console.log('📊 Server is ready to accept connections...');
-    console.log('');
+  // Create HTTP routes first (includes /api/transfer/after-connect)
+  const httpApp = createHttpRoutes();
+  
+  logger.info('HTTP routes initialized', {
+    type: 'http_routes_ready'
   });
-
+  
+  // Create and start the WebSocket server with HTTP routes
+  const { app, server, wss } = createWebSocketServer(PORT, httpApp);
+  
+  // Start listening on all interfaces (0.0.0.0) for Railway
+  server.listen(PORT, '0.0.0.0', () => {
+    logger.info('WebSocket server started successfully', {
+      port: PORT,
+      host: '0.0.0.0',
+      timestamp: new Date().toISOString(),
+      type: 'server_ready'
+    });
+    
+    console.log(`✅ WebSocket server running on port ${PORT}`);
+    console.log(`🌐 Listening on 0.0.0.0:${PORT}`);
+    console.log(`📡 Health check: http://localhost:${PORT}/health`);
+  });
+  
   // Graceful shutdown
-  process.on('SIGINT', () => {
-    console.log('\n🛑 Shutting down server...');
-    server.close(() => {
-      console.log('✅ Server closed successfully');
-      process.exit(0);
-    });
-  });
-
   process.on('SIGTERM', () => {
-    console.log('\n🛑 Received SIGTERM, shutting down...');
+    logger.info('SIGTERM received, shutting down gracefully', {
+      type: 'server_shutdown'
+    });
+    
     server.close(() => {
-      console.log('✅ Server closed successfully');
+      logger.info('Server closed', { type: 'server_closed' });
       process.exit(0);
     });
   });
-
+  
+  process.on('SIGINT', () => {
+    logger.info('SIGINT received, shutting down gracefully', {
+      type: 'server_shutdown'
+    });
+    
+    server.close(() => {
+      logger.info('Server closed', { type: 'server_closed' });
+      process.exit(0);
+    });
+  });
+  
 } catch (error) {
-  console.error('❌ Failed to start WebSocket server:');
-  console.error(error);
+  logger.error('Failed to start WebSocket server', {
+    error: error instanceof Error ? error.message : 'Unknown error',
+    stack: error instanceof Error ? error.stack : undefined,
+    type: 'server_startup_error'
+  });
+  
+  console.error('❌ Failed to start server:', error);
   process.exit(1);
 }
 

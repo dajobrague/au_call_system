@@ -52,7 +52,7 @@ export function generateBeepTone(durationMs: number = 300): Uint8Array[] {
 
 /**
  * Generate pleasant hold music (soft melody)
- * Creates a smooth, professional-sounding hold music with gentle progression
+ * Creates a C-E-G major chord progression
  * @param durationMs - Duration in milliseconds (default: 10000ms)
  * @returns Array of 20ms audio frames
  */
@@ -61,40 +61,27 @@ export function generateHoldMusic(durationMs: number = 10000): Uint8Array[] {
   const n = Math.floor(sr * (durationMs / 1000));
   const pcm = new Int16Array(n);
   
-  // Create a soothing melody with gentle chord progression
-  // Using a relaxing progression with smoother harmonics
-  const baseFrequencies = [220.00, 246.94, 261.63]; // A3, B3, C4 - calming progression
+  // Create a pleasant melody with multiple harmonics
+  // Using a simple chord progression: C-E-G (major chord)
+  const frequencies = [261.63, 329.63, 392.00]; // C4, E4, G4
   
   for (let i = 0; i < n; i++) {
     const t = i / sr;
     
-    // Create a gentle, evolving sound with multiple harmonics
+    // Mix multiple frequencies for a richer sound
     let sample = 0;
-    
-    // Add fundamental frequencies with gentle amplitude
-    baseFrequencies.forEach((freq, index) => {
-      const amplitude = 0x0800 / baseFrequencies.length; // Softer amplitude
-      // Add slight phase variation for warmth
-      const phase = (index * 0.2);
-      sample += Math.sin(2 * Math.PI * freq * t + phase) * amplitude;
-      
-      // Add subtle harmonics for richness (softer)
-      sample += Math.sin(2 * Math.PI * freq * 2 * t + phase) * (amplitude * 0.3);
+    frequencies.forEach((freq) => {
+      const amplitude = 0x1000 / frequencies.length; // Divide amplitude among frequencies
+      sample += Math.sin(2 * Math.PI * freq * t) * amplitude;
     });
     
-    // Add very slow modulation for a more organic feel
-    const modulation = 1 + (Math.sin(2 * Math.PI * 0.2 * t) * 0.1);
-    sample *= modulation;
-    
-    // Apply smooth envelope with longer fade for seamless looping
-    const fadeLength = sr * 1.0; // 1 second fade for ultra-smooth transitions
+    // Add a slow fade in/out for smooth looping
+    const fadeLength = sr * 0.5; // 0.5 second fade
     let envelope = 1;
     if (i < fadeLength) {
-      // Smooth fade in using cosine curve
-      envelope = 0.5 * (1 - Math.cos(Math.PI * i / fadeLength));
+      envelope = i / fadeLength;
     } else if (i > n - fadeLength) {
-      // Smooth fade out using cosine curve
-      envelope = 0.5 * (1 - Math.cos(Math.PI * (n - i) / fadeLength));
+      envelope = (n - i) / fadeLength;
     }
     
     pcm[i] = Math.round(sample * envelope);
