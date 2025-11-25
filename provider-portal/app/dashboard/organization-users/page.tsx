@@ -48,7 +48,7 @@ export default function OrganizationUsersPage() {
       } else {
         setError(data.error || 'Failed to fetch users');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('An error occurred while fetching users');
     } finally {
       setLoading(false);
@@ -115,7 +115,7 @@ export default function OrganizationUsersPage() {
     setSubmitting(true);
     
     try {
-      const payload: any = {
+      const payload: Record<string, string> = {
         firstName,
         lastName,
         email,
@@ -160,7 +160,7 @@ export default function OrganizationUsersPage() {
           setFormError(data.error || 'Failed to create user');
         }
       }
-    } catch (err) {
+    } catch (_err) {
       setFormError('An error occurred. Please try again.');
     } finally {
       setSubmitting(false);
@@ -184,7 +184,7 @@ export default function OrganizationUsersPage() {
       } else {
         alert(data.error || 'Failed to delete user');
       }
-    } catch (err) {
+    } catch (_err) {
       alert('An error occurred while deleting');
     }
   };
@@ -242,7 +242,7 @@ export default function OrganizationUsersPage() {
                     <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
                       <UsersIcon className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                       <p>No users found</p>
-                      <p className="text-sm mt-1">Click "Add User" to create your first user</p>
+                      <p className="text-sm mt-1">Click &quot;Add User&quot; to create your first user</p>
                     </td>
                   </tr>
                 ) : (

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Employees Pool Management Component
  */
@@ -56,7 +57,7 @@ export default function EmployeesManagement() {
       } else {
         setError(data.error || 'Failed to fetch employees');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('An error occurred while fetching employees');
     } finally {
       setLoading(false);
@@ -110,7 +111,7 @@ export default function EmployeesManagement() {
       } else {
         setError(data.error || 'Failed to delete employee');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('An error occurred while deleting employee');
     }
   };
@@ -165,7 +166,7 @@ export default function EmployeesManagement() {
       } else {
         setError(data.error || `Failed to ${isEditing ? 'update' : 'add'} employee`);
       }
-    } catch (err) {
+    } catch (_err) {
       setError(`An error occurred while ${editingEmployee ? 'updating' : 'adding'} employee`);
     } finally {
       setSaving(false);
@@ -242,7 +243,7 @@ export default function EmployeesManagement() {
               {employees.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                    No employees found. Click "Add Employee" to get started.
+                    No employees found. Click &quot;Add Employee&quot; to get started.
                   </td>
                 </tr>
               ) : (

@@ -5,7 +5,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Save, Upload, X } from 'lucide-react';
+import { Save, X } from 'lucide-react';
 import Image from 'next/image';
 
 interface ProviderData {
@@ -63,7 +63,7 @@ export default function ProfileConfig() {
           setLogoPreview(data.provider.fields.Logo[0].url);
         }
       }
-    } catch (err) {
+    } catch {
       setError('Failed to load provider data');
     } finally {
       setLoading(false);
@@ -107,7 +107,7 @@ export default function ProfileConfig() {
       } else {
         setError(data.error || 'Failed to update provider profile');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred while updating provider profile');
     } finally {
       setSaving(false);

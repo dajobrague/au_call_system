@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Call Volume Over Time Chart
  * Line chart showing calls per day
@@ -61,12 +62,12 @@ export default function CallVolumeChart({ data }: CallVolumeChartProps) {
               borderRadius: '8px',
               padding: '12px'
             }}
-            formatter={(value: any, name: string) => {
+            formatter={(value: number | string, name: string) => {
               if (name === 'calls') return [value, 'Calls'];
               if (name === 'duration') return [`${value} min`, 'Total Duration'];
               return [value, name];
             }}
-            labelFormatter={(label: any, payload: any) => {
+            labelFormatter={(label: string, payload: any) => {
               if (payload && payload[0]) {
                 return `Date: ${payload[0].payload.fullDate}`;
               }

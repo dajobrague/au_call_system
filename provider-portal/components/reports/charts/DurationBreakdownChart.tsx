@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Duration Breakdown Chart
  * Donut chart showing call duration distribution
@@ -48,8 +49,8 @@ export default function DurationBreakdownChart({ data }: DurationBreakdownChartP
     { name: LABELS.long, value: data.long, percentage: Math.round((data.long / total) * 100) }
   ].filter(item => item.value > 0); // Only show non-zero segments
   
-  const renderCustomLabel = (entry: any) => {
-    return `${entry.percentage}%`;
+  const renderCustomLabel = (props: { name?: string; value?: number; percentage?: number }) => {
+    return `${props.percentage || 0}%`;
   };
   
   return (
@@ -82,7 +83,7 @@ export default function DurationBreakdownChart({ data }: DurationBreakdownChartP
               borderRadius: '8px',
               padding: '12px'
             }}
-            formatter={(value: any, name: string, props: any) => {
+            formatter={(value: number, name: string, props: any) => {
               return [`${value} calls (${props.payload.percentage}%)`, name];
             }}
           />

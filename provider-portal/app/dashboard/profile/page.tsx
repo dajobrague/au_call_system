@@ -50,7 +50,7 @@ export default function ProfilePage() {
       } else {
         setError('Failed to load profile');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred while loading profile');
     } finally {
       setLoading(false);
@@ -77,8 +77,14 @@ export default function ProfilePage() {
     setSaving(true);
     
     try {
-      const updateData: any = {
-        recordId: profile?.id,
+      if (!profile?.id) {
+        setError('Profile not found');
+        setSaving(false);
+        return;
+      }
+      
+      const updateData: Record<string, string> = {
+        recordId: profile.id,
         firstName,
         lastName,
         email,
@@ -107,7 +113,7 @@ export default function ProfilePage() {
       } else {
         setError(data.error || 'Failed to update profile');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred. Please try again.');
     } finally {
       setSaving(false);

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Patients Management Component
  */
@@ -62,7 +63,7 @@ export default function PatientsManagement() {
       } else {
         setError(data.error || 'Failed to fetch patients');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('An error occurred while fetching patients');
     } finally {
       setLoading(false);
@@ -120,7 +121,7 @@ export default function PatientsManagement() {
       } else {
         setError(data.error || 'Failed to delete patient');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('An error occurred while deleting patient');
     }
   };
@@ -177,7 +178,7 @@ export default function PatientsManagement() {
       } else {
         setError(data.error || `Failed to ${isEditing ? 'update' : 'add'} patient`);
       }
-    } catch (err) {
+    } catch (_err) {
       setError(`An error occurred while ${editingPatient ? 'updating' : 'adding'} patient`);
     } finally {
       setSaving(false);
@@ -270,7 +271,7 @@ export default function PatientsManagement() {
               {patients.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    No patients found. Click "Add Patient" to get started.
+                    No patients found. Click &quot;Add Patient&quot; to get started.
                   </td>
                 </tr>
               ) : (

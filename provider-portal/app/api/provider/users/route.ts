@@ -101,7 +101,7 @@ export async function PATCH(request: Request) {
       );
     }
     
-    const updateFields: any = {};
+    const updateFields: Record<string, string> = {};
     if (firstName) updateFields['First Name'] = firstName;
     if (lastName) updateFields['Last Name'] = lastName;
     if (email) updateFields['Email'] = email;

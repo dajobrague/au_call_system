@@ -69,7 +69,7 @@ export default function ReportsPage() {
       } else {
         setReportsError(data.error || 'Failed to fetch reports');
       }
-    } catch (err) {
+    } catch (_err) {
       setReportsError('An error occurred while fetching reports');
     } finally {
       setReportsLoading(false);
@@ -160,31 +160,6 @@ export default function ReportsPage() {
     }
   };
   
-  const generateSummaryCSV = (stats: any, range: DateRange) => {
-    const lines = [
-      'Call Summary Report',
-      `Period: ${format(range.startDate, 'MMM d, yyyy')} - ${format(range.endDate, 'MMM d, yyyy')}`,
-      '',
-      'OVERALL STATISTICS',
-      `Total Calls,${stats.totalCalls}`,
-      `Total Duration,${Math.round(stats.totalDuration / 60)} minutes`,
-      `Average Duration,${stats.averageDuration} seconds`,
-      `Active Employees,${stats.activeEmployees}`,
-      '',
-      'CALLS BY DATE',
-      'Date,Calls,Duration (min)',
-      ...stats.callsByDate.map((d: any) => `${d.date},${d.callCount},${Math.round(d.totalDuration / 60)}`),
-      '',
-      'TOP EMPLOYEES',
-      'Employee,Calls,Avg Duration (s)',
-      ...stats.callsByEmployee.slice(0, 10).map((e: any) => `${e.employeeName},${e.callCount},${e.averageDuration}`),
-      '',
-      'INTENT DISTRIBUTION',
-      'Intent,Count,Percentage',
-      ...stats.callsByIntent.map((i: any) => `"${i.intent}",${i.count},${i.percentage}%`),
-    ];
-    return lines.join('\n');
-  };
   
   return (
     <div>

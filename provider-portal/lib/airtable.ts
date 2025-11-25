@@ -39,10 +39,11 @@ function makeAirtableRequest(
     filterByFormula?: string;
     maxRecords?: number;
     fields?: string[];
+    sort?: Array<{ field: string; direction: 'asc' | 'desc' }>;
   } = {}
 ): Promise<AirtableResponse> {
   return new Promise((resolve, reject) => {
-    const { filterByFormula, maxRecords, fields } = options;
+    const { filterByFormula, maxRecords, fields, sort } = options;
     
     const params = new URLSearchParams();
     
@@ -56,6 +57,13 @@ function makeAirtableRequest(
     
     if (fields && fields.length > 0) {
       fields.forEach(field => params.append('fields[]', field));
+    }
+    
+    if (sort && sort.length > 0) {
+      sort.forEach((sortItem, index) => {
+        params.append(`sort[${index}][field]`, sortItem.field);
+        params.append(`sort[${index}][direction]`, sortItem.direction);
+      });
     }
 
     const queryString = params.toString();
@@ -346,7 +354,7 @@ export async function getReportsByProvider(
     // Additional client-side filtering to ensure correct date range (backup)
     let filteredRecords = response.records;
     if (startDate || endDate) {
-      filteredRecords = response.records.filter((record: any) => {
+      filteredRecords = response.records.filter((record: AirtableRecord) => {
         const recordDate = record.fields.Date as string;
         if (!recordDate) return false;
         
@@ -369,8 +377,8 @@ export async function getReportsByProvider(
     });
     
     return sortedRecords;
-  } catch (error) {
-    console.error('Error fetching reports:', error);
+  } catch (err) {
+    console.error('Error fetching reports:', err);
     return [];
   }
 }
@@ -412,7 +420,7 @@ export async function getCallLogsByDateRange(
     end.setHours(23, 59, 59, 999); // Include the entire end date
     
     // Filter by date range in memory (since "Started At" is a text field with time)
-    const filteredRecords = response.records.filter((record: any) => {
+    const filteredRecords = response.records.filter((record: AirtableRecord) => {
       const startedAt = record.fields['Started At'] as string;
       if (!startedAt) return false;
       
@@ -426,22 +434,22 @@ export async function getCallLogsByDateRange(
         
         // Check if within range
         return recordDate >= start && recordDate <= end;
-      } catch (error) {
+      } catch {
         console.warn('Failed to parse date:', startedAt);
         return false;
       }
     });
     
     // Sort by Started At descending (most recent first)
-    const sortedRecords = filteredRecords.sort((a: any, b: any) => {
+    const sortedRecords = filteredRecords.sort((a: AirtableRecord, b: AirtableRecord) => {
       const dateA = a.fields['Started At'] as string;
       const dateB = b.fields['Started At'] as string;
       return dateB.localeCompare(dateA);
     });
     
     return sortedRecords;
-  } catch (error) {
-    console.error('Error fetching call logs:', error);
+  } catch (err) {
+    console.error('Error fetching call logs:', err);
     return [];
   }
 }
@@ -452,6 +460,7 @@ export async function getCallLogsByDateRange(
 function updateAirtableRecord(
   tableName: string,
   recordId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fields: Record<string, any>
 ): Promise<AirtableRecord> {
   return new Promise((resolve, reject) => {
@@ -510,6 +519,7 @@ function updateAirtableRecord(
  */
 function createAirtableRecord(
   tableName: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fields: Record<string, any>
 ): Promise<AirtableRecord> {
   return new Promise((resolve, reject) => {
@@ -623,6 +633,7 @@ function deleteAirtableRecord(
  */
 export async function updateProvider(
   providerId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fields: Partial<Record<string, any>>
 ): Promise<AirtableRecord> {
   return updateAirtableRecord('Providers', providerId, fields);
@@ -745,6 +756,7 @@ export async function updateOccurrence(
     status?: string;
   }
 ): Promise<AirtableRecord> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateFields: Record<string, any> = {};
   
   if (fields.patientRecordId) {
@@ -816,8 +828,8 @@ export async function getProviderUser(recordId: string): Promise<AirtableRecord>
             return;
           }
           resolve(jsonData);
-        } catch (error) {
-          reject(error);
+        } catch (err) {
+          reject(err);
         }
       });
     });

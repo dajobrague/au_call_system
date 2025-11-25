@@ -7,10 +7,10 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
 import type { DateRange } from '@/components/reports/DateSelector';
-import type { CallStatistics } from './report-aggregation';
+import type { AggregatedStatistics, DateStats, EmployeeStats } from './report-aggregation';
 
 export interface PdfSummaryOptions {
-  statistics: CallStatistics;
+  statistics: AggregatedStatistics;
   dateRange: DateRange;
   providerName?: string;
 }
@@ -237,7 +237,7 @@ export async function generatePdfSummary(options: PdfSummaryOptions): Promise<Bl
   pdf.setFont('helvetica', 'normal');
   
   // Table rows (limit to first 20 to fit on page)
-  statistics.callsByDate.slice(0, 20).forEach((day) => {
+  statistics.callsByDate.slice(0, 20).forEach((day: DateStats) => {
     if (yPosition > pageHeight - margin - 10) {
       pdf.addPage();
       yPosition = margin;
@@ -246,7 +246,8 @@ export async function generatePdfSummary(options: PdfSummaryOptions): Promise<Bl
     pdf.text(format(new Date(day.date), 'MMM d, yyyy'), margin, yPosition);
     pdf.text(day.callCount.toString(), margin + 40, yPosition);
     pdf.text(Math.round(day.totalDuration / 60).toString(), margin + 70, yPosition);
-    pdf.text(day.averageDuration.toString(), margin + 110, yPosition);
+    const avgDuration = day.callCount > 0 ? Math.round(day.totalDuration / day.callCount) : 0;
+    pdf.text(avgDuration.toString(), margin + 110, yPosition);
     yPosition += 5;
   });
   
@@ -271,8 +272,8 @@ export async function generatePdfSummary(options: PdfSummaryOptions): Promise<Bl
     
     pdf.setFont('helvetica', 'normal');
     
-    // Table rows (top 10)
-    statistics.callsByEmployee.slice(0, 10).forEach((emp) => {
+  // Table rows (top 10)
+  statistics.callsByEmployee.slice(0, 10).forEach((emp: EmployeeStats) => {
       if (yPosition > pageHeight - margin - 10) {
         pdf.addPage();
         yPosition = margin;

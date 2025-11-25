@@ -98,7 +98,7 @@ export async function PATCH(request: Request) {
       );
     }
     
-    const fields: any = {};
+    const fields: Record<string, string | number | boolean> = {};
     if (patientName !== undefined) fields['Patient Full Name'] = patientName;
     if (patientId !== undefined) fields['Patient ID'] = parseInt(patientId);
     if (phone !== undefined) fields['Phone'] = phone;

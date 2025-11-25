@@ -96,7 +96,7 @@ export async function PATCH(request: Request) {
       );
     }
     
-    const fields: any = {};
+    const fields: Record<string, string | number | boolean> = {};
     if (displayName !== undefined) fields['Display Name'] = displayName;
     if (phone !== undefined) fields['Phone'] = phone;
     if (pin !== undefined) fields['Employee PIN'] = parseInt(pin);

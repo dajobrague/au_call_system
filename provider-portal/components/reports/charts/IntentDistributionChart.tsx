@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Intent Distribution Chart
  * Pie chart showing distribution of call intents/actions
@@ -50,8 +51,8 @@ export default function IntentDistributionChart({ data }: IntentDistributionChar
     percentage: item.percentage
   }));
   
-  const renderCustomLabel = (entry: any) => {
-    return `${entry.percentage}%`;
+  const renderCustomLabel = (props: { name?: string; value?: number; percentage?: number }) => {
+    return `${props.percentage || 0}%`;
   };
   
   return (
@@ -85,7 +86,7 @@ export default function IntentDistributionChart({ data }: IntentDistributionChar
               borderRadius: '8px',
               padding: '12px'
             }}
-            formatter={(value: any, name: string, props: any) => {
+            formatter={(value: number, name: string, props: any) => {
               return [`${value} calls (${props.payload.percentage}%)`, props.payload.fullName];
             }}
           />

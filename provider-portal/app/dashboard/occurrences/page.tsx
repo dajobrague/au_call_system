@@ -7,7 +7,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import DataTable from '@/components/DataTable';
 import OccurrencesManagement from '@/components/data-entry/OccurrencesManagement';
-import { Filter, Edit2, Trash2 } from 'lucide-react';
+import { Filter, Trash2 } from 'lucide-react';
 
 interface OccurrenceRecord {
   id: string;
@@ -137,7 +137,7 @@ export default function OccurrencesPage() {
       const data = await response.json();
       
       if (data.success) {
-        const empList = data.data.map((emp: any) => ({
+        const empList = data.data.map((emp: { id: string; fields: { 'Display Name': string } }) => ({
           id: emp.id,
           name: emp.fields['Display Name']
         }));
@@ -154,14 +154,14 @@ export default function OccurrencesPage() {
       const data = await response.json();
       
       if (data.success) {
-        const patList = data.data.map((pat: any) => ({
+        const patList = data.data.map((pat: { id: string; fields: { 'Patient Full Name': string } }) => ({
           id: pat.id,
           name: pat.fields['Patient Full Name']
         }));
         setPatientsList(patList);
       }
-    } catch (error) {
-      console.error('Error fetching patients:', error);
+    } catch (_error) {
+      console.error('Error fetching patients:', _error);
     }
   };
   
@@ -188,7 +188,7 @@ export default function OccurrencesPage() {
       } else {
         alert(data.error || 'Failed to delete occurrence');
       }
-    } catch (err) {
+    } catch (_err) {
       alert('An error occurred while deleting');
     }
   };
@@ -231,7 +231,7 @@ export default function OccurrencesPage() {
     {
       key: '_actions',
       label: 'Actions',
-      render: (_value: unknown, row: any) => (
+      render: (_value: unknown, row: { id: string }) => (
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleDelete(row.id)}

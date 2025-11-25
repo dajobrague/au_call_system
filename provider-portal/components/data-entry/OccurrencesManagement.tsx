@@ -5,8 +5,8 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, X, Loader2, Calendar, Clock, User, UserCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, X, Loader2, Calendar, Clock, User, UserCircle } from 'lucide-react';
 import { generateTimeSlots, formatTimeSlot } from '@/lib/time-slots';
 
 interface Employee {
@@ -144,14 +144,14 @@ export default function OccurrencesManagement({
           setError(data.error || 'Failed to create occurrence');
         }
       }
-    } catch (err) {
+    } catch (_err) {
       setError('An error occurred. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
   
-  const handleDelete = async (occurrenceId: string) => {
+  const _handleDelete = async (occurrenceId: string) => {
     if (!confirm('Are you sure you want to delete this occurrence?')) {
       return;
     }
@@ -168,7 +168,7 @@ export default function OccurrencesManagement({
       } else {
         alert(data.error || 'Failed to delete occurrence');
       }
-    } catch (err) {
+    } catch (_err) {
       alert('An error occurred while deleting');
     }
   };

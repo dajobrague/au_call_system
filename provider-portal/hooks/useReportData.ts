@@ -47,7 +47,7 @@ export function useReportData(dateRange: DateRange): UseReportDataResult {
         setCallLogs([]);
         setStatistics(null);
       }
-    } catch (err) {
+    } catch (_err) {
       setError('An error occurred while fetching call logs');
       setCallLogs([]);
       setStatistics(null);
