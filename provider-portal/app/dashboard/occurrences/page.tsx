@@ -6,7 +6,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import DataTable from '@/components/DataTable';
-import { Filter } from 'lucide-react';
+import OccurrencesManagement from '@/components/data-entry/OccurrencesManagement';
+import { Filter, Edit2, Trash2 } from 'lucide-react';
 
 interface OccurrenceRecord {
   id: string;
@@ -16,7 +17,19 @@ interface OccurrenceRecord {
     'Scheduled At'?: string;
     'Time'?: string;
     'Status'?: string;
+    'Patient (Lookup)'?: string[];
+    'Assigned Employee'?: string[];
   };
+}
+
+interface Employee {
+  id: string;
+  name: string;
+}
+
+interface Patient {
+  id: string;
+  name: string;
 }
 
 export default function OccurrencesPage() {
@@ -33,6 +46,10 @@ export default function OccurrencesPage() {
   // Unique lists for filters
   const [employees, setEmployees] = useState<string[]>([]);
   const [patients, setPatients] = useState<string[]>([]);
+  
+  // Employees and Patients for Management Component
+  const [employeesList, setEmployeesList] = useState<Employee[]>([]);
+  const [patientsList, setPatientsList] = useState<Patient[]>([]);
   
   const applyFilters = useCallback(() => {
     let filtered = [...occurrences];
@@ -68,6 +85,8 @@ export default function OccurrencesPage() {
   
   useEffect(() => {
     fetchOccurrences();
+    fetchEmployees();
+    fetchPatients();
   }, []);
   
   useEffect(() => {
@@ -75,6 +94,7 @@ export default function OccurrencesPage() {
   }, [applyFilters]);
   
   const fetchOccurrences = async () => {
+    setLoading(true);
     try {
       const response = await fetch('/api/provider/occurrences');
       const data = await response.json();
@@ -111,10 +131,66 @@ export default function OccurrencesPage() {
     }
   };
   
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('/api/provider/employees');
+      const data = await response.json();
+      
+      if (data.success) {
+        const empList = data.data.map((emp: any) => ({
+          id: emp.id,
+          name: emp.fields['Display Name']
+        }));
+        setEmployeesList(empList);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    }
+  };
+  
+  const fetchPatients = async () => {
+    try {
+      const response = await fetch('/api/provider/patients');
+      const data = await response.json();
+      
+      if (data.success) {
+        const patList = data.data.map((pat: any) => ({
+          id: pat.id,
+          name: pat.fields['Patient Full Name']
+        }));
+        setPatientsList(patList);
+      }
+    } catch (error) {
+      console.error('Error fetching patients:', error);
+    }
+  };
+  
   const clearFilters = () => {
     setSelectedEmployee('');
     setSelectedPatient('');
     setSelectedDate('');
+  };
+  
+  const handleDelete = async (recordId: string) => {
+    if (!confirm('Are you sure you want to delete this occurrence?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/provider/occurrences?recordId=${recordId}`, {
+        method: 'DELETE',
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        fetchOccurrences();
+      } else {
+        alert(data.error || 'Failed to delete occurrence');
+      }
+    } catch (err) {
+      alert('An error occurred while deleting');
+    }
   };
   
   const columns = [
@@ -152,6 +228,21 @@ export default function OccurrencesPage() {
         );
       }
     },
+    {
+      key: '_actions',
+      label: 'Actions',
+      render: (_value: unknown, row: any) => (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleDelete(row.id)}
+            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      )
+    }
   ];
   
   const hasActiveFilters = selectedEmployee || selectedPatient || selectedDate;
@@ -160,8 +251,17 @@ export default function OccurrencesPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Job Occurrences</h1>
-        <p className="text-gray-600 mt-1">View scheduled job occurrences</p>
+        <p className="text-gray-600 mt-1">View and manage scheduled job occurrences</p>
       </div>
+      
+      {/* Occurrences Management */}
+      <OccurrencesManagement
+        employees={employeesList}
+        patients={patientsList}
+        onOccurrenceAdded={fetchOccurrences}
+        onOccurrenceUpdated={fetchOccurrences}
+        onOccurrenceDeleted={fetchOccurrences}
+      />
       
       {error && (
         <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">

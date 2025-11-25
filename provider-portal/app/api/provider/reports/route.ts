@@ -1,12 +1,13 @@
 /**
  * Provider Reports API Route
+ * Supports date filtering via query parameters: startDate, endDate
  */
 
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { getReportsByProvider } from '@/lib/airtable';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await getCurrentUser();
     
@@ -17,7 +18,12 @@ export async function GET() {
       );
     }
     
-    const reports = await getReportsByProvider(user.providerId);
+    // Extract query parameters for date filtering
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    
+    const reports = await getReportsByProvider(user.providerId, startDate, endDate);
     
     return NextResponse.json({
       success: true,

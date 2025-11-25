@@ -9,11 +9,18 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@types/react-datepicker": "^7.0.0",
+    "date-fns": "^4.1.0",
+    "html2canvas": "^1.4.1",
     "iron-session": "^8.0.4",
+    "jspdf": "^3.0.4",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.545.0",
     "next": "15.5.5",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-datepicker": "^8.9.0",
+    "react-dom": "19.1.0",
+    "recharts": "^3.5.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

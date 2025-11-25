@@ -9,7 +9,9 @@ import {
   Users, 
   Hospital, 
   ClipboardList, 
-  Calendar 
+  Calendar,
+  Settings,
+  FileText
 } from 'lucide-react';
 
 export default async function DashboardPage() {
@@ -23,17 +25,31 @@ export default async function DashboardPage() {
   
   const cards = [
     { 
-      title: 'Employees', 
+      title: 'Admin Section', 
+      path: '/dashboard/admin', 
+      icon: Settings, 
+      description: 'Configure your provider profile and settings',
+      color: 'text-indigo-600 bg-indigo-50'
+    },
+    { 
+      title: 'Reports', 
+      path: '/dashboard/reports', 
+      icon: FileText, 
+      description: 'View daily reports and analytics',
+      color: 'text-teal-600 bg-teal-50'
+    },
+    { 
+      title: 'Employees Pool', 
       path: '/dashboard/employees', 
       icon: Users, 
-      description: 'View and manage employees',
+      description: 'Add and manage employees',
       color: 'text-blue-600 bg-blue-50'
     },
     { 
       title: 'Patients', 
       path: '/dashboard/patients', 
       icon: Hospital, 
-      description: 'View patient information',
+      description: 'Add and manage patients',
       color: 'text-green-600 bg-green-50'
     },
     { 

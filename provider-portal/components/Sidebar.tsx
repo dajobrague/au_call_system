@@ -5,17 +5,19 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Users, 
   Hospital, 
   ClipboardList, 
-  Calendar, 
-  LogOut 
+  Calendar,
+  Settings,
+  FileText
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import UserDropdown from './UserDropdown';
 
 interface NavItem {
   name: string;
@@ -25,17 +27,20 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Employees', path: '/dashboard/employees', icon: Users },
+  { name: 'Admin Section', path: '/dashboard/admin', icon: Settings },
+  { name: 'Employees Pool', path: '/dashboard/employees', icon: Users },
   { name: 'Patients', path: '/dashboard/patients', icon: Hospital },
   { name: 'Job Templates', path: '/dashboard/job-templates', icon: ClipboardList },
   { name: 'Occurrences', path: '/dashboard/occurrences', icon: Calendar },
+  { name: 'Reports', path: '/dashboard/reports', icon: FileText },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const [providerLogo, setProviderLogo] = useState<string | null>(null);
   const [providerName, setProviderName] = useState<string>('Provider Portal');
+  const [userName, setUserName] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('');
   
   useEffect(() => {
     // Fetch provider info for logo
@@ -49,20 +54,18 @@ export default function Sidebar() {
           if (logo && Array.isArray(logo) && logo.length > 0) {
             setProviderLogo(logo[0].url);
           }
+          
+          // Set user info from the response
+          if (data.user) {
+            const firstName = data.user.fields['First Name'] || '';
+            const lastName = data.user.fields['Last Name'] || '';
+            setUserName(`${firstName} ${lastName}`.trim());
+            setUserEmail(data.user.fields['Email'] || '');
+          }
         }
       })
       .catch(err => console.error('Failed to fetch provider info:', err));
   }, []);
-  
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      router.push('/login');
-      router.refresh();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
   
   return (
     <div className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col">
@@ -105,13 +108,7 @@ export default function Sidebar() {
       </nav>
       
       <div className="p-4 border-t border-gray-200">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-        >
-          <LogOut className="w-5 h-5" />
-          <span>Logout</span>
-        </button>
+        <UserDropdown userName={userName} userEmail={userEmail} />
       </div>
     </div>
   );
