@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     }
     
     const body = await request.json();
-    const { displayName, phone, pin, notes, active } = body;
+    const { displayName, phone, pin, email, role, notes, active } = body;
     
     if (!displayName || !phone || !pin) {
       return NextResponse.json(
@@ -58,6 +58,8 @@ export async function POST(request: Request) {
       'Phone': phone,
       'Employee PIN': parseInt(pin),
       'Provider': [user.providerId],
+      'Email': email || '',
+      'Role': role || '',
       'Notes': notes || '',
       'Active': active !== undefined ? active : true,
     });
@@ -87,7 +89,7 @@ export async function PATCH(request: Request) {
     }
     
     const body = await request.json();
-    const { recordId, displayName, phone, pin, notes, active } = body;
+    const { recordId, displayName, phone, pin, email, role, notes, active } = body;
     
     if (!recordId) {
       return NextResponse.json(
@@ -100,6 +102,8 @@ export async function PATCH(request: Request) {
     if (displayName !== undefined) fields['Display Name'] = displayName;
     if (phone !== undefined) fields['Phone'] = phone;
     if (pin !== undefined) fields['Employee PIN'] = parseInt(pin);
+    if (email !== undefined) fields['Email'] = email;
+    if (role !== undefined) fields['Role'] = role;
     if (notes !== undefined) fields['Notes'] = notes;
     if (active !== undefined) fields['Active'] = active;
     

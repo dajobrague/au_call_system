@@ -14,6 +14,8 @@ interface Employee {
     'Display Name': string;
     'Phone': string;
     'Employee PIN': number;
+    'Email'?: string;
+    'Role'?: string;
     'Notes'?: string;
     'Active'?: boolean;
   };
@@ -23,6 +25,8 @@ interface EmployeeFormData {
   displayName: string;
   phone: string;
   pin: string;
+  email: string;
+  role: string;
   notes: string;
   active: boolean;
 }
@@ -38,6 +42,8 @@ export default function EmployeesManagement() {
     displayName: '',
     phone: '',
     pin: '',
+    email: '',
+    role: '',
     notes: '',
     active: true,
   });
@@ -70,6 +76,8 @@ export default function EmployeesManagement() {
       displayName: '',
       phone: '',
       pin: '',
+      email: '',
+      role: '',
       notes: '',
       active: true,
     });
@@ -81,9 +89,11 @@ export default function EmployeesManagement() {
   const handleEdit = (employee: Employee) => {
     setEditingEmployee(employee);
     setFormData({
-      displayName: employee.fields['Display Name'],
-      phone: employee.fields['Phone'],
-      pin: employee.fields['Employee PIN'].toString(),
+      displayName: employee.fields['Display Name'] || '',
+      phone: employee.fields['Phone'] || '',
+      pin: employee.fields['Employee PIN'] ? employee.fields['Employee PIN'].toString() : '',
+      email: employee.fields['Email'] || '',
+      role: employee.fields['Role'] || '',
       notes: employee.fields['Notes'] || '',
       active: employee.fields['Active'] !== false,
     });
@@ -140,6 +150,8 @@ export default function EmployeesManagement() {
         displayName: formData.displayName,
         phone: formData.phone,
         pin: formData.pin,
+        email: formData.email,
+        role: formData.role,
         notes: formData.notes,
         active: formData.active,
       };
@@ -344,6 +356,32 @@ export default function EmployeesManagement() {
                     onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="1234"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="employee@example.com"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Role
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., Caregiver, Nurse, Therapist"
                   />
                 </div>
                 

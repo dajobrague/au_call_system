@@ -27,7 +27,6 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Admin Section', path: '/dashboard/admin', icon: Settings },
   { name: 'Employees Pool', path: '/dashboard/employees', icon: Users },
   { name: 'Patients', path: '/dashboard/patients', icon: Hospital },
   { name: 'Job Templates', path: '/dashboard/job-templates', icon: ClipboardList },

@@ -242,7 +242,7 @@ export async function getEmployeesByProvider(providerId: string): Promise<Airtab
   const response = await makeAirtableRequest('Employees', {
     filterByFormula: filterFormula,
     maxRecords: 100,
-    fields: ['Display Name', 'Phone', 'Active', 'Notes']
+    fields: ['Display Name', 'Phone', 'Employee PIN', 'Email', 'Role', 'Active', 'Notes']
   });
   
   return response.records;
@@ -272,7 +272,17 @@ export async function getJobTemplatesByProvider(providerId: string): Promise<Air
   const response = await makeAirtableRequest('Job Templates', {
     filterByFormula: filterFormula,
     maxRecords: 100,
-    fields: ['Job Code', 'Title', 'Service Type', 'Priority', 'Patient', 'Active']
+    fields: [
+      'Job Code', 
+      'Title', 
+      'Service Type', 
+      'Priority', 
+      'Patient', 
+      'Active',
+      'Time Window Start',
+      'Time Window End',
+      'Default Employee'
+    ]
   });
   
   return response.records;
@@ -648,6 +658,8 @@ export async function createEmployee(
     'Phone': string;
     'Employee PIN': number;
     'Provider': string[];
+    'Email'?: string;
+    'Role'?: string;
     'Notes'?: string;
     'Active'?: boolean;
   }
@@ -664,6 +676,8 @@ export async function updateEmployee(
     'Display Name': string;
     'Phone': string;
     'Employee PIN': number;
+    'Email': string;
+    'Role': string;
     'Notes': string;
     'Active': boolean;
   }>
@@ -880,5 +894,52 @@ export async function updateProviderUser(
  */
 export async function deleteProviderUser(recordId: string): Promise<{ deleted: boolean; id: string }> {
   return deleteAirtableRecord('Provider Users', recordId);
+}
+
+/**
+ * Create a new job template
+ */
+export async function createJobTemplate(
+  fields: {
+    'Job Code': string;
+    'Title': string;
+    'Service Type': string;
+    'Priority': string;
+    'Provider': string[];
+    'Patient': string[];
+    'Default Employee'?: string[];
+    'Time Window Start'?: string;
+    'Time Window End'?: string;
+    'Active'?: boolean;
+  }
+): Promise<AirtableRecord> {
+  return createAirtableRecord('Job Templates', fields);
+}
+
+/**
+ * Update a job template
+ */
+export async function updateJobTemplate(
+  recordId: string,
+  fields: Partial<{
+    'Job Code': string;
+    'Title': string;
+    'Service Type': string;
+    'Priority': string;
+    'Patient': string[];
+    'Default Employee': string[];
+    'Time Window Start': string;
+    'Time Window End': string;
+    'Active': boolean;
+  }>
+): Promise<AirtableRecord> {
+  return updateAirtableRecord('Job Templates', recordId, fields);
+}
+
+/**
+ * Delete a job template
+ */
+export async function deleteJobTemplate(recordId: string): Promise<{ deleted: boolean; id: string }> {
+  return deleteAirtableRecord('Job Templates', recordId);
 }
 

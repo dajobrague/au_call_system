@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Users, LogOut, ChevronDown } from 'lucide-react';
+import { User, Users, LogOut, ChevronDown, Settings } from 'lucide-react';
 
 interface UserDropdownProps {
   userName?: string;
@@ -104,6 +104,17 @@ export default function UserDropdown({ userName, userEmail }: UserDropdownProps)
             >
               <Users className="w-4 h-4" />
               <span>Organization Users</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                router.push('/dashboard/admin');
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              <span>Admin Section</span>
             </button>
             
             <div className="border-t border-gray-100 my-1" />
