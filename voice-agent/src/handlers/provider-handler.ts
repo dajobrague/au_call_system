@@ -3,6 +3,8 @@
  * Handles provider selection and greeting generation
  */
 
+import { paginateOccurrences, generateOccurrenceListPrompt } from './occurrence-pagination';
+
 export interface ProviderGreetingOptions {
   employee: any;
   provider?: any;
@@ -99,6 +101,49 @@ export function generateProviderSelectionGreeting(
   }
   
   const fullGreeting = `${providerGreeting}. ${jobListMessage}`;
+  
+  return {
+    message: fullGreeting,
+    shouldPresentJobs: true
+  };
+}
+
+/**
+ * Generate greeting with occurrence list (new flow - shows shifts immediately)
+ * @param employee - Authenticated employee
+ * @param provider - Provider info (optional)
+ * @param enrichedOccurrences - Flat list of all occurrences with full details
+ * @param pageNumber - Current page number (default 1)
+ * @returns Greeting message with occurrence list
+ */
+export function generateOccurrenceBasedGreeting(
+  employee: any,
+  provider: any,
+  enrichedOccurrences: any[],
+  pageNumber: number = 1
+): ProviderGreetingResult {
+  const providerGreeting = provider?.greeting || 'Welcome to Healthcare Services';
+  
+  // Check if employee has any occurrences
+  if (!enrichedOccurrences || enrichedOccurrences.length === 0) {
+    return {
+      message: `Hi ${employee.name}. ${providerGreeting}. You currently have no upcoming shifts scheduled. Press 1 to speak with a representative.`,
+      shouldPresentJobs: false
+    };
+  }
+  
+  // Paginate occurrences
+  const paginationResult = paginateOccurrences(enrichedOccurrences, pageNumber);
+  
+  // Generate occurrence list prompt
+  const occurrencePrompt = generateOccurrenceListPrompt(
+    paginationResult.pageItems,
+    paginationResult.currentPage,
+    paginationResult.hasNextPage
+  );
+  
+  // Build full greeting
+  let fullGreeting = `Hi ${employee.name}. ${providerGreeting}. ${occurrencePrompt}`;
   
   return {
     message: fullGreeting,

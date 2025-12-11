@@ -49,9 +49,9 @@ export async function POST(request: Request) {
     }
     
     const body = await request.json();
-    const { patientRecordId, employeeRecordId, scheduledAt, time } = body;
+    const { patientRecordId, employeeRecordId, scheduledAt, time, timeWindowEnd } = body;
     
-    if (!patientRecordId || !employeeRecordId || !scheduledAt || !time) {
+    if (!patientRecordId || !employeeRecordId || !scheduledAt || !time || !timeWindowEnd) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -62,7 +62,8 @@ export async function POST(request: Request) {
       patientRecordId,
       employeeRecordId,
       scheduledAt,
-      time
+      time,
+      timeWindowEnd
     });
     
     return NextResponse.json({
@@ -90,7 +91,7 @@ export async function PATCH(request: Request) {
     }
     
     const body = await request.json();
-    const { recordId, patientRecordId, employeeRecordId, scheduledAt, time, status } = body;
+    const { recordId, patientRecordId, employeeRecordId, scheduledAt, time, timeWindowEnd, status } = body;
     
     if (!recordId) {
       return NextResponse.json(
@@ -104,6 +105,7 @@ export async function PATCH(request: Request) {
       employeeRecordId,
       scheduledAt,
       time,
+      timeWindowEnd,
       status
     });
     

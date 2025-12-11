@@ -39,6 +39,9 @@ export type EmployeeRecord = AirtableRecord<EmployeeFields>;
 export interface ProviderFields {
   'Name': string;
   'Provider ID': number;
+  'State'?: string;
+  'Suburb'?: string;
+  'Address'?: string;
   'Timezone'?: string;
   'Greeting (IVR)'?: string;
   'Logo'?: Array<{
@@ -107,6 +110,9 @@ export interface JobOccurrenceFields {
   'Patient': string[];           // Array of patient record IDs
   'Time': string;                // Time in HH:MM format (single select)
   'Reschedule Reason'?: string;  // Reason why job was left open (speech-to-text)
+  'Patient TXT'?: string;        // Lookup field showing patient name
+  'Employee TXT'?: string;       // Lookup field showing employee name
+  'recordId (from Assigned Employee)'?: string[]; // Lookup field with employee record IDs
 }
 
 export type JobOccurrenceRecord = AirtableRecord<JobOccurrenceFields>;
@@ -169,6 +175,7 @@ export interface JobOccurrence {
   occurrenceId: string;        // "050505 — 2025-09-15 00:00"
   jobTemplateId: string;       // Link to Job Template
   scheduledAt: string;         // "2025-09-15" 
+  time: string;                // "14:30" (HH:MM format from Airtable Time field)
   status: string;              // "Scheduled", "Completed", etc.
   assignedEmployeeId: string;  // Employee assigned to this occurrence
   occurrenceLabel: string;     // Display label for voice

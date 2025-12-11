@@ -18,6 +18,7 @@ import { env } from '../config/env';
 export interface WebSocketWithExtensions extends WebSocket {
   streamSid?: string;
   callSid?: string;
+  parentCallSid?: string; // The original call leg (for REST API operations)
   cachedData?: any;
   holdMusicInterval?: NodeJS.Timeout;
   queueUpdateInterval?: NodeJS.Timeout;

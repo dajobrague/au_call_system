@@ -1,10 +1,16 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm install --prefix voice-agent"
+buildCommand = "cd voice-agent && npm install && npm run build"
 watchPatterns = ["voice-agent/**"]
 
 [deploy]
-startCommand = "node voice-agent/websocket-server.js"
+startCommand = "cd voice-agent && node server.js"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
+
+# This runs the unified server which includes:
+# - Next.js (web pages like /job/[id] for SMS links)
+# - WebSocket server (for voice calls)
+# - SMS Wave Worker (for 3-wave notifications)
+# All on Railway's assigned PORT
 

@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { callQueueService } from '@/services/queue/call-queue-service';
+import { HOLD_MUSIC_CONFIG } from '@/config/hold-music';
 import { logger } from '@/lib/logger';
 const twilio = require('twilio');
 
@@ -86,8 +87,8 @@ async function handleQueueWait(request: NextRequest) {
       'Please stay on the line. Your call is important to us.'
     );
     
-    // Play hold music for 30 seconds
-    twiml.play({}, 'http://com.twilio.sounds.music.s3.amazonaws.com/MARKOVICHAMP-Borghestral.mp3');
+    // Play high-quality hosted hold music with looping
+    twiml.play({ loop: HOLD_MUSIC_CONFIG.loop }, HOLD_MUSIC_CONFIG.url);
     
     // After hold music, redirect back to this handler to check position again
     twiml.redirect(`/api/queue/wait-handler?callSid=${callSid}`);

@@ -44,7 +44,57 @@ try {
   const twilio = require('twilio');
   const { logger } = require('./src/lib/logger');
   
+  // Handle initial voice request
+  app.post('/api/twilio/voice', async (req, res) => {
+    try {
+      const host = req.get('host') || process.env.RAILWAY_PUBLIC_DOMAIN || 'aucallsystem-ivr-system.up.railway.app';
+      const protocol = host.includes('localhost') || host.includes('ngrok') ? 'http' : 'https';
+      const wsProtocol = host.includes('localhost') || host.includes('ngrok') ? 'ws' : 'wss';
+      
+      const websocketUrl = `${wsProtocol}://${host}/stream`;
+      const actionUrl = `${protocol}://${host}/api/transfer/after-connect?callSid=${req.body.CallSid}&from=${encodeURIComponent(req.body.From)}`;
+      
+      // Use Twilio's VoiceResponse builder for proper TwiML formatting
+      const VoiceResponse = twilio.twiml.VoiceResponse;
+      const response = new VoiceResponse();
+      
+      const connect = response.connect({ action: actionUrl });
+      const stream = connect.stream({ url: websocketUrl });
+      stream.parameter({ name: 'phone', value: req.body.From });
+      stream.parameter({ name: 'parentCallSid', value: req.body.CallSid });
+      
+      // Fallback instructions (only executed if action URL fails)
+      response.say({ voice: 'Polly.Amy' }, 'The call has ended. Goodbye.');
+      response.hangup();
+
+      res.type('text/xml').send(response.toString());
+      
+      // Log metric
+      if (req.body.CallSid) {
+        try {
+          const { voiceMetrics } = require('./src/services/monitoring/voice-metrics');
+          voiceMetrics.recordCallStart(req.body.CallSid);
+        } catch (e) {
+          // Ignore metrics error
+        }
+      }
+      
+    } catch (error) {
+      logger.error('Error in voice handler', { error: error.message });
+      res.status(500).send('Error');
+    }
+  });
+
   app.post('/api/transfer/after-connect', async (req, res) => {
+    // Log immediately to confirm Twilio is calling this endpoint
+    logger.info('🔔 AFTER-CONNECT ENDPOINT CALLED BY TWILIO (standalone server)', {
+      url: req.url,
+      method: req.method,
+      headers: req.headers,
+      body: req.body,
+      type: 'after_connect_entry_standalone'
+    });
+    
     try {
       const callSid = req.body.CallSid;
       const from = req.body.From;
@@ -63,8 +113,9 @@ try {
       const callState = await loadCallState(callSid);
       
       if (callState && callState.pendingTransfer) {
-        const RAILWAY_PUBLIC_DOMAIN = process.env.RAILWAY_PUBLIC_DOMAIN || 'aucallsystem-ivr-system.up.railway.app';
-        const APP_BASE_URL = `https://${RAILWAY_PUBLIC_DOMAIN}`;
+        const host = req.get('host') || process.env.RAILWAY_PUBLIC_DOMAIN || 'aucallsystem-ivr-system.up.railway.app';
+        const protocol = host.includes('localhost') || host.includes('ngrok') ? 'http' : 'https';
+        const APP_BASE_URL = `${protocol}://${host}`;
         
         twiml.say({ voice: 'Polly.Amy' }, 'Connecting you to a representative. Please hold.');
         
@@ -100,27 +151,58 @@ try {
     }
   });
 
+  // Initialize SMS Wave Worker for 3-wave notification system
+  try {
+    const { initializeSMSWaveWorker } = require('./src/workers/sms-wave-worker');
+    initializeSMSWaveWorker();
+    console.log('✅ SMS Wave Worker initialized');
+  } catch (workerError) {
+    console.error('⚠️  SMS Wave Worker initialization failed:', workerError.message);
+    console.error('   SMS waves will not be processed!');
+  }
+
   server.listen(PORT, () => {
     console.log('✅ WebSocket Server Started Successfully!');
     console.log(`📡 Listening on port ${PORT}`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
     console.log(`🔌 WebSocket path: ws://localhost:${PORT}/stream`);
+    console.log('📱 SMS Wave System: Active');
     console.log('');
     console.log('📊 Server is ready to accept connections...');
     console.log('');
   });
 
   // Graceful shutdown
-  process.on('SIGINT', () => {
+  process.on('SIGINT', async () => {
     console.log('\n🛑 Shutting down server...');
+    
+    // Shutdown SMS Wave Worker
+    try {
+      const { shutdownSMSWaveWorker } = require('./src/workers/sms-wave-worker');
+      await shutdownSMSWaveWorker();
+      console.log('✅ SMS Wave Worker shut down');
+    } catch (error) {
+      console.error('⚠️  Error shutting down SMS Wave Worker:', error.message);
+    }
+    
     server.close(() => {
       console.log('✅ Server closed successfully');
       process.exit(0);
     });
   });
 
-  process.on('SIGTERM', () => {
+  process.on('SIGTERM', async () => {
     console.log('\n🛑 Received SIGTERM, shutting down...');
+    
+    // Shutdown SMS Wave Worker
+    try {
+      const { shutdownSMSWaveWorker } = require('./src/workers/sms-wave-worker');
+      await shutdownSMSWaveWorker();
+      console.log('✅ SMS Wave Worker shut down');
+    } catch (error) {
+      console.error('⚠️  Error shutting down SMS Wave Worker:', error.message);
+    }
+    
     server.close(() => {
       console.log('✅ Server closed successfully');
       process.exit(0);

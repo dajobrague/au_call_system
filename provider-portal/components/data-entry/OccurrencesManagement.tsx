@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useImperativeHandle, forwardRef } from 'react';
 import { Plus, X, Loader2, Calendar, Clock, User, UserCircle } from 'lucide-react';
 import { generateTimeSlots, formatTimeSlot } from '@/lib/time-slots';
 
@@ -19,7 +19,7 @@ interface Patient {
   name: string;
 }
 
-interface Occurrence {
+export interface Occurrence {
   id: string;
   patientName: string;
   patientRecordId: string;
@@ -27,6 +27,7 @@ interface Occurrence {
   employeeRecordId: string;
   scheduledAt: string;
   time: string;
+  timeWindowEnd?: string;
   status: string;
 }
 
@@ -38,13 +39,17 @@ interface OccurrencesManagementProps {
   onOccurrenceDeleted: () => void;
 }
 
-export default function OccurrencesManagement({
+export interface OccurrencesManagementRef {
+  openEditModal: (occurrence: Occurrence) => void;
+}
+
+const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesManagementProps>(({
   employees,
   patients,
   onOccurrenceAdded,
   onOccurrenceUpdated,
   onOccurrenceDeleted
-}: OccurrencesManagementProps) {
+}, ref) => {
   const [showModal, setShowModal] = useState(false);
   const [editingOccurrence, setEditingOccurrence] = useState<Occurrence | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -55,6 +60,7 @@ export default function OccurrencesManagement({
   const [employeeRecordId, setEmployeeRecordId] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [time, setTime] = useState('09:00');
+  const [timeWindowEnd, setTimeWindowEnd] = useState('10:00');
   
   const timeSlots = generateTimeSlots();
   
@@ -63,6 +69,7 @@ export default function OccurrencesManagement({
     setEmployeeRecordId('');
     setScheduledAt('');
     setTime('09:00');
+    setTimeWindowEnd('10:00');
     setError('');
     setEditingOccurrence(null);
   };
@@ -74,6 +81,7 @@ export default function OccurrencesManagement({
       setEmployeeRecordId(occurrence.employeeRecordId);
       setScheduledAt(occurrence.scheduledAt);
       setTime(occurrence.time);
+      setTimeWindowEnd(occurrence.timeWindowEnd || '10:00');
     } else {
       resetForm();
       // Set default date to tomorrow
@@ -84,6 +92,13 @@ export default function OccurrencesManagement({
     setShowModal(true);
   };
   
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    openEditModal: (occurrence: Occurrence) => {
+      handleOpenModal(occurrence);
+    }
+  }));
+  
   const handleCloseModal = () => {
     setShowModal(false);
     setTimeout(resetForm, 200);
@@ -93,8 +108,14 @@ export default function OccurrencesManagement({
     e.preventDefault();
     setError('');
     
-    if (!patientRecordId || !employeeRecordId || !scheduledAt || !time) {
+    if (!patientRecordId || !employeeRecordId || !scheduledAt || !time || !timeWindowEnd) {
       setError('All fields are required');
+      return;
+    }
+    
+    // Validate that end time is after start time
+    if (time >= timeWindowEnd) {
+      setError('Time Window End must be after Time Window Start');
       return;
     }
     
@@ -105,7 +126,8 @@ export default function OccurrencesManagement({
         patientRecordId,
         employeeRecordId,
         scheduledAt,
-        time
+        time,
+        timeWindowEnd
       };
       
       if (editingOccurrence) {
@@ -284,18 +306,41 @@ export default function OccurrencesManagement({
                 />
               </div>
               
-              {/* Time Selection */}
+              {/* Time Window Start */}
               <div>
                 <label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-2">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
-                    Time *
+                    Time Window Start *
                   </div>
                 </label>
                 <select
                   id="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  {timeSlots.map((slot) => (
+                    <option key={slot} value={slot}>
+                      {formatTimeSlot(slot)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Time Window End */}
+              <div>
+                <label htmlFor="timeWindowEnd" className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Time Window End *
+                  </div>
+                </label>
+                <select
+                  id="timeWindowEnd"
+                  value={timeWindowEnd}
+                  onChange={(e) => setTimeWindowEnd(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                 >
@@ -340,5 +385,9 @@ export default function OccurrencesManagement({
       )}
     </>
   );
-}
+});
+
+OccurrencesManagement.displayName = 'OccurrencesManagement';
+
+export default OccurrencesManagement;
 

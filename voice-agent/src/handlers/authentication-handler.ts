@@ -6,6 +6,7 @@
 import { employeeService } from '../services/airtable/employee-service';
 import { multiProviderService } from '../services/airtable/multi-provider-service';
 import { jobService } from '../services/airtable/job-service';
+import { jobOccurrenceService } from '../services/airtable/job-occurrence-service';
 import { logger } from '../lib/logger';
 
 export interface AuthenticationResult {
@@ -18,6 +19,7 @@ export interface AuthenticationResult {
 export interface BackgroundDataResult {
   providers?: any;
   employeeJobs?: any[];
+  enrichedOccurrences?: any[];  // Flat list of all occurrences with full details
   loadedAt?: number;
 }
 
@@ -84,9 +86,9 @@ export async function authenticateByPhone(callerPhone: string): Promise<Authenti
 
 /**
  * Prefetch background data for authenticated employee
- * Loads provider and job information in parallel
+ * Loads provider, job information, and all future occurrences in parallel
  * @param employee - Authenticated employee
- * @returns Background data including providers and jobs
+ * @returns Background data including providers, jobs, and enriched occurrences
  */
 export async function prefetchBackgroundData(employee: any): Promise<BackgroundDataResult> {
   const startTime = Date.now();
@@ -98,22 +100,33 @@ export async function prefetchBackgroundData(employee: any): Promise<BackgroundD
       type: 'background_data_start'
     });
     
+    // Fetch providers and jobs in parallel
     const [providerResult, employeeJobsResult] = await Promise.all([
       multiProviderService.getEmployeeProviders(employee),
       jobService.getEmployeeJobs(employee, employee.providerId)
     ]);
     
+    const employeeJobs = employeeJobsResult.jobs || [];
+    
+    // Fetch enriched occurrences for all jobs
+    const enrichedOccurrences = await jobOccurrenceService.getAllEmployeeOccurrencesEnriched(
+      employeeJobs,
+      employee.id
+    );
+    
     logger.info('Background data prefetch complete', {
       employeeId: employee.id,
       providersCount: providerResult?.providers?.length || 0,
-      jobsCount: employeeJobsResult.jobs?.length || 0,
+      jobsCount: employeeJobs.length,
+      occurrencesCount: enrichedOccurrences.length,
       duration: Date.now() - startTime,
       type: 'background_data_complete'
     });
     
     return {
       providers: providerResult,
-      employeeJobs: employeeJobsResult.jobs || [],
+      employeeJobs,
+      enrichedOccurrences,
       loadedAt: Date.now()
     };
   } catch (error) {

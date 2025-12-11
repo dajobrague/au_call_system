@@ -308,6 +308,7 @@ export async function getOccurrencesByProvider(providerId: string): Promise<Airt
       'Employee TXT',
       'Scheduled At',
       'Time',
+      'Time Window End',
       'Status',
       'Patient (Link)',
       'Assigned Employee',
@@ -744,6 +745,7 @@ export async function createOccurrence(
     employeeRecordId: string;
     scheduledAt: string;
     time: string;
+    timeWindowEnd: string;
   }
 ): Promise<AirtableRecord> {
   const occurrenceFields = {
@@ -751,6 +753,7 @@ export async function createOccurrence(
     'Assigned Employee': [fields.employeeRecordId],
     'Scheduled At': fields.scheduledAt,
     'Time': fields.time,
+    'Time Window End': fields.timeWindowEnd,
     'Status': 'Scheduled'
   };
   
@@ -767,6 +770,7 @@ export async function updateOccurrence(
     employeeRecordId?: string;
     scheduledAt?: string;
     time?: string;
+    timeWindowEnd?: string;
     status?: string;
   }
 ): Promise<AirtableRecord> {
@@ -784,6 +788,9 @@ export async function updateOccurrence(
   }
   if (fields.time) {
     updateFields['Time'] = fields.time;
+  }
+  if (fields.timeWindowEnd) {
+    updateFields['Time Window End'] = fields.timeWindowEnd;
   }
   if (fields.status) {
     updateFields['Status'] = fields.status;

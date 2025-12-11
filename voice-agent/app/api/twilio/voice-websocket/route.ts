@@ -26,7 +26,11 @@ function getWebSocketUrl(): string {
 }
 
 const WEBSOCKET_URL = getWebSocketUrl();
-const RECORDING_STATUS_CALLBACK = process.env.RECORDING_STATUS_CALLBACK || 'https://sam-voice-agent.vercel.app/api/twilio/recording-status';
+// Use Railway domain for recording callback
+const RECORDING_STATUS_CALLBACK = process.env.RECORDING_STATUS_CALLBACK || 
+  (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/api/twilio/recording-status` : 
+   process.env.BASE_URL ? `${process.env.BASE_URL}/api/twilio/recording-status` : 
+   'http://localhost:3000/api/twilio/recording-status');
 
 /**
  * POST /api/twilio/voice-websocket
@@ -49,14 +53,17 @@ export async function POST(request: NextRequest) {
       type: 'call_incoming'
     });
     
-    // Generate TwiML with recording and WebSocket connection
+    // Generate TwiML with bidirectional WebSocket stream
+    // Using <Connect><Stream> for bidirectional audio (send + receive)
+    // action attribute tells Twilio where to go when stream ends
+    // IMPORTANT: action URL points to Railway (where HTTP endpoint lives), not Vercel
+    const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN || 'aucallsystem-ivr-system.up.railway.app';
+    const actionUrl = `https://${railwayDomain}`;
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Start>
-    <Stream url="${WEBSOCKET_URL}?from=${encodeURIComponent(from)}" />
-  </Start>
-  <Say voice="Polly.Amy"></Say>
-  <Pause length="3600"/>
+  <Connect action="${actionUrl}/api/transfer/after-connect?callSid=${callSid}&amp;from=${encodeURIComponent(from)}">
+    <Stream url="${WEBSOCKET_URL}?from=${encodeURIComponent(from)}&callSid=${callSid}" />
+  </Connect>
 </Response>`;
     
     logger.info('TwiML generated with recording', {

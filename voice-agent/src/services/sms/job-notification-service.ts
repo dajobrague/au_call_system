@@ -5,6 +5,7 @@
 
 import { airtableClient } from '../airtable/client';
 import { logger } from '../../lib/logger';
+import { filterValidPhoneNumbers } from '../../utils/phone-validator';
 import type { 
   Employee, 
   JobOccurrence, 
@@ -68,9 +69,12 @@ export class JobNotificationService {
         }));
       
       // Filter out the excluded employee (the one who left the job open)
-      const filteredEmployees = excludeEmployeeId 
+      const excludedFiltered = excludeEmployeeId 
         ? allEmployees.filter(emp => emp.id !== excludeEmployeeId)
         : allEmployees;
+      
+      // Filter to only valid Australian/Mexican phone numbers
+      const filteredEmployees = filterValidPhoneNumbers(excludedFiltered);
       
       const duration = Date.now() - startTime;
       
@@ -185,31 +189,58 @@ export class JobNotificationService {
 
   /**
    * Generate short SMS content for job availability with production URL
+   * PRIVACY-SAFE: Only uses FirstName LastInitial
    */
   private async generateJobAvailabilitySMSWithURL(jobDetails: JobNotificationDetails, employeeId: string): Promise<string> {
     const { jobTemplate, jobOccurrence, patient, reason, originalEmployee } = jobDetails;
     
-    // Generate production URL (no token needed)
-    const baseUrl = 'https://sam-voice-agent.vercel.app';
+    // Generate production URL from Railway environment
+    const { getBaseUrl } = await import('../../config/base-url');
+    const baseUrl = getBaseUrl();
     const jobUrl = `${baseUrl}/job/${jobOccurrence.id}?emp=${employeeId}`;
     
+    // Create privacy-safe patient name: FirstName LastInitial
+    const privacyName = this.formatPrivacyName(patient.name);
+    
     // Create short, single-segment SMS (under 160 characters)
-    // Format: "JOB AVAILABLE: [Patient], [Date] [Time]. View details: [URL]"
+    // Format: "JOB AVAILABLE: [FirstName L.], [Date] [Time]. Reply or view: [URL]"
     const shortDate = this.formatDateForSMS(jobOccurrence.scheduledAt);
     const shortTime = this.formatTimeForSMS(jobOccurrence.displayDate);
     
-    const smsContent = `JOB AVAILABLE: ${patient.name}, ${shortDate} ${shortTime}. View details: ${jobUrl}`;
+    const smsContent = `JOB AVAILABLE: ${privacyName}, ${shortDate} ${shortTime}. Reply or view: ${jobUrl}`;
     
-    logger.info('Short SMS generated', {
+    logger.info('Privacy-safe SMS generated', {
       employeeId,
       jobOccurrenceId: jobOccurrence.id,
       patientName: patient.name,
+      privacyName: privacyName,
       smsLength: smsContent.length,
       isSingleSegment: smsContent.length <= 160,
-      type: 'short_sms_generated'
+      type: 'privacy_sms_generated'
     });
     
     return smsContent;
+  }
+
+  /**
+   * Format patient name for privacy: FirstName LastInitial
+   * Example: "Oliver Smith" -> "Oliver S."
+   */
+  private formatPrivacyName(fullName: string): string {
+    if (!fullName) return 'Patient';
+    
+    const parts = fullName.trim().split(' ');
+    
+    if (parts.length === 1) {
+      // Only first name provided
+      return parts[0];
+    }
+    
+    // Get first name and last initial
+    const firstName = parts[0];
+    const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
+    
+    return `${firstName} ${lastInitial}.`;
   }
 
   /**
@@ -258,7 +289,7 @@ export class JobNotificationService {
   }
 
   /**
-   * Process instant job redistribution
+   * Process instant job redistribution with 3-wave SMS system
    * Called immediately when a job is left open
    */
   async processInstantJobRedistribution(
@@ -270,12 +301,12 @@ export class JobNotificationService {
   ): Promise<{ success: boolean; employeesNotified: number; error?: string }> {
     const startTime = Date.now();
     
-    logger.info('Starting instant job redistribution', {
+    logger.info('Starting 3-wave job redistribution', {
       occurrenceId: jobOccurrence.id,
       jobCode: jobTemplate.jobCode,
       providerId: jobOccurrence.providerId,
       originalEmployeeId: originalEmployee.id,
-      type: 'instant_redistribution_start'
+      type: 'wave_redistribution_start'
     });
 
     try {
@@ -299,8 +330,10 @@ export class JobNotificationService {
         };
       }
       
-      // Send notifications to all provider employees
-      const notificationResult = await this.notifyEmployeesOfOpenJob(
+      // ============================================================
+      // WAVE 1: Send immediate notifications (existing logic)
+      // ============================================================
+      const wave1Result = await this.notifyEmployeesOfOpenJob(
         providerEmployees,
         {
           jobTemplate,
@@ -311,31 +344,102 @@ export class JobNotificationService {
         }
       );
       
+      logger.info('Wave 1 (immediate) sent', {
+        occurrenceId: jobOccurrence.id,
+        employeesNotified: wave1Result.notificationsSent,
+        type: 'wave_1_sent'
+      });
+
+      // ============================================================
+      // Calculate intervals for waves 2 and 3 (TIMEZONE-AWARE)
+      // ============================================================
+      const { calculateWaveInterval, getIntervalDescription } = await import('./wave-interval-calculator');
+      
+      // Get time from jobOccurrence (e.g., "14:00") and convert to proper format
+      const timeString = jobOccurrence.time || jobOccurrence.displayDate;
+      
+      // Provider timezone (defaults to Australia/Sydney)
+      const providerTimezone = 'Australia/Sydney'; // TODO: Get from provider record if needed
+      
+      const baseInterval = calculateWaveInterval(
+        jobOccurrence.scheduledAt,
+        timeString,
+        providerTimezone
+      );
+      const wave2Delay = baseInterval;
+      const wave3Delay = baseInterval * 2;
+      
+      logger.info('Wave intervals calculated (timezone-aware)', {
+        occurrenceId: jobOccurrence.id,
+        scheduledAt: jobOccurrence.scheduledAt,
+        timeString,
+        providerTimezone,
+        baseIntervalMinutes: Math.round(baseInterval / 60000),
+        wave2DelayMinutes: Math.round(wave2Delay / 60000),
+        wave3DelayMinutes: Math.round(wave3Delay / 60000),
+        description: getIntervalDescription(jobOccurrence.scheduledAt, timeString, providerTimezone),
+        type: 'wave_intervals_calculated'
+      });
+
+      // ============================================================
+      // Schedule Wave 2 and Wave 3 (with timezone info)
+      // ============================================================
+      const { scheduleWave2, scheduleWave3 } = await import('../queue/sms-wave-queue');
+      
+      const waveData = {
+        occurrenceId: jobOccurrence.id,
+        providerId: jobOccurrence.providerId,
+        scheduledAt: jobOccurrence.scheduledAt,
+        timeString: timeString,  // Include time for accurate wave processing
+        timezone: providerTimezone, // Include timezone for wave processor
+        jobDetails: {
+          patientFirstName: patient.name.split(' ')[0],
+          patientLastInitial: patient.name.split(' ').pop()?.charAt(0) || '',
+          patientFullName: patient.name,
+          dateTime: jobOccurrence.scheduledAt,
+          displayDate: jobOccurrence.displayDate,
+        },
+      };
+
+      // Schedule Wave 2
+      await scheduleWave2(jobOccurrence.id, wave2Delay, waveData);
+      
+      // Schedule Wave 3
+      await scheduleWave3(jobOccurrence.id, wave3Delay, waveData);
+
+      logger.info('All waves scheduled successfully', {
+        occurrenceId: jobOccurrence.id,
+        wave1: 'sent immediately',
+        wave2: `scheduled in ${Math.round(wave2Delay / 60000)} minutes`,
+        wave3: `scheduled in ${Math.round(wave3Delay / 60000)} minutes`,
+        type: 'all_waves_scheduled'
+      });
+      
       const duration = Date.now() - startTime;
       
-      logger.info('Instant job redistribution complete', {
+      logger.info('3-wave job redistribution initiated', {
         occurrenceId: jobOccurrence.id,
-        employeesNotified: notificationResult.notificationsSent,
-        errors: notificationResult.errors.length,
+        wave1EmployeesNotified: wave1Result.notificationsSent,
+        wave1Errors: wave1Result.errors.length,
         duration,
-        type: 'instant_redistribution_complete'
+        type: 'wave_redistribution_complete'
       });
       
       return {
-        success: notificationResult.success,
-        employeesNotified: notificationResult.notificationsSent,
-        error: notificationResult.errors.length > 0 ? notificationResult.errors.join(', ') : undefined
+        success: wave1Result.success,
+        employeesNotified: wave1Result.notificationsSent,
+        error: wave1Result.errors.length > 0 ? wave1Result.errors.join(', ') : undefined
       };
       
     } catch (error) {
       const duration = Date.now() - startTime;
       
-      logger.error('Instant job redistribution error', {
+      logger.error('Wave redistribution error', {
         occurrenceId: jobOccurrence.id,
         originalEmployeeId: originalEmployee.id,
         error: error instanceof Error ? error.message : 'Unknown error',
         duration,
-        type: 'instant_redistribution_error'
+        type: 'wave_redistribution_error'
       });
       
       return {

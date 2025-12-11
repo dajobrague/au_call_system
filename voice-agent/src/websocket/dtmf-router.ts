@@ -6,9 +6,8 @@
 import { logger } from '../lib/logger';
 import { selectJob, generateJobOptionsMessage, filterJobsByProvider } from '../handlers/job-handler';
 import { generateProviderSelectionGreeting, generateOccurrenceBasedGreeting } from '../handlers/provider-handler';
-import { handleRepresentativeTransfer, getQueueUpdateMessage } from '../handlers/transfer-handler';
+import { getQueueUpdateMessage } from '../handlers/transfer-handler';
 import { generateSpeech, streamAudioToTwilio } from '../services/elevenlabs';
-import { playHoldMusic } from '../audio/hold-music-player';
 import { stopRecordingAndProcess, isRecording } from '../services/speech';
 import { trackCallEvent } from '../services/airtable/call-log-service';
 import { WebSocketWithExtensions } from './connection-handler';
@@ -562,9 +561,10 @@ async function handleJobOptions(context: DTMFRoutingContext): Promise<void> {
 
 /**
  * Handle transfer to representative
+ * Uses Twilio action URL pattern - DO NOT close WebSocket until after update
  */
 async function handleTransferToRepresentative(context: DTMFRoutingContext): Promise<void> {
-  const { callState, generateAndSpeak, saveState, ws, streamSid } = context;
+  const { callState, generateAndSpeak, saveState, ws } = context;
 
   // Track event
   if (ws.callEvents) {
@@ -574,76 +574,61 @@ async function handleTransferToRepresentative(context: DTMFRoutingContext): Prom
     });
   }
   
-  // Update state
-  const updatedState = {
+  const REPRESENTATIVE_PHONE = process.env.REPRESENTATIVE_PHONE || '+61490550941';
+  const callerPhone = callState.employee?.phone || callState.from || 'Unknown';
+  
+  // Use parent CallSid for REST API operations (the original call leg)
+  const parentCallSid = callState.parentCallSid || callState.sid;
+  
+  logger.info('Initiating representative transfer', {
+    callSid: callState.sid,
+    parentCallSid: parentCallSid,
+    representativePhone: REPRESENTATIVE_PHONE,
+    callerPhone,
+    type: 'transfer_start'
+  });
+  
+  // Announce transfer
+  await generateAndSpeak('Transferring you to a representative now. Please hold.');
+  
+  // CORRECT APPROACH per Twilio documentation:
+  // You CANNOT update a call via REST API while a Media Stream is active
+  // Instead:
+  // 1. Set pendingTransfer in call state
+  // 2. Close the WebSocket
+  // 3. Twilio will call the action URL on <Connect>
+  // 4. The action URL handler will see pendingTransfer and return <Dial> TwiML
+  
+  logger.info('Setting pending transfer and closing WebSocket', {
+    callSid: callState.sid,
+    parentCallSid: parentCallSid,
+    representativePhone: REPRESENTATIVE_PHONE,
+    type: 'transfer_via_action_url'
+  });
+  
+  // Save state with pending transfer
+  const transferState = {
     ...callState,
     phase: 'representative_transfer',
-    selectedOption: '3',
+    pendingTransfer: {
+      representativePhone: REPRESENTATIVE_PHONE,
+      callerPhone: callerPhone,
+      initiatedAt: new Date().toISOString()
+    },
     updatedAt: new Date().toISOString()
   };
   
-  await saveState(updatedState);
-  await generateAndSpeak('Let me connect you to a representative. Please hold.');
+  await saveState(transferState);
   
-  // Wait for speech to complete, then handle transfer
-  setTimeout(async () => {
-    try {
-      const transferResult = await handleRepresentativeTransfer({
-        callSid: callState.sid,
-        callerPhone: callState.employee?.phone || '',
-        callerName: callState.employee?.name,
-        representativePhone: '+61490550941',
-        jobInfo: {
-          jobTitle: callState.jobTemplate?.title || 'Unknown Job',
-          patientName: callState.patient?.name || 'Unknown Patient'
-        }
-      });
-      
-      // If successfully transferred to conference, mark WebSocket to stay open
-      if (transferResult.status === 'transferred' && transferResult.conferenceName) {
-        ws.inConference = true;
-        ws.conferenceName = transferResult.conferenceName;
-        logger.info('WebSocket marked for conference mode', {
-          callSid: callState.sid,
-          conferenceName: transferResult.conferenceName,
-          type: 'ws_conference_mode'
-        });
-      }
-      
-      // Announce transfer status
-      await generateAndSpeak(transferResult.message);
-      
-      // If enqueued, play hold music
-      if (transferResult.status === 'enqueued') {
-        setTimeout(() => {
-          playHoldMusic(ws);
-          
-          // Set up periodic queue updates
-          ws.queueUpdateInterval = setInterval(async () => {
-            const updateMessage = await getQueueUpdateMessage(callState.sid);
-            if (updateMessage) {
-              await generateAndSpeak(updateMessage);
-              // Resume hold music after announcement
-              setTimeout(() => {
-                playHoldMusic(ws);
-              }, 5000);
-            } else {
-              // Call removed from queue
-              clearInterval(ws.queueUpdateInterval);
-              ws.queueUpdateInterval = undefined;
-            }
-          }, 30000); // Every 30 seconds
-        }, 5000); // Start hold music 5 seconds after queue announcement
-      }
-    } catch (error) {
-      logger.error('Transfer handling error', {
-        callSid: callState.sid,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        type: 'transfer_handling_error'
-      });
-      await generateAndSpeak("I'm having trouble connecting you to a representative. Please try again later.");
-    }
-  }, 1000);
+  logger.info('Transfer state saved, closing WebSocket to trigger action URL', {
+    callSid: callState.sid,
+    type: 'transfer_closing_ws_for_action'
+  });
+  
+  // Close WebSocket - this will cause Twilio to call the action URL
+  if (ws.readyState === 1) {
+    ws.close(1000, 'Transfer to representative');
+  }
 }
 
 /**
@@ -861,8 +846,8 @@ async function handleNoOccurrencesFound(context: DTMFRoutingContext): Promise<vo
     });
     
     await handleTransferToRepresentative(context);
-  } else if (digit === '2') {
-    // Go back to job options (not job selection)
+  } else if (digit === '2' && callState.selectedOccurrence) {
+    // Go back to job options (only valid if we have a selected occurrence/job to go back to)
     logger.info('No occurrences - going back to job options', {
       callSid: callState.sid,
       type: 'no_occurrences_back_to_options'
@@ -886,7 +871,11 @@ async function handleNoOccurrencesFound(context: DTMFRoutingContext): Promise<vo
     
     await generateAndSpeak(optionsMessage);
   } else {
+    if (callState.selectedOccurrence) {
     await generateAndSpeak('Invalid selection. Press 1 to talk to a representative, or press 2 to go back.');
+    } else {
+      await generateAndSpeak('Invalid selection. Press 1 to talk to a representative.');
+    }
   }
 }
 

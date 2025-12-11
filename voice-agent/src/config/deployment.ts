@@ -27,7 +27,8 @@ export interface DeploymentConfig {
  */
 export function getDeploymentConfig(): DeploymentConfig {
   const environment = (process.env.NODE_ENV || 'development') as 'development' | 'staging' | 'production';
-  const appUrl = process.env.APP_URL || process.env.VERCEL_URL || 'localhost:3000';
+  // Priority: RAILWAY_PUBLIC_DOMAIN > APP_URL > localhost
+  const appUrl = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.APP_URL || 'localhost:3000';
   const isLocalhost = appUrl.includes('localhost');
   const useHttps = !isLocalhost;
   

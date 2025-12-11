@@ -1,9 +1,10 @@
 /**
  * Hold Music Player
- * Manages playback of hold music over WebSocket
+ * Provides high-quality hosted audio URLs for hold music
+ * Replaces generated µ-law audio with hosted MP3 for better quality
  */
 
-import { generateHoldMusic } from './generators';
+import { PRIMARY_HOLD_MUSIC_URL, FALLBACK_HOLD_MUSIC_URLS, getHoldMusicURL } from '../config/hold-music';
 
 interface WebSocketWithMusic extends WebSocket {
   holdMusicInterval?: NodeJS.Timeout;
@@ -11,60 +12,38 @@ interface WebSocketWithMusic extends WebSocket {
 }
 
 /**
- * Play hold music in a loop over WebSocket
- * @param ws - WebSocket connection with streamSid
+ * Get hold music URL for use in TwiML
+ * This replaces the generated hold music with hosted audio
+ * 
+ * @param preferredIndex - Index of fallback URL to use (0 = primary)
+ * @returns Hold music URL
  */
-export function playHoldMusic(ws: WebSocketWithMusic): void {
-  if (!ws || ws.readyState !== 1) {
-    console.log('⚠️ WebSocket not ready for hold music');
-    return;
-  }
-  
-  console.log('🎵 Starting hold music playback...');
-  
-  // Generate 10 seconds of hold music
-  const musicFrames = generateHoldMusic(10000);
-  
-  let frameIndex = 0;
-  
-  // Clear any existing hold music interval
-  if (ws.holdMusicInterval) {
-    clearInterval(ws.holdMusicInterval);
-  }
-  
-  // Send frames at 20ms intervals (50 frames per second)
-  ws.holdMusicInterval = setInterval(() => {
-    if (!ws || ws.readyState !== 1) {
-      clearInterval(ws.holdMusicInterval);
-      console.log('🛑 Hold music stopped - WebSocket closed');
-      return;
-    }
-    
-    // Send current frame
-    const frame = musicFrames[frameIndex];
-    if (frame) {
-      const b64 = Buffer.from(frame).toString('base64');
-      ws.send(JSON.stringify({
-        event: 'media',
-        streamSid: ws.streamSid,
-        media: { payload: b64 }
-      }));
-    }
-    
-    // Move to next frame, loop back to start if at end
-    frameIndex++;
-    if (frameIndex >= musicFrames.length) {
-      frameIndex = 0;
-      console.log('🔄 Hold music loop restarted');
-    }
-  }, 20); // 20ms per frame
-  
-  console.log(`✅ Hold music started (${musicFrames.length} frames, looping)`);
+export function getHoldMusicForTwiML(preferredIndex: number = 0): string {
+  return getHoldMusicURL(preferredIndex);
 }
 
 /**
- * Stop hold music playback
+ * Play hold music in a loop over WebSocket (DEPRECATED)
+ * 
+ * NOTE: This function is deprecated in favor of TwiML-based hold music.
+ * WebSocket-based hold music causes choppiness due to µ-law encoding and frame timing.
+ * Use getHoldMusicForTwiML() instead and play via Twilio's native audio system.
+ * 
+ * @param ws - WebSocket connection with streamSid
+ * @deprecated Use TwiML <Play> with hosted audio URLs instead
+ */
+export function playHoldMusic(ws: WebSocketWithMusic): void {
+  console.log('⚠️ playHoldMusic called but is deprecated - use TwiML <Play> instead');
+  console.log(`Recommended hold music URL: ${PRIMARY_HOLD_MUSIC_URL}`);
+  
+  // For backward compatibility, we log but don't actually play anything
+  // The proper way is to use TwiML to play hosted audio
+}
+
+/**
+ * Stop hold music playback (DEPRECATED)
  * @param ws - WebSocket connection
+ * @deprecated No longer needed with TwiML-based hold music
  */
 export function stopHoldMusic(ws: WebSocketWithMusic): void {
   if (ws && ws.holdMusicInterval) {
@@ -72,4 +51,12 @@ export function stopHoldMusic(ws: WebSocketWithMusic): void {
     ws.holdMusicInterval = undefined;
     console.log('🛑 Hold music stopped');
   }
+}
+
+/**
+ * Get all available hold music URLs
+ * @returns Array of hold music URLs (primary + fallbacks)
+ */
+export function getAllHoldMusicURLs(): string[] {
+  return [PRIMARY_HOLD_MUSIC_URL, ...FALLBACK_HOLD_MUSIC_URLS];
 }

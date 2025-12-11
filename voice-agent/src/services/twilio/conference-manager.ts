@@ -30,11 +30,12 @@ export interface ConferenceTransferResult {
 export async function transferToRepresentative(
   options: ConferenceTransferOptions
 ): Promise<ConferenceTransferResult> {
+  const { getBaseUrl } = await import('../../config/base-url');
   const {
     callerCallSid,
     representativePhone,
     callerPhone,
-    baseUrl = 'https://sam-voice-agent.vercel.app'
+    baseUrl = getBaseUrl()
   } = options;
   
   const startTime = Date.now();

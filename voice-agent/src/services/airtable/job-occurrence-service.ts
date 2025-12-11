@@ -4,13 +4,16 @@
  */
 
 import { airtableClient } from './client';
+import { airtableConfig } from '../../config/airtable';
+import https from 'https';
 import { logger } from '../../lib/logger';
 import type { 
   JobOccurrence, 
   JobOccurrenceRecord,
   JobOccurrenceFields,
   Employee,
-  JobTemplate
+  JobTemplate,
+  AirtableResponse
 } from './types';
 
 /**
@@ -19,9 +22,9 @@ import type {
 function transformJobOccurrenceRecord(record: JobOccurrenceRecord): JobOccurrence {
   const fields = record.fields;
   
-  // Parse the scheduled date and create display format
+  // Parse the scheduled date and time
   const scheduledAt = fields['Scheduled At'] || '';
-  const time = fields['Time'] || '';
+  const time = fields['Time'] || '00:00'; // Default to midnight if not set
   
   // Create display format with date and time
   const displayDate = formatDateTimeForVoice(scheduledAt, time);
@@ -31,6 +34,7 @@ function transformJobOccurrenceRecord(record: JobOccurrenceRecord): JobOccurrenc
     occurrenceId: fields['Occurrence ID'] || '',
     jobTemplateId: fields['Job Template']?.[0] || '', // First job template ID
     scheduledAt,
+    time, // Include the time field from Airtable
     status: fields['Status'] || 'Unknown',
     assignedEmployeeId: fields['Assigned Employee']?.[0] || '', // First employee ID
     occurrenceLabel: fields['Occurrence Label'] || '',
@@ -138,6 +142,66 @@ function getOrdinalSuffix(day: number): string {
 }
 
 /**
+ * Format date relative to today for voice output
+ * Returns "today", "tomorrow", day name, or full date
+ */
+function formatRelativeDate(dateString: string): string {
+  if (!dateString) return '';
+  
+  try {
+    const date = new Date(dateString + 'T00:00:00'); // Parse as local date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const daysDiff = Math.floor((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Same day
+    if (daysDiff === 0) {
+      return 'today';
+    }
+    
+    // Tomorrow
+    if (daysDiff === 1) {
+      return 'tomorrow';
+    }
+    
+    // Within 7 days - use day name
+    if (daysDiff > 1 && daysDiff <= 7) {
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      return dayNames[date.getDay()];
+    }
+    
+    // Beyond 7 days - use full date
+    return formatDateForVoice(dateString);
+  } catch (error) {
+    return dateString;
+  }
+}
+
+/**
+ * Format date and time together for voice output
+ * e.g., "4:00 PM today" or "8:30 AM tomorrow"
+ */
+function formatDateTimeForGreeting(dateString: string, timeString: string): string {
+  const relativeDate = formatRelativeDate(dateString);
+  const formattedTime = formatTimeStringForVoice(timeString);
+  
+  return `${formattedTime} ${relativeDate}`;
+}
+
+/**
+ * Extract first name from full name
+ */
+function extractFirstName(fullName: string): string {
+  if (!fullName) return 'the patient';
+  const parts = fullName.trim().split(' ');
+  return parts[0] || 'the patient';
+}
+
+/**
  * Job Occurrence lookup result
  */
 export interface OccurrenceLookupResult {
@@ -145,6 +209,28 @@ export interface OccurrenceLookupResult {
   occurrences: JobOccurrence[];
   error?: string;
   hasNoFutureOccurrences?: boolean;
+}
+
+/**
+ * Enriched occurrence with job and patient details for greeting
+ */
+export interface EnrichedOccurrence {
+  occurrenceId: string;
+  occurrenceRecordId: string;
+  jobTemplate: {
+    id: string;
+    jobCode: string;
+    title: string;
+  };
+  patient: {
+    id: string;
+    fullName: string;
+    firstName: string;
+  };
+  scheduledAt: string;  // YYYY-MM-DD
+  time: string;         // HH:MM
+  displayDateTime: string;  // "4:00 PM today" or "8:00 AM tomorrow"
+  status: string;
 }
 
 /**
@@ -560,6 +646,256 @@ export class JobOccurrenceService {
         success: false, 
         error: error instanceof Error ? error.message : 'SMS sending error' 
       };
+    }
+  }
+
+  /**
+   * Get all employee occurrences enriched with job and patient details
+   * Fetches occurrences for all employee jobs and flattens into single list
+   * If no jobs are found, fetches occurrences directly from Job Occurrences table
+   * @param employeeJobs - Array of { jobTemplate, patient } objects
+   * @param employeeId - Employee ID for filtering
+   * @returns Flat array of enriched occurrences sorted by date/time
+   */
+  async getAllEmployeeOccurrencesEnriched(
+    employeeJobs: Array<{ jobTemplate: JobTemplate; patient: any }>,
+    employeeId: string
+  ): Promise<EnrichedOccurrence[]> {
+    const startTime = Date.now();
+    
+    logger.info('Fetching all employee occurrences enriched', {
+      employeeId,
+      jobCount: employeeJobs.length,
+      type: 'enriched_occurrences_start'
+    });
+
+    try {
+      // If no jobs found via Job Templates, fetch occurrences directly
+      if (!employeeJobs || employeeJobs.length === 0) {
+        logger.info('No jobs found via templates, fetching occurrences directly', {
+          employeeId,
+          type: 'enriched_occurrences_direct_fetch'
+        });
+        
+        return await this.getOccurrencesDirectly(employeeId);
+      }
+      // Fetch occurrences for each job in parallel
+      const occurrencePromises = employeeJobs.map(async ({ jobTemplate, patient }) => {
+        const result = await this.getFutureOccurrences(jobTemplate, employeeId);
+        
+        if (!result.success || result.occurrences.length === 0) {
+          return [];
+        }
+        
+        // Enrich each occurrence with job and patient details
+        return result.occurrences.map(occurrence => ({
+          occurrenceId: occurrence.occurrenceId,
+          occurrenceRecordId: occurrence.id,
+          jobTemplate: {
+            id: jobTemplate.id,
+            jobCode: jobTemplate.jobCode,
+            title: jobTemplate.title
+          },
+          patient: {
+            id: patient?.id || '',
+            fullName: patient?.name || 'Unknown Patient',
+            firstName: extractFirstName(patient?.name || '')
+          },
+          scheduledAt: occurrence.scheduledAt,
+          time: occurrence.time, // Use the time field directly from occurrence
+          displayDateTime: formatDateTimeForGreeting(occurrence.scheduledAt, occurrence.time),
+          status: occurrence.status
+        }));
+      });
+      
+      const allOccurrencesNested = await Promise.all(occurrencePromises);
+      const allOccurrences = allOccurrencesNested.flat();
+      
+      // Sort by date, then by time (earliest first)
+      allOccurrences.sort((a, b) => {
+        const dateCompare = a.scheduledAt.localeCompare(b.scheduledAt);
+        if (dateCompare !== 0) return dateCompare;
+        return a.time.localeCompare(b.time);
+      });
+      
+      const duration = Date.now() - startTime;
+      
+      logger.info('Employee occurrences enriched successfully', {
+        employeeId,
+        totalOccurrences: allOccurrences.length,
+        duration,
+        type: 'enriched_occurrences_success'
+      });
+      
+      return allOccurrences;
+      
+    } catch (error) {
+      logger.error('Error fetching enriched occurrences', {
+        employeeId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        duration: Date.now() - startTime,
+        type: 'enriched_occurrences_error'
+      });
+      
+      return [];
+    }
+  }
+
+  /**
+   * Fetch occurrences directly from Job Occurrences table by employee ID
+   * Used when employee has no Job Templates assigned but has direct occurrence assignments
+   * @param employeeId - Employee record ID
+   * @returns Enriched occurrences with job template and patient details fetched
+   */
+  private async getOccurrencesDirectly(employeeId: string): Promise<EnrichedOccurrence[]> {
+    const startTime = Date.now();
+    
+    try {
+      // Get employee details to use name for query
+      const employee = await airtableClient.getEmployeeById(employeeId);
+      
+      if (!employee) {
+        logger.warn('Employee not found for direct occurrence fetch', {
+          employeeId,
+          type: 'direct_occurrence_fetch_no_employee'
+        });
+        return [];
+      }
+      
+      const employeeName = employee.fields['Display Name'];
+      
+      logger.info('Fetching occurrences directly by employee record ID', {
+        employeeId,
+        employeeName,
+        type: 'direct_occurrence_fetch_start'
+      });
+      
+      // Query Job Occurrences by recordId (from Assigned Employee) lookup field
+      const today = new Date().toISOString().split('T')[0];
+      const filterFormula = `AND(FIND('${employeeId}', ARRAYJOIN({recordId (from Assigned Employee)})), {Status} = 'Scheduled', {Scheduled At} >= '${today}')`;
+      
+      const response = await new Promise<AirtableResponse<JobOccurrenceFields>>((resolve, reject) => {
+        const params = new URLSearchParams({
+          filterByFormula: filterFormula,
+          maxRecords: '9'
+        });
+        
+        // Add all field parameters
+        const fields = ['Occurrence ID', 'Job Template', 'Scheduled At', 'Time', 'Status', 'Assigned Employee', 'Patient', 'Provider', 'Patient TXT', 'Employee TXT', 'recordId (from Assigned Employee)'];
+        fields.forEach(field => params.append('fields[]', field));
+        
+        // Add sort parameter (Airtable expects sort[0][field] and sort[0][direction])
+        params.append('sort[0][field]', 'Scheduled At');
+        params.append('sort[0][direction]', 'asc');
+        
+        const path = `/v0/${airtableConfig.baseId}/${encodeURIComponent('Job Occurrences')}?${params.toString()}`;
+        
+        const req = https.request({
+          hostname: 'api.airtable.com',
+          port: 443,
+          path,
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${airtableConfig.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        }, (res) => {
+          let data = '';
+          res.on('data', (chunk) => data += chunk);
+          res.on('end', () => {
+            try {
+              const jsonData = JSON.parse(data);
+              resolve(jsonData);
+            } catch (error) {
+              reject(new Error('Failed to parse response'));
+            }
+          });
+        });
+        
+        req.on('error', reject);
+        req.on('timeout', () => {
+          req.destroy();
+          reject(new Error('Request timeout'));
+        });
+        req.end();
+      });
+      
+      logger.info('Direct occurrence query complete', {
+        employeeId,
+        employeeName,
+        found: response.records?.length || 0,
+        hasRecords: !!response.records,
+        type: 'direct_occurrence_fetch_complete'
+      });
+      
+      if (!response.records || response.records.length === 0) {
+        logger.warn('No records in response', {
+          employeeId,
+          responseKeys: Object.keys(response || {}),
+          error: (response as any).error,
+          type: 'direct_occurrence_no_records'
+        });
+        return [];
+      }
+      
+      // Transform and enrich each occurrence
+      const enrichedOccurrences: EnrichedOccurrence[] = [];
+      
+      for (const record of response.records) {
+        const occurrence = transformJobOccurrenceRecord(record as JobOccurrenceRecord);
+        
+        // Fetch job template and patient details
+        const jobTemplateId = occurrence.jobTemplateId;
+        const patientId = occurrence.patientId;
+        
+        const [jobTemplate, patient] = await Promise.all([
+          jobTemplateId ? airtableClient.getJobTemplateById(jobTemplateId) : null,
+          patientId ? airtableClient.getPatientById(patientId) : null
+        ]);
+        
+        enrichedOccurrences.push({
+          occurrenceId: occurrence.occurrenceId,
+          occurrenceRecordId: occurrence.id,
+          jobTemplate: {
+            id: jobTemplate?.id || jobTemplateId,
+            jobCode: jobTemplate?.fields['Job Code'] || 'Unknown',
+            title: jobTemplate?.fields['Title'] || 'Healthcare Service'
+          },
+          patient: {
+            id: patientId,
+            fullName: patient?.fields['Patient Full Name'] || record.fields['Patient TXT'] || 'Unknown Patient',
+            firstName: extractFirstName(patient?.fields['Patient Full Name'] || record.fields['Patient TXT'] || '')
+          },
+          scheduledAt: occurrence.scheduledAt,
+          time: occurrence.time,
+          displayDateTime: formatDateTimeForGreeting(occurrence.scheduledAt, occurrence.time),
+          status: occurrence.status
+        });
+      }
+      
+      const duration = Date.now() - startTime;
+      
+      logger.info('Direct occurrences enriched successfully', {
+        employeeId,
+        count: enrichedOccurrences.length,
+        duration,
+        type: 'direct_occurrence_enrich_success'
+      });
+      
+      return enrichedOccurrences;
+      
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      
+      logger.error('Error fetching occurrences directly', {
+        employeeId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        duration,
+        type: 'direct_occurrence_fetch_error'
+      });
+      
+      return [];
     }
   }
 

@@ -39,7 +39,8 @@ export interface ProductionConfig {
  */
 export function getProductionConfig(): ProductionConfig {
   const environment = process.env.NODE_ENV || 'development';
-  const appUrl = process.env.APP_URL || process.env.VERCEL_URL || 'localhost:3000';
+  // Priority: RAILWAY_PUBLIC_DOMAIN > APP_URL > localhost
+  const appUrl = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.APP_URL || 'localhost:3000';
   const isLocalhost = appUrl.includes('localhost');
   
   return {

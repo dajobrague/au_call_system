@@ -104,6 +104,13 @@ export interface CallState {
   createdAt: string;
   updatedAt: string;
   lastGatherAttempt?: string; // Track last processed GatherAttempt for idempotency
+  pendingTransfer?: {          // Pending transfer to representative
+    representativePhone: string;
+    callerPhone: string;
+    initiatedAt: string;
+  };
+  enrichedOccurrences?: any[]; // Flat list of all occurrences with full details
+  currentPage?: number;        // Current pagination page for occurrence selection
 }
 
 export interface TwilioWebhookData {

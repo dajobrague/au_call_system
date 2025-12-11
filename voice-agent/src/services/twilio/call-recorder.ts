@@ -30,9 +30,10 @@ export interface RecordingResult {
  * Includes any transfers or conferences
  */
 export async function startCallRecording(options: RecordingOptions): Promise<RecordingResult> {
+  const { getBaseUrl } = await import('../../config/base-url');
   const {
     callSid,
-    recordingStatusCallback = 'https://sam-voice-agent.vercel.app/api/twilio/recording-status',
+    recordingStatusCallback = `${getBaseUrl()}/api/twilio/recording-status`,
     recordingChannels = 'dual',
     trim = 'do-not-trim'
   } = options;

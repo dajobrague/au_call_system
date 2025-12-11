@@ -1,11 +1,18 @@
 /**
  * Transfer Handler
  * Handles representative transfer with queue management
+ * 
+ * NOTE: With the new Connect action URL pattern, this handler is no longer
+ * directly used for transfers. The transfer is now handled by:
+ * 1. Setting pendingTransfer flag in call state (dtmf-router)
+ * 2. Closing WebSocket
+ * 3. Twilio calls action URL (/api/transfer/after-connect)
+ * 4. Action endpoint returns Dial TwiML
+ * 
+ * This handler is kept for backwards compatibility and queue management.
  */
 
-import { checkPhoneAvailability } from '../services/queue/twilio-availability';
 import { callQueueService } from '../services/queue/call-queue-service';
-import { transferToRepresentative } from '../services/twilio/conference-manager';
 import { logger } from '../lib/logger';
 
 export interface TransferOptions {
@@ -25,130 +32,33 @@ export interface TransferResult {
   queuePosition?: number;
   queueSize?: number;
   estimatedWaitMinutes?: number;
-  conferenceName?: string;
   error?: string;
 }
 
 /**
- * Attempt to transfer call to representative
- * If representative is busy, enqueue the caller
+ * Simplified transfer handler
+ * Now just returns success - actual transfer handled by Connect action URL
  */
 export async function handleRepresentativeTransfer(
   options: TransferOptions
 ): Promise<TransferResult> {
   const {
     callSid,
-    callerPhone,
-    callerName,
-    representativePhone,
-    jobInfo
+    representativePhone
   } = options;
   
-  const startTime = Date.now();
+  logger.info('Transfer handler called - pendingTransfer flag should be set', {
+    callSid,
+    representativePhone,
+    type: 'transfer_handler_called'
+  });
   
-  try {
-    logger.info('Checking representative availability', {
-      callSid,
-      representativePhone,
-      type: 'transfer_check_start'
-    });
-    
-    // Check if representative is available
-    const availability = await checkPhoneAvailability(representativePhone);
-    
-    if (availability.isAvailable) {
-      // Representative is available - transfer immediately
-      logger.info('Representative available - initiating transfer', {
-        callSid,
-        representativePhone,
-        activeCallsCount: availability.activeCallsCount,
-        duration: Date.now() - startTime,
-        type: 'transfer_immediate'
-      });
-      
-      const transferResult = await transferToRepresentative({
-        callerCallSid: callSid,
-        representativePhone,
-        callerPhone
-      });
-      
-      if (transferResult.success) {
-        return {
-          status: 'transferred',
-          message: 'A representative is available. Transferring you now. Please hold while I connect your call.',
-          conferenceName: transferResult.conferenceName
-        };
-      } else {
-        // Transfer failed, fall through to enqueue
-        logger.warn('Transfer failed, enqueueing instead', {
-          callSid,
-          error: transferResult.error,
-          type: 'transfer_failed_enqueue'
-        });
-      }
-    } else {
-      logger.info('Representative busy - enqueueing caller', {
-        callSid,
-        representativePhone,
-        activeCallsCount: availability.activeCallsCount,
-        reason: availability.reason,
-        duration: Date.now() - startTime,
-        type: 'transfer_enqueue'
-      });
-    }
-    
-    // Representative unavailable or transfer failed - enqueue the caller
-    const queueResult = await callQueueService.enqueueCall(
-      callSid,
-      callerPhone,
-      callerName,
-      jobInfo
-    );
-    
-    // Calculate estimated wait time
-    const estimatedWaitSeconds = await callQueueService.getEstimatedWaitTime(queueResult.position);
-    const estimatedWaitMinutes = Math.ceil(estimatedWaitSeconds / 60);
-    
-    // Generate queue message
-    let queueMessage: string;
-    if (queueResult.position === 1) {
-      queueMessage = 'All representatives are currently assisting other callers. You are next in line. A representative will be with you shortly. Please stay on the line.';
-    } else {
-      queueMessage = `All representatives are currently assisting other callers. You are number ${queueResult.position} in the queue. Your estimated wait time is approximately ${estimatedWaitMinutes} ${estimatedWaitMinutes === 1 ? 'minute' : 'minutes'}. Please stay on the line. Your call is important to us.`;
-    }
-    
-    logger.info('Caller enqueued successfully', {
-      callSid,
-      position: queueResult.position,
-      queueSize: queueResult.queueSize,
-      estimatedWaitMinutes,
-      duration: Date.now() - startTime,
-      type: 'transfer_enqueued_success'
-    });
-    
-    return {
-      status: 'enqueued',
-      message: queueMessage,
-      queuePosition: queueResult.position,
-      queueSize: queueResult.queueSize,
-      estimatedWaitMinutes
-    };
-    
-  } catch (error) {
-    logger.error('Transfer handler error', {
-      callSid,
-      representativePhone,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      duration: Date.now() - startTime,
-      type: 'transfer_handler_error'
-    });
-    
-    return {
-      status: 'error',
-      message: "I'm having trouble connecting you to a representative. Please try again later.",
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
-  }
+  // Return success - the actual transfer is handled by the action URL
+  // after the WebSocket closes
+  return {
+    status: 'transferred',
+    message: 'Transfer initiated'
+  };
 }
 
 /**

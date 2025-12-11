@@ -18,7 +18,7 @@ import {
 } from './connection-handler';
 import { routeDTMFInput } from './dtmf-router';
 import { authenticateByPhone, prefetchBackgroundData } from '../handlers/authentication-handler';
-import { generateSingleProviderGreeting, generateMultiProviderGreeting } from '../handlers/provider-handler';
+import { generateSingleProviderGreeting, generateMultiProviderGreeting, generateOccurrenceBasedGreeting } from '../handlers/provider-handler';
 import { generateSpeech, streamAudioToTwilio, stopCurrentAudio } from '../services/elevenlabs';
 import { startCallRecording } from '../services/twilio/call-recorder';
 import { twilioConfig } from '../config/twilio';
@@ -33,9 +33,12 @@ const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'aEO01A4wXwd1O8GP
 
 /**
  * Create and configure WebSocket server
+ * @param port - Port to listen on
+ * @param expressApp - Optional Express app with HTTP routes (if not provided, creates a new one)
  */
-export function createWebSocketServer(port: number = 3001): { app: express.Application; server: http.Server; wss: WebSocketServer } {
-  const app = express();
+export function createWebSocketServer(port: number = 3001, expressApp?: express.Application): { app: express.Application; server: http.Server; wss: WebSocketServer } {
+  // Use provided Express app or create a new one
+  const app = expressApp || express();
   const server = http.createServer(app);
   const wss = new WebSocketServer({ 
     server,
@@ -50,10 +53,12 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
     });
   });
 
-  // Health check endpoint
-  app.get('/health', (req: Request, res: Response) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-  });
+  // Health check endpoint (only add if not using custom app)
+  if (!expressApp) {
+    app.get('/health', (req: Request, res: Response) => {
+      res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    });
+  }
 
   // Log all incoming HTTP requests for debugging
   server.on('request', (req, res) => {
@@ -117,7 +122,14 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
         if (!message.start) return;
 
         ws.streamSid = message.start.streamSid;
-        ws.callSid = message.start.callSid;
+        ws.callSid = message.start.callSid; // This IS the parent CallSid from Twilio
+        
+        // Extract parent CallSid from custom parameters (for backwards compatibility)
+        // Note: Twilio's message.start.callSid IS already the parent call's CallSid
+        // The custom parameter is just for explicit tracking
+        ws.parentCallSid = (message.start.customParameters as any)?.parentCallSid || 
+                           (message.start.customParameters as any)?.callSid || 
+                           ws.callSid;
 
         // Extract phone from Twilio's customParameters (set via <Parameter> in TwiML)
         let callerPhone = (message.start.customParameters as any)?.phone || message.start.customParameters?.from || from;
@@ -125,6 +137,7 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
         // DEEP DEBUG: Log parameter extraction
         logger.info('🔍 DEEP DEBUG: Start message received', {
           callSid: ws.callSid,
+          parentCallSid: ws.parentCallSid,
           customParameters: message.start.customParameters,
           extractedPhone: callerPhone,
           fallbackFrom: from,
@@ -133,6 +146,7 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
 
         logger.info('Call started', {
           callSid: ws.callSid,
+          parentCallSid: ws.parentCallSid,
           streamSid: ws.streamSid,
           from: callerPhone,
           type: 'call_start'
@@ -143,14 +157,16 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
         ws.callStartTime = new Date();
 
         // Start call recording immediately (runs in parallel)
+        // Use parentCallSid for REST API operations
         startCallRecording({
-          callSid: ws.callSid,
+          callSid: ws.parentCallSid!,
           recordingChannels: 'dual', // Records both inbound and outbound audio
           trim: 'do-not-trim'
         }).then((result) => {
           if (result.success) {
             logger.info('Call recording started successfully', {
               callSid: ws.callSid,
+              parentCallSid: ws.parentCallSid,
               recordingSid: result.recordingSid,
               type: 'recording_success'
             });
@@ -163,6 +179,7 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
           } else {
             logger.error('Failed to start call recording', {
               callSid: ws.callSid,
+              parentCallSid: ws.parentCallSid,
               error: result.error,
               type: 'recording_failure'
             });
@@ -170,6 +187,7 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
         }).catch((error) => {
           logger.error('Call recording error', {
             callSid: ws.callSid,
+            parentCallSid: ws.parentCallSid,
             error: error instanceof Error ? error.message : 'Unknown error',
             type: 'recording_error'
           });
@@ -188,17 +206,19 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
               
               try {
                 const twilioClient = twilio(twilioConfig.accountSid, twilioConfig.authToken);
-                const call = await twilioClient.calls(ws.callSid).fetch();
+                const call = await twilioClient.calls(ws.parentCallSid!).fetch();
                 callerPhone = call.from;
                 
                 logger.info('Fetched caller phone from Twilio API', {
                   callSid: ws.callSid,
+                  parentCallSid: ws.parentCallSid,
                   phone: callerPhone,
                   type: 'phone_fallback_success'
                 });
               } catch (error) {
                 logger.error('Failed to fetch call details from Twilio', {
                   callSid: ws.callSid,
+                  parentCallSid: ws.parentCallSid,
                   error: error instanceof Error ? error.message : 'Unknown error',
                   type: 'phone_fallback_error'
                 });
@@ -247,6 +267,8 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
           // Create call state for PIN authentication phase
           const pinAuthState = {
             sid: ws.callSid!,
+            parentCallSid: ws.parentCallSid!,
+            from: callerPhone,
             phase: 'pin_auth',
             authMethod: 'pin_pending',
             pinBuffer: '', // Will collect PIN digits here
@@ -282,6 +304,8 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
         // Create initial call state
         const callState = {
           sid: ws.callSid!,
+          parentCallSid: ws.parentCallSid!,
+          from: callerPhone,
           phase: 'provider_selection',
           employee: authResult.employee,
           provider: authResult.provider,
@@ -361,9 +385,83 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
         // Generate greeting based on provider count
         const providerResult = backgroundData.providers;
         const employeeJobs = backgroundData.employeeJobs || [];
+        const enrichedOccurrences = backgroundData.enrichedOccurrences || [];
 
+        // NEW FLOW: Use occurrence-based greeting (shows shifts immediately)
         if (!providerResult?.hasMultipleProviders) {
-          // Single provider
+          // Single provider - show occurrence list directly
+          const provider = providerResult?.providers?.[0];
+          const greeting = generateOccurrenceBasedGreeting(
+            authResult.employee,
+            provider,
+            enrichedOccurrences,
+            1  // Start at page 1
+          );
+
+          if (greeting.shouldPresentJobs) {
+            // Update state with occurrence list (skip job_selection phase)
+            const updatedState = {
+              ...callState,
+              phase: 'occurrence_selection',
+              provider: provider ? {
+                id: provider.id,
+                name: provider.name,
+                greeting: provider.greeting
+              } : null,
+              enrichedOccurrences: enrichedOccurrences,
+              currentPage: 1
+            };
+
+            await saveCallState(ws, updatedState);
+          } else {
+            // Update state to allow DTMF input (press 1 for representative)
+            const updatedState = {
+              ...callState,
+              phase: 'no_occurrences_found',
+              provider: provider ? {
+                id: provider.id,
+                name: provider.name,
+                greeting: provider.greeting
+              } : null,
+              enrichedOccurrences: enrichedOccurrences,
+              updatedAt: new Date().toISOString()
+            };
+            await saveCallState(ws, updatedState);
+            
+            logger.info('No shifts found - state updated for representative transfer', {
+              callSid: ws.callSid,
+              phase: 'no_occurrences_found',
+              hasEmployee: !!updatedState.employee,
+              hasProvider: !!updatedState.provider,
+              type: 'no_shifts_state_saved'
+            });
+          }
+
+          await generateAndSpeak(greeting.message);
+        } else {
+          // Multiple providers - still need provider selection first
+          const greeting = generateMultiProviderGreeting(
+            authResult.employee,
+            providerResult.providers
+          );
+
+          // Update state with available providers
+          const updatedState = {
+            ...callState,
+            availableProviders: providerResult.providers.map((p: any, index: number) => ({
+              ...p,
+              selectionNumber: index + 1
+            })),
+            enrichedOccurrences: enrichedOccurrences  // Store for later use
+          };
+
+          await saveCallState(ws, updatedState);
+          await generateAndSpeak(greeting);
+        }
+        
+        // OLD FLOW (commented out for reference - job-based greeting):
+        /*
+        if (!providerResult?.hasMultipleProviders) {
           const provider = providerResult?.providers?.[0];
           const greeting = generateSingleProviderGreeting({
             employee: authResult.employee,
@@ -373,7 +471,6 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
           });
 
           if (greeting.shouldPresentJobs) {
-            // Update state with job list
             const updatedState = {
               ...callState,
               phase: 'job_selection',
@@ -392,25 +489,8 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
           }
 
           await generateAndSpeak(greeting.message);
-        } else {
-          // Multiple providers
-          const greeting = generateMultiProviderGreeting(
-            authResult.employee,
-            providerResult.providers
-          );
-
-          // Update state with available providers
-          const updatedState = {
-            ...callState,
-            availableProviders: providerResult.providers.map((p: any, index: number) => ({
-              ...p,
-              selectionNumber: index + 1
-            }))
-          };
-
-          await saveCallState(ws, updatedState);
-          await generateAndSpeak(greeting);
         }
+        */
       },
 
       onMedia: async () => {
@@ -421,15 +501,32 @@ export function createWebSocketServer(port: number = 3001): { app: express.Appli
         if (!message.dtmf || !ws.callSid) return;
 
         const digit = message.dtmf.digit;
+        
+        logger.info('DTMF input received', {
+          callSid: ws.callSid,
+          digit,
+          type: 'dtmf_received'
+        });
+        
         const callState = await loadCallState(ws, ws.callSid);
 
         if (!callState) {
           logger.error('No call state found for DTMF', {
             callSid: ws.callSid,
+            digit,
             type: 'dtmf_no_state'
           });
           return;
         }
+        
+        logger.info('Call state loaded for DTMF', {
+          callSid: ws.callSid,
+          digit,
+          phase: callState.phase,
+          hasEmployee: !!callState.employee,
+          hasProvider: !!callState.provider,
+          type: 'dtmf_state_loaded'
+        });
 
         // Route DTMF to appropriate handler
         await routeDTMFInput({

@@ -371,6 +371,26 @@ export async function POST(request: NextRequest, { params }: JobDetailsParams) {
             type: 'web_job_assigned_success'
           });
 
+          // Cancel pending SMS waves (Wave 2 and Wave 3)
+          try {
+            const { cancelWaves } = await import('../../../../src/services/queue/sms-wave-queue');
+            const cancelResult = await cancelWaves(jobId);
+            
+            logger.info('Pending waves cancelled after job assignment', {
+              jobId,
+              wave2Cancelled: cancelResult.wave2,
+              wave3Cancelled: cancelResult.wave3,
+              type: 'waves_cancelled_after_assignment'
+            });
+          } catch (cancelError) {
+            // Log but don't fail the assignment if wave cancellation fails
+            logger.warn('Failed to cancel pending waves (non-critical)', {
+              jobId,
+              error: cancelError instanceof Error ? cancelError.message : 'Unknown error',
+              type: 'wave_cancel_warning'
+            });
+          }
+
           return NextResponse.json({
             success: true,
             message: `Job successfully assigned to ${employeeName}! Check the system for full details.`,

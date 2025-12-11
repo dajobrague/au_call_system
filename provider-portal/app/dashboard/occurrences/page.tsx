@@ -4,10 +4,10 @@
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import DataTable from '@/components/DataTable';
-import OccurrencesManagement from '@/components/data-entry/OccurrencesManagement';
-import { Filter, Trash2 } from 'lucide-react';
+import OccurrencesManagement, { OccurrencesManagementRef, Occurrence } from '@/components/data-entry/OccurrencesManagement';
+import { Filter, Trash2, Edit } from 'lucide-react';
 
 interface OccurrenceRecord {
   id: string;
@@ -16,7 +16,9 @@ interface OccurrenceRecord {
     'Employee TXT'?: string;
     'Scheduled At'?: string;
     'Time'?: string;
+    'Time Window End'?: string;
     'Status'?: string;
+    'Patient (Link)'?: string[];
     'Patient (Lookup)'?: string[];
     'Assigned Employee'?: string[];
   };
@@ -50,6 +52,9 @@ export default function OccurrencesPage() {
   // Employees and Patients for Management Component
   const [employeesList, setEmployeesList] = useState<Employee[]>([]);
   const [patientsList, setPatientsList] = useState<Patient[]>([]);
+  
+  // Ref for OccurrencesManagement component
+  const occurrencesManagementRef = useRef<OccurrencesManagementRef>(null);
   
   const applyFilters = useCallback(() => {
     let filtered = [...occurrences];
@@ -171,6 +176,29 @@ export default function OccurrencesPage() {
     setSelectedDate('');
   };
   
+  const handleEdit = (record: OccurrenceRecord) => {
+    // Get the correct patient record ID from Patient (Link) field
+    const patientLinkField = record.fields['Patient (Link)'] || record.fields['Patient (Lookup)'];
+    const patientRecordId = Array.isArray(patientLinkField) && patientLinkField.length > 0 
+      ? patientLinkField[0] 
+      : '';
+    
+    // Transform OccurrenceRecord to Occurrence format
+    const occurrence: Occurrence = {
+      id: record.id,
+      patientName: record.fields['Patient TXT'] || '',
+      patientRecordId,
+      employeeName: record.fields['Employee TXT'] || '',
+      employeeRecordId: record.fields['Assigned Employee']?.[0] || '',
+      scheduledAt: record.fields['Scheduled At'] || '',
+      time: record.fields['Time'] || '09:00',
+      timeWindowEnd: record.fields['Time Window End'] || '10:00',
+      status: record.fields['Status'] || 'Scheduled'
+    };
+    
+    occurrencesManagementRef.current?.openEditModal(occurrence);
+  };
+  
   const handleDelete = async (recordId: string) => {
     if (!confirm('Are you sure you want to delete this occurrence?')) {
       return;
@@ -209,7 +237,11 @@ export default function OccurrencesPage() {
     },
     { 
       key: 'Time', 
-      label: 'Time'
+      label: 'Time Window Start'
+    },
+    { 
+      key: 'Time Window End', 
+      label: 'Time Window End'
     },
     { 
       key: 'Status', 
@@ -231,8 +263,15 @@ export default function OccurrencesPage() {
     {
       key: '_actions',
       label: 'Actions',
-      render: (_value: unknown, row: { id: string }) => (
+      render: (_value: unknown, row: OccurrenceRecord) => (
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleEdit(row)}
+            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            title="Edit"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
           <button
             onClick={() => handleDelete(row.id)}
             className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
@@ -256,6 +295,7 @@ export default function OccurrencesPage() {
       
       {/* Occurrences Management */}
       <OccurrencesManagement
+        ref={occurrencesManagementRef}
         employees={employeesList}
         patients={patientsList}
         onOccurrenceAdded={fetchOccurrences}

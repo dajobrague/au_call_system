@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { callQueueService } from '@/services/queue/call-queue-service';
-import { checkPhoneAvailability, transferCallToPhone } from '@/services/queue/twilio-availability';
+import { transferCallToPhone } from '@/services/queue/twilio-availability';
 import { logger } from '@/lib/logger';
 const twilio = require('twilio');
 
@@ -47,44 +47,31 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Check if representative is available
-    const availability = await checkPhoneAvailability(REPRESENTATIVE_PHONE);
+    // Always attempt transfer - let Twilio Dial handle availability
+    logger.info('Attempting transfer to representative', {
+      callSid,
+      callerPhone,
+      representativePhone: REPRESENTATIVE_PHONE,
+      type: 'transfer_attempt'
+    });
     
-    if (availability.isAvailable) {
-      // Representative is available - transfer immediately
-      logger.info('Representative available, transferring call', {
-        callSid,
-        callerPhone,
-        representativePhone: REPRESENTATIVE_PHONE,
-        type: 'transfer_immediate'
+    const transferResult = await transferCallToPhone(
+      callSid,
+      REPRESENTATIVE_PHONE,
+      callerPhone
+    );
+    
+    if (transferResult.success) {
+      return NextResponse.json({
+        status: 'transferred',
+        message: 'Call transfer initiated to representative'
       });
-      
-      const transferResult = await transferCallToPhone(
-        callSid,
-        REPRESENTATIVE_PHONE,
-        callerPhone
-      );
-      
-      if (transferResult.success) {
-        return NextResponse.json({
-          status: 'transferred',
-          message: 'Call transferred to representative'
-        });
-      } else {
-        // Transfer failed, enqueue instead
-        logger.warn('Transfer failed, enqueueing call', {
-          callSid,
-          error: transferResult.error,
-          type: 'transfer_fallback_enqueue'
-        });
-      }
     } else {
-      logger.info('Representative unavailable, enqueueing call', {
+      // Transfer initiation failed, enqueue instead
+      logger.warn('Transfer initiation failed, enqueueing call', {
         callSid,
-        callerPhone,
-        reason: availability.reason,
-        activeCallsCount: availability.activeCallsCount,
-        type: 'transfer_enqueue'
+        error: transferResult.error,
+        type: 'transfer_fallback_enqueue'
       });
     }
     
@@ -135,17 +122,12 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    // Check if representative is available
-    const availability = await checkPhoneAvailability(REPRESENTATIVE_PHONE);
+    // Get next call from queue (skip availability check to avoid auth errors)
+    // If representative is truly busy, they simply won't call this endpoint
+    logger.info('Getting next caller from queue', {
+      type: 'queue_next_caller_request'
+    });
     
-    if (!availability.isAvailable) {
-      return NextResponse.json({
-        status: 'unavailable',
-        message: 'Representative is currently busy'
-      });
-    }
-    
-    // Get next call from queue
     const nextCall = await callQueueService.dequeueCall();
     
     if (!nextCall) {

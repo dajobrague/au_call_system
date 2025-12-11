@@ -60,17 +60,20 @@ export async function generateSpeech(
     text: text,
     model_id: modelId,
     voice_settings: {
-      speed,
-      stability,
-      similarity_boost: similarityBoost,
-      style,
-      use_speaker_boost: useSpeakerBoost
+      speed, // Slightly faster for more responsive feel
+      stability, // Voice consistency
+      similarity_boost: similarityBoost, // Voice clarity
+      style, // Expressive variation
+      use_speaker_boost: useSpeakerBoost // Enhanced audio quality
     },
+    // Optimize for lowest latency (0-4, where 4 is fastest but slightly lower quality)
+    // Setting to 3 provides good balance of speed and quality
     optimize_streaming_latency: 3
   });
   
   return new Promise((resolve) => {
-    // Use μ-law 8kHz directly from ElevenLabs - no conversion needed!
+    // Use μ-law 8kHz directly from ElevenLabs - no resampling needed!
+    // This is optimal for Twilio's Media Streams which expects µ-law format
     const requestOptions = {
       hostname: 'api.elevenlabs.io',
       port: 443,
@@ -80,7 +83,9 @@ export async function generateSpeech(
         'Content-Type': 'application/json',
         'xi-api-key': apiKey,
         'Content-Length': Buffer.byteLength(postData)
-      }
+      },
+      // Add timeout to prevent hanging
+      timeout: 10000
     };
     
     const req = https.request(requestOptions, (res) => {
@@ -102,9 +107,16 @@ export async function generateSpeech(
       }
       
       const audioChunks: Buffer[] = [];
+      let totalBytes = 0;
       
       res.on('data', (chunk) => {
         audioChunks.push(chunk);
+        totalBytes += chunk.length;
+        
+        // Log progress for long responses (helps identify slow generation)
+        if (audioChunks.length % 10 === 0) {
+          console.log(`📊 Receiving audio: ${totalBytes} bytes...`);
+        }
       });
       
       res.on('end', () => {
@@ -113,6 +125,7 @@ export async function generateSpeech(
         const frames = sliceInto20msFrames(ulawArray);
         
         console.log(`✅ Speech generated - ${frames.length} frames (${fullAudio.length} bytes)`);
+        console.log(`⏱️ Average frame size: ${(fullAudio.length / frames.length).toFixed(1)} bytes`);
         
         resolve({
           success: true,
@@ -127,6 +140,15 @@ export async function generateSpeech(
       resolve({
         success: false,
         error: error.message
+      });
+    });
+    
+    req.on('timeout', () => {
+      req.destroy();
+      console.error('❌ ElevenLabs request timeout');
+      resolve({
+        success: false,
+        error: 'Request timeout after 10 seconds'
       });
     });
     

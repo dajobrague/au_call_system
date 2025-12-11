@@ -12,8 +12,13 @@ import { logger } from '../../lib/logger';
 export function generateJobAcceptanceURL(
   jobOccurrenceId: string,
   employeeId: string,
-  baseUrl: string = 'https://sam-voice-agent.vercel.app'
+  baseUrl?: string
 ): { url: string } {
+  // Import base URL config if not provided
+  if (!baseUrl) {
+    const { getBaseUrl } = require('../../config/base-url');
+    baseUrl = getBaseUrl();
+  }
   
   // Build simple URL with just job ID and employee ID
   const url = `${baseUrl}/job/${jobOccurrenceId}?emp=${employeeId}`;
@@ -114,8 +119,8 @@ export async function shortenJobURL(longUrl: string): Promise<string> {
     type: 'url_shortening_requested'
   });
   
-  // Mock shortened URL for now
-  const mockShortUrl = longUrl.replace('https://sam-voice-agent.vercel.app/job/', 'https://sam-voice-agent.vercel.app/j/');
+  // Mock shortened URL for now (just replace /job/ with /j/)
+  const mockShortUrl = longUrl.replace('/job/', '/j/');
   
   return mockShortUrl;
 }
