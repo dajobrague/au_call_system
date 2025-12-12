@@ -32,6 +32,7 @@ const navItems: NavItem[] = [
   { name: 'Job Templates', path: '/dashboard/job-templates', icon: ClipboardList },
   { name: 'Occurrences', path: '/dashboard/occurrences', icon: Calendar },
   { name: 'Reports', path: '/dashboard/reports', icon: FileText },
+  { name: 'Settings', path: '/dashboard/settings', icon: Settings },
 ];
 
 export default function Sidebar() {

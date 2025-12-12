@@ -24,3 +24,43 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Print styles */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  
+  /* Hide elements that shouldn't print */
+  .no-print,
+  button,
+  nav,
+  [role="navigation"] {
+    display: none !important;
+  }
+  
+  /* Optimize page layout for printing */
+  @page {
+    margin: 0.5cm;
+    size: A4;
+  }
+  
+  /* Ensure content fits properly */
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  
+  /* Prevent page breaks inside important elements */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  
+  /* Allow page breaks between sections */
+  .print-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}

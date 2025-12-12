@@ -5,8 +5,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FileText, Download, Calendar, Loader2, Archive, FileBarChart } from 'lucide-react';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { FileText, Download, Calendar, Loader2, Archive, FileBarChart, Eye } from 'lucide-react';
+import { format, subDays, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 import DateSelector, { DateRange } from '@/components/reports/DateSelector';
 import StatisticsCards from '@/components/reports/StatisticsCards';
 import { useReportData } from '@/hooks/useReportData';
@@ -16,6 +16,8 @@ import EmployeeActivityChart from '@/components/reports/charts/EmployeeActivityC
 import IntentDistributionChart from '@/components/reports/charts/IntentDistributionChart';
 import { downloadReportsAsZip, type ReportFile } from '@/lib/download-utils';
 import { generatePdfSummary } from '@/lib/pdf-summary-generator';
+import { formatYYYYMMDDForDisplay } from '@/lib/timezone-utils';
+import Link from 'next/link';
 
 interface Report {
   id: string;
@@ -241,12 +243,77 @@ export default function ReportsPage() {
         </div>
       )}
       
+      {/* Daily Detailed Reports Section */}
+      <div className="mb-8">
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-gray-900">Daily Detailed Reports</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            View comprehensive daily reports with call logs, cancellations, and staff engagement
+          </p>
+        </div>
+        
+        {!statsLoading && statistics && statistics.callsByDate && statistics.callsByDate.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {statistics.callsByDate.map((dayData) => {
+              // dayData.date is already in YYYY-MM-DD format, use it directly
+              const dateForLink = dayData.date;
+              // Format for display without timezone conversion
+              const displayDate = formatYYYYMMDDForDisplay(dayData.date, 'EEE, MMM d, yyyy');
+              
+              return (
+                <Link
+                  key={dayData.date}
+                  href={`/dashboard/reports/${dateForLink}`}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all duration-200 p-5 group"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-blue-600" />
+                      <h3 className="font-semibold text-gray-900">{displayDate}</h3>
+                    </div>
+                    <Eye className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total Calls:</span>
+                      <span className="font-medium text-gray-900">{dayData.callCount}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Duration:</span>
+                      <span className="font-medium text-gray-900">
+                        {Math.round(dayData.totalDuration / 60)} min
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <span className="text-sm text-blue-600 group-hover:text-blue-700 font-medium">
+                      View Detailed Report →
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : statsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          </div>
+        ) : (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-600">No call data available for the selected period</p>
+          </div>
+        )}
+      </div>
+      
       {/* Reports Section Title with Download Options */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">PDF Reports</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Legacy PDF Reports</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Download detailed daily reports for the selected period
+            Previously generated PDF reports for archival purposes
           </p>
         </div>
         

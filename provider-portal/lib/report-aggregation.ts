@@ -3,6 +3,8 @@
  * Processes call log data for statistics and charts
  */
 
+import { airtableDateToYYYYMMDD } from './timezone-utils';
+
 export interface CallLogData {
   id: string;
   fields: {
@@ -194,12 +196,9 @@ function groupByDate(callLogs: CallLogData[]): DateStats[] {
     const startedAt = log.fields['Started At'];
     if (!startedAt) return;
     
-    // Parse date from "DD/MM/YYYY, HH:MM:SS" format
-    const dateParts = startedAt.split(',')[0].trim().split('/');
-    const day = dateParts[0];
-    const month = dateParts[1];
-    const year = dateParts[2];
-    const dateKey = `${year}-${month}-${day}`; // YYYY-MM-DD format
+    // Use timezone utility to convert Airtable date to YYYY-MM-DD
+    const dateKey = airtableDateToYYYYMMDD(startedAt);
+    if (!dateKey) return;
     
     const duration = log.fields.Seconds || 0;
     

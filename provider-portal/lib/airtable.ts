@@ -4,6 +4,7 @@
  */
 
 import https from 'https';
+import { airtableDateToYYYYMMDD } from './timezone-utils';
 
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
@@ -425,28 +426,24 @@ export async function getCallLogsByDateRange(
       ]
     });
     
-    // Parse the date range
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999); // Include the entire end date
+    // Parse the date range - we're comparing against dates in DD/MM/YYYY format
+    // So we need to compare just the date parts, not worry about timezones
     
     // Filter by date range in memory (since "Started At" is a text field with time)
+    // Compare dates as strings to avoid timezone issues
     const filteredRecords = response.records.filter((record: AirtableRecord) => {
       const startedAt = record.fields['Started At'] as string;
       if (!startedAt) return false;
       
       try {
-        // Parse "DD/MM/YYYY, HH:MM:SS" format
-        const [datePart, timePart] = startedAt.split(',').map(s => s.trim());
-        const [day, month, year] = datePart.split('/').map(Number);
-        const [hours, minutes, seconds] = timePart.split(':').map(Number);
+        // Use timezone utility to convert Airtable date to YYYY-MM-DD
+        const recordDateStr = airtableDateToYYYYMMDD(startedAt);
+        if (!recordDateStr) return false;
         
-        const recordDate = new Date(year, month - 1, day, hours, minutes, seconds);
-        
-        // Check if within range
-        return recordDate >= start && recordDate <= end;
-      } catch {
-        console.warn('Failed to parse date:', startedAt);
+        // Compare date strings (YYYY-MM-DD format)
+        return recordDateStr >= startDate && recordDateStr <= endDate;
+      } catch (err) {
+        console.warn('Failed to parse date:', startedAt, err);
         return false;
       }
     });
