@@ -1,4 +1,0 @@
-﻿Occurrence ID,Job Template,recordId (from Provider) (from Job Template),Patient,Patient TXT,Provider,Assigned Employee,Employee TXT,Scheduled At,Time,Status,Reschedule Reason,Outcome Notes,Recording URL (S3),CallSid,Actual Start,Actual End,Attempt #,Last Updated By,History,Duration (mins),Occurrence Label,Call Logs
-021313 — 2025-11-22 00:00,021313,recaOFIiYxkVkCVQb,Ethan Young,Ethan Young,B Plus,David Bracho,David Bracho,11/22/2025,11:30,Scheduled,,,,,,,,,,,021313 — 2025-11-22 00:00,
-021313 — 2025-11-24 00:00,021313,recaOFIiYxkVkCVQb,Ethan Young,Ethan Young,B Plus,David Bracho,David Bracho,11/24/2025,09:30,Scheduled,,,,,,,,,,,021313 — 2025-11-24 00:00,
-070707 — 2025-11-29 00:00,070707,recHVZZdKkFQv54k4,Noah Martin,Noah Martin,Bay Area Family Practice,David Bracho,David Bracho,11/29/2025,13:00,Scheduled,,,,,,,,,,,070707 — 2025-11-29 00:00,

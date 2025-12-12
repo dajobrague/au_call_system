@@ -120,7 +120,7 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
   // Success state - show confirmation with job details
   if (actionResult) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
         <div className="max-w-md mx-auto space-y-6">
           
           {/* Provider Logo & Header */}
@@ -128,13 +128,13 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
             <div className="flex items-center gap-4 p-6">
               <img
                 alt="Healthcare Provider Logo"
-                height={60}
-                src={jobDetails?.provider?.logo || "https://t4.ftcdn.net/jpg/06/96/89/13/360_F_696891328_utj80ZwXsdy8SloC9IBaFGDIcGNBrEze.jpg"}
-                width={120}
+                height={80}
+                src={jobDetails?.provider?.logo || "/On-Call-After-Hours-Logo-Updated-1.webp"}
+                width={160}
                 className="object-contain rounded-sm"
               />
               <div className="flex flex-col justify-center">
-                <p className="text-lg font-semibold text-blue-700">
+                <p className="text-lg font-semibold text-[#bd1e2b]">
                   {jobDetails?.provider?.name || 'Healthcare Services'}
                 </p>
                 <p className="text-sm text-gray-600">Professional Assignment System</p>
@@ -177,23 +177,23 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
               <div className="p-6 space-y-6">
                 {/* Patient Information */}
                 {jobDetails.patient && (
-                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                    <h3 className="font-semibold text-blue-800 mb-3 flex items-center">
+                  <div className="bg-red-50 rounded-lg p-4 border border-red-100">
+                    <h3 className="font-semibold text-[#414141] mb-3 flex items-center">
                       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                       Patient Information
                     </h3>
                     <div className="space-y-3">
-                      <p className="text-sm text-blue-900"><strong>Name:</strong> {jobDetails.patient.name}</p>
+                      <p className="text-sm text-[#414141]"><strong>Name:</strong> {jobDetails.patient.name}</p>
                       {jobDetails.patient.notes && (
-                        <p className="text-sm text-blue-900"><strong>Notes:</strong> {jobDetails.patient.notes}</p>
+                        <p className="text-sm text-[#414141]"><strong>Notes:</strong> {jobDetails.patient.notes}</p>
                       )}
                       <div>
-                        <p className="text-sm text-blue-900 mb-2"><strong>Address:</strong> {jobDetails.patient?.address || ''}</p>
+                        <p className="text-sm text-[#414141] mb-2"><strong>Address:</strong> {jobDetails.patient?.address || ''}</p>
                         {/* Google Maps Embed */}
                         {process.env.NEXT_PUBLIC_MAPS_API ? (
-                          <div className="rounded-lg overflow-hidden border border-blue-200 bg-white relative cursor-pointer group">
+                          <div className="rounded-lg overflow-hidden border border-red-200 bg-white relative cursor-pointer group">
                             <iframe
                               width="100%"
                               height="200"
@@ -204,26 +204,26 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
                               title="Patient Location"
                             />
                             <div 
-                              className="absolute inset-0 bg-transparent hover:bg-blue-500/5 transition-colors flex items-center justify-center"
+                              className="absolute inset-0 bg-transparent hover:bg-[#bd1e2b]/5 transition-colors flex items-center justify-center"
                               onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(jobDetails.patient?.address || '')}`, '_blank')}
                             >
-                              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#bd1e2b] text-white px-3 py-1 rounded-full text-xs font-medium">
                                 Tap to open in Maps
                               </div>
                             </div>
                           </div>
                         ) : (
-                          <div className="rounded-lg border border-blue-200 bg-white p-4 text-center">
-                            <svg className="w-12 h-12 text-blue-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="rounded-lg border border-red-200 bg-white p-4 text-center">
+                            <svg className="w-12 h-12 text-[#bd1e2b] mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
-                            <p className="text-sm text-blue-700">Map unavailable</p>
-                            <p className="text-xs text-blue-600">Google Maps API key not configured</p>
+                            <p className="text-sm text-[#bd1e2b]">Map unavailable</p>
+                            <p className="text-xs text-[#414141]">Google Maps API key not configured</p>
                           </div>
                         )}
                         <div className="flex items-center gap-2 mt-2">
-                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-[#bd1e2b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
@@ -231,7 +231,7 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(jobDetails.patient?.address || '')}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-blue-700 hover:text-blue-800 underline"
+                            className="text-xs text-[#bd1e2b] hover:text-[#9d1824] underline"
                           >
                             Open in Google Maps
                           </a>
@@ -251,6 +251,7 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
                       Schedule Details
                     </h3>
                     <div className="space-y-2">
+                      <p className="text-sm text-gray-700"><strong>Provider:</strong> {jobDetails.provider?.name || 'Healthcare Provider'}</p>
                       <p className="text-sm text-gray-700"><strong>Date:</strong> {new Date(jobDetails.scheduledAt || '').toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                       <p className="text-sm text-gray-700"><strong>Time:</strong> {jobDetails.time}</p>
                       {jobDetails.jobTemplate && (
@@ -272,7 +273,7 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
       <div className="max-w-md mx-auto space-y-6">
         
         {/* Provider Logo & Header */}
@@ -280,13 +281,13 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
           <div className="flex items-center gap-4 p-6">
             <img
               alt="Healthcare Provider Logo"
-              height={60}
-              src={jobDetails?.provider?.logo || "https://t4.ftcdn.net/jpg/06/96/89/13/360_F_696891328_utj80ZwXsdy8SloC9IBaFGDIcGNBrEze.jpg"}
-              width={120}
+              height={80}
+              src={jobDetails?.provider?.logo || "/On-Call-After-Hours-Logo-Updated-1.webp"}
+              width={160}
               className="object-contain rounded-sm"
             />
             <div className="flex flex-col justify-center">
-              <p className="text-lg font-semibold text-blue-700">
+              <p className="text-lg font-semibold text-[#bd1e2b]">
                 {jobDetails?.provider?.name || 'Healthcare Services'}
               </p>
               <p className="text-sm text-gray-600">Professional Assignment System</p>
@@ -296,18 +297,18 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
 
         {/* Welcome Message */}
         {jobDetails && !loading && !error && jobDetails.employee && jobDetails.status !== 'assigned_to_others' && (
-          <div className="bg-blue-50 rounded-xl shadow-sm border border-blue-100 p-4">
+          <div className="bg-red-50 rounded-xl shadow-sm border border-red-100 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-[#bd1e2b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </div>
               <div>
-                <p className="text-lg font-semibold text-blue-800">
+                <p className="text-lg font-semibold text-[#414141]">
                   Welcome, {jobDetails.employee.name}
                 </p>
-                <p className="text-sm text-blue-600">
+                <p className="text-sm text-[#bd1e2b]">
                   {jobDetails.assignedToCurrentEmployee 
                     ? "This is your assigned job" 
                     : "You have a new assignment opportunity"
@@ -338,7 +339,7 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
         {loading && (
           <div className="bg-white shadow-sm rounded-xl border border-gray-200">
             <div className="text-center py-8 px-6">
-              <div className="mx-auto mb-4 h-12 w-12 rounded-full border-4 border-gray-200 border-t-blue-600 animate-spin"></div>
+              <div className="mx-auto mb-4 h-12 w-12 rounded-full border-4 border-gray-200 border-t-[#bd1e2b] animate-spin"></div>
               <p className="text-sm text-gray-600">Please wait while we fetch the job information</p>
             </div>
           </div>
@@ -371,8 +372,8 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
                     <p className="text-sm text-gray-600">Healthcare Professional Opportunity</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    <span className="text-xs font-medium text-blue-700">Available</span>
+                    <div className="w-2 h-2 bg-[#bd1e2b] rounded-full"></div>
+                    <span className="text-xs font-medium text-[#bd1e2b]">Available</span>
                   </div>
                 </div>
               </div>
@@ -380,23 +381,23 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
               <div className="p-6 space-y-6">
                 {/* Patient Information */}
                 {jobDetails.patient && (
-                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                    <h3 className="font-semibold text-blue-800 mb-3 flex items-center">
+                  <div className="bg-red-50 rounded-lg p-4 border border-red-100">
+                    <h3 className="font-semibold text-[#414141] mb-3 flex items-center">
                       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                       Patient Information
                     </h3>
                     <div className="space-y-3">
-                      <p className="text-sm text-blue-900"><strong>Name:</strong> {jobDetails.patient.name}</p>
+                      <p className="text-sm text-[#414141]"><strong>Name:</strong> {jobDetails.patient.name}</p>
                       {jobDetails.patient.notes && (
-                        <p className="text-sm text-blue-900"><strong>Notes:</strong> {jobDetails.patient.notes}</p>
+                        <p className="text-sm text-[#414141]"><strong>Notes:</strong> {jobDetails.patient.notes}</p>
                       )}
                       <div>
-                        <p className="text-sm text-blue-900 mb-2"><strong>Address:</strong> {jobDetails.patient?.address || ''}</p>
+                        <p className="text-sm text-[#414141] mb-2"><strong>Address:</strong> {jobDetails.patient?.address || ''}</p>
                         {/* Google Maps Embed */}
                         {process.env.NEXT_PUBLIC_MAPS_API ? (
-                          <div className="rounded-lg overflow-hidden border border-blue-200 bg-white relative cursor-pointer group">
+                          <div className="rounded-lg overflow-hidden border border-red-200 bg-white relative cursor-pointer group">
                             <iframe
                               width="100%"
                               height="200"
@@ -407,26 +408,26 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
                               title="Patient Location"
                             />
                             <div 
-                              className="absolute inset-0 bg-transparent hover:bg-blue-500/5 transition-colors flex items-center justify-center"
+                              className="absolute inset-0 bg-transparent hover:bg-[#bd1e2b]/5 transition-colors flex items-center justify-center"
                               onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(jobDetails.patient?.address || '')}`, '_blank')}
                             >
-                              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#bd1e2b] text-white px-3 py-1 rounded-full text-xs font-medium">
                                 Tap to open in Maps
                               </div>
                             </div>
                           </div>
                         ) : (
-                          <div className="rounded-lg border border-blue-200 bg-white p-4 text-center">
-                            <svg className="w-12 h-12 text-blue-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="rounded-lg border border-red-200 bg-white p-4 text-center">
+                            <svg className="w-12 h-12 text-[#bd1e2b] mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
-                            <p className="text-sm text-blue-700">Map unavailable</p>
-                            <p className="text-xs text-blue-600">Google Maps API key not configured</p>
+                            <p className="text-sm text-[#bd1e2b]">Map unavailable</p>
+                            <p className="text-xs text-[#414141]">Google Maps API key not configured</p>
                           </div>
                         )}
                         <div className="flex items-center gap-2 mt-2">
-                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-[#bd1e2b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
@@ -434,7 +435,7 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(jobDetails.patient?.address || '')}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-blue-700 hover:text-blue-800 underline"
+                            className="text-xs text-[#bd1e2b] hover:text-[#9d1824] underline"
                           >
                             Open in Google Maps
                           </a>
@@ -453,6 +454,7 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
                     Schedule Details
                   </h3>
                   <div className="space-y-2">
+                    <p className="text-sm text-gray-700"><strong>Provider:</strong> {jobDetails.provider?.name || 'Healthcare Provider'}</p>
                     <p className="text-sm text-gray-700"><strong>Date:</strong> {new Date(jobDetails.scheduledAt || '').toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                     <p className="text-sm text-gray-700"><strong>Time:</strong> {jobDetails.time}</p>
                     <p className="text-sm text-gray-700"><strong>Service:</strong> {jobDetails.jobTemplate?.title || 'Healthcare Service'}</p>
@@ -478,7 +480,7 @@ export default function JobAcceptancePage({ params, searchParams }: JobAcceptanc
               {jobDetails.isAvailable && !jobDetails.assignedToCurrentEmployee && (
                 <div className="p-6 pt-4 border-t border-gray-100">
                   <button
-                    className="w-full font-semibold inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 text-white h-12 px-6 disabled:opacity-60 hover:bg-blue-700 transition-colors"
+                    className="w-full font-semibold inline-flex items-center justify-center gap-2 rounded-lg bg-[#bd1e2b] text-white h-12 px-6 disabled:opacity-60 hover:bg-[#9d1824] transition-colors"
                     disabled={actionLoading}
                     onClick={() => handleAction('accept')}
                   >

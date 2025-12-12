@@ -20,7 +20,7 @@ import {
   type EmployeeRawData,
   type PatientRawData,
 } from '@/lib/daily-report-aggregation';
-import { startOfDay, endOfDay, parse } from 'date-fns';
+import { parse } from 'date-fns';
 
 export async function GET(request: Request) {
   try {
@@ -90,11 +90,11 @@ export async function GET(request: Request) {
     // Aggregate the data into comprehensive report format
     const reportData = aggregateDailyReport(
       targetDate,
-      callLogs as CallLogRawData[],
-      occurrences as OccurrenceRawData[],
-      provider as ProviderRawData,
-      employees as EmployeeRawData[],
-      patients as PatientRawData[]
+      callLogs as unknown as CallLogRawData[],
+      occurrences as unknown as OccurrenceRawData[],
+      provider as unknown as ProviderRawData,
+      employees as unknown as EmployeeRawData[],
+      patients as unknown as PatientRawData[]
     );
     
     return NextResponse.json({
@@ -146,15 +146,16 @@ async function fetchOccurrencesForDate(
     );
     
     // Filter for the specific date and relevant statuses
-    const filtered = allOccurrences.filter((occ: any) => {
-      const scheduledAt = occ.fields['Scheduled At'];
+    const filtered = allOccurrences.filter((occ) => {
+      const fields = occ.fields as Record<string, unknown>;
+      const scheduledAt = fields['Scheduled At'];
       if (!scheduledAt) return false;
       
       // Check if scheduled date matches target date
       if (scheduledAt !== date) return false;
       
       // Include if it has a reschedule reason (was cancelled/left open)
-      return !!occ.fields['Reschedule Reason'];
+      return !!fields['Reschedule Reason'];
     });
     
     return filtered;
