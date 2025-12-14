@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "NEXT_PRIVATE_SKIP_TURBOPACK=1 next build",
     "start": "node server.js",
     "lint": "next lint",
     "local": "NODE_ENV=development ./start-voice-agent.sh"

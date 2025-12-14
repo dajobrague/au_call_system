@@ -1,14 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Ensure Node.js runtime for API routes (better Redis/crypto compatibility)
-  experimental: {
-    serverComponentsExternalPackages: ['@upstash/redis'],
-  },
-  
-  // Force Node.js runtime for all API routes
-  async rewrites() {
-    return [];
-  },
+  // External packages that should not be bundled (Next.js 16 moved this out of experimental)
+  serverExternalPackages: ['@upstash/redis', 'bull', 'ioredis', 'twilio', 'puppeteer'],
   
   // Optimize for production
   compress: true,
