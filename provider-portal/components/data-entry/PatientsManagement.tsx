@@ -23,7 +23,6 @@ interface Patient {
 
 interface PatientFormData {
   patientName: string;
-  patientId: string;
   phone: string;
   dob: string;
   address: string;
@@ -40,7 +39,6 @@ export default function PatientsManagement() {
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState<PatientFormData>({
     patientName: '',
-    patientId: '',
     phone: '',
     dob: '',
     address: '',
@@ -74,7 +72,6 @@ export default function PatientsManagement() {
     setEditingPatient(null);
     setFormData({
       patientName: '',
-      patientId: '',
       phone: '',
       dob: '',
       address: '',
@@ -90,7 +87,6 @@ export default function PatientsManagement() {
     setEditingPatient(patient);
     setFormData({
       patientName: patient.fields['Patient Full Name'],
-      patientId: patient.fields['Patient ID'].toString(),
       phone: patient.fields['Phone'],
       dob: patient.fields['DOB'],
       address: patient.fields['Address'] || '',
@@ -128,13 +124,8 @@ export default function PatientsManagement() {
   
   const handleSubmit = async () => {
     // Validate
-    if (!formData.patientName || !formData.patientId || !formData.phone || !formData.dob) {
+    if (!formData.patientName || !formData.phone || !formData.dob) {
       setError('Please fill in all required fields');
-      return;
-    }
-    
-    if (isNaN(parseInt(formData.patientId))) {
-      setError('Patient ID must be a valid number');
       return;
     }
     
@@ -148,7 +139,6 @@ export default function PatientsManagement() {
       
       const body: any = {
         patientName: formData.patientName,
-        patientId: formData.patientId,
         phone: formData.phone,
         dob: formData.dob,
         address: formData.address,
@@ -350,21 +340,8 @@ export default function PatientsManagement() {
                     type="text"
                     value={formData.patientName}
                     onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     placeholder="Jane Smith"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Patient ID <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.patientId}
-                    onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="12345"
                   />
                 </div>
                 
@@ -376,7 +353,7 @@ export default function PatientsManagement() {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     placeholder="(555) 123-4567"
                   />
                 </div>
@@ -389,7 +366,7 @@ export default function PatientsManagement() {
                     type="date"
                     value={formData.dob}
                     onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   />
                 </div>
                 
@@ -401,7 +378,7 @@ export default function PatientsManagement() {
                     type="text"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     placeholder="123 Main St, City, State"
                   />
                 </div>
@@ -414,7 +391,7 @@ export default function PatientsManagement() {
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     placeholder="Medical conditions, allergies, etc."
                   />
                 </div>

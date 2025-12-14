@@ -50,7 +50,6 @@ export async function POST(request: Request) {
     
     const body = await request.json();
     const {
-      jobCode,
       title,
       serviceType,
       priority,
@@ -62,7 +61,7 @@ export async function POST(request: Request) {
     } = body;
     
     // Validate required fields
-    if (!jobCode || !title || !serviceType || !priority || !patientRecordId) {
+    if (!title || !serviceType || !priority || !patientRecordId) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -70,7 +69,6 @@ export async function POST(request: Request) {
     }
     
     const fields: {
-      'Job Code': string;
       'Title': string;
       'Service Type': string;
       'Priority': string;
@@ -81,7 +79,6 @@ export async function POST(request: Request) {
       'Time Window End'?: string;
       'Active': boolean;
     } = {
-      'Job Code': jobCode,
       'Title': title,
       'Service Type': serviceType,
       'Priority': priority,
@@ -131,7 +128,6 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const {
       recordId,
-      jobCode,
       title,
       serviceType,
       priority,
@@ -153,7 +149,6 @@ export async function PATCH(request: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fields: Record<string, any> = {};
     
-    if (jobCode !== undefined) fields['Job Code'] = jobCode;
     if (title !== undefined) fields['Title'] = title;
     if (serviceType !== undefined) fields['Service Type'] = serviceType;
     if (priority !== undefined) fields['Priority'] = priority;

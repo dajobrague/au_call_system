@@ -44,18 +44,17 @@ export async function POST(request: Request) {
     }
     
     const body = await request.json();
-    const { patientName, patientId, phone, dob, address, notes, active } = body;
+    const { patientName, phone, dob, address, notes, active } = body;
     
-    if (!patientName || !patientId || !phone || !dob) {
+    if (!patientName || !phone || !dob) {
       return NextResponse.json(
-        { error: 'Missing required fields: patientName, patientId, phone, dob' },
+        { error: 'Missing required fields: patientName, phone, dob' },
         { status: 400 }
       );
     }
     
     const newPatient = await createPatient({
       'Patient Full Name': patientName,
-      'Patient ID': parseInt(patientId),
       'Phone': phone,
       'DOB': dob,
       'Provider': [user.providerId],
@@ -89,7 +88,7 @@ export async function PATCH(request: Request) {
     }
     
     const body = await request.json();
-    const { recordId, patientName, patientId, phone, dob, address, notes, active } = body;
+    const { recordId, patientName, phone, dob, address, notes, active } = body;
     
     if (!recordId) {
       return NextResponse.json(
@@ -100,7 +99,6 @@ export async function PATCH(request: Request) {
     
     const fields: Record<string, string | number | boolean> = {};
     if (patientName !== undefined) fields['Patient Full Name'] = patientName;
-    if (patientId !== undefined) fields['Patient ID'] = parseInt(patientId);
     if (phone !== undefined) fields['Phone'] = phone;
     if (dob !== undefined) fields['DOB'] = dob;
     if (address !== undefined) fields['Address'] = address;

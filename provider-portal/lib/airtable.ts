@@ -696,7 +696,6 @@ export async function deleteEmployee(recordId: string): Promise<{ deleted: boole
 export async function createPatient(
   fields: {
     'Patient Full Name': string;
-    'Patient ID': number;
     'Phone': string;
     'DOB': string;
     'Provider': string[];
@@ -715,7 +714,6 @@ export async function updatePatient(
   recordId: string,
   fields: Partial<{
     'Patient Full Name': string;
-    'Patient ID': number;
     'Phone': string;
     'DOB': string;
     'Address': string;
@@ -905,7 +903,6 @@ export async function deleteProviderUser(recordId: string): Promise<{ deleted: b
  */
 export async function createJobTemplate(
   fields: {
-    'Job Code': string;
     'Title': string;
     'Service Type': string;
     'Priority': string;
@@ -926,7 +923,6 @@ export async function createJobTemplate(
 export async function updateJobTemplate(
   recordId: string,
   fields: Partial<{
-    'Job Code': string;
     'Title': string;
     'Service Type': string;
     'Priority': string;

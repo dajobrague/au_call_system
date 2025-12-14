@@ -16,6 +16,7 @@ interface ProviderData {
     Suburb?: string;
     Address?: string;
     'Greeting (IVR)'?: string;
+    'Transfer Number'?: string;
     Logo?: Array<{
       url: string;
       filename: string;
@@ -36,6 +37,7 @@ export default function ProfileConfig() {
     suburb: '',
     address: '',
     greeting: '',
+    transferNumber: '',
   });
   
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -57,6 +59,7 @@ export default function ProfileConfig() {
           suburb: data.provider.fields.Suburb || '',
           address: data.provider.fields.Address || '',
           greeting: data.provider.fields['Greeting (IVR)'] || '',
+          transferNumber: data.provider.fields['Transfer Number'] || '',
         });
         
         if (data.provider.fields.Logo && data.provider.fields.Logo.length > 0) {
@@ -70,13 +73,41 @@ export default function ProfileConfig() {
     }
   };
   
+  const validateAustralianPhone = (phone: string): boolean => {
+    if (!phone) return true; // Empty is valid (optional field)
+    
+    // Remove spaces and common formatting characters
+    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+    
+    // Australian phone formats:
+    // Mobile: +61 4XX XXX XXX or 04XX XXX XXX (10 digits starting with 04)
+    // Landline: +61 X XXXX XXXX or 0X XXXX XXXX (10 digits starting with 02-08)
+    const australianMobileRegex = /^(\+614|04)\d{8}$/;
+    const australianLandlineRegex = /^(\+61[2-8]|0[2-8])\d{8}$/;
+    
+    return australianMobileRegex.test(cleaned) || australianLandlineRegex.test(cleaned);
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setError('');
     setSuccess('');
+    
+    // Validate transfer number on change
+    if (field === 'transferNumber' && value) {
+      if (!validateAustralianPhone(value)) {
+        setError('Please enter a valid Australian phone number (e.g., +61 4XX XXX XXX or 04XX XXX XXX)');
+      }
+    }
   };
   
   const handleSave = async () => {
+    // Validate transfer number before saving
+    if (formData.transferNumber && !validateAustralianPhone(formData.transferNumber)) {
+      setError('Please enter a valid Australian phone number for the Transfer Number');
+      return;
+    }
+    
     setSaving(true);
     setError('');
     setSuccess('');
@@ -94,6 +125,7 @@ export default function ProfileConfig() {
             Suburb: formData.suburb,
             Address: formData.address,
             'Greeting (IVR)': formData.greeting,
+            'Transfer Number': formData.transferNumber,
           },
         }),
       });
@@ -180,7 +212,7 @@ export default function ProfileConfig() {
             type="text"
             value={formData.name}
             onChange={(e) => handleInputChange('name', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
             placeholder="Enter provider name"
           />
         </div>
@@ -195,7 +227,7 @@ export default function ProfileConfig() {
             type="text"
             value={formData.state}
             onChange={(e) => handleInputChange('state', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
             placeholder="Enter state"
           />
         </div>
@@ -210,7 +242,7 @@ export default function ProfileConfig() {
             type="text"
             value={formData.suburb}
             onChange={(e) => handleInputChange('suburb', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
             placeholder="Enter suburb"
           />
         </div>
@@ -225,7 +257,7 @@ export default function ProfileConfig() {
             type="text"
             value={formData.address}
             onChange={(e) => handleInputChange('address', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
             placeholder="Enter address"
           />
         </div>
@@ -240,11 +272,30 @@ export default function ProfileConfig() {
             value={formData.greeting}
             onChange={(e) => handleInputChange('greeting', e.target.value)}
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
             placeholder="Enter the greeting that the AI will read when calls happen"
           />
           <p className="text-sm text-gray-500 mt-1">
             This greeting will be read by the AI voice agent when calls are received.
+          </p>
+        </div>
+        
+        {/* Transfer Number */}
+        <div>
+          <label htmlFor="transferNumber" className="block text-sm font-medium text-gray-700 mb-2">
+            Transfer Number
+          </label>
+          <input
+            id="transferNumber"
+            type="tel"
+            value={formData.transferNumber}
+            onChange={(e) => handleInputChange('transferNumber', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            placeholder="+61 4XX XXX XXX or 04XX XXX XXX"
+          />
+          <p className="text-sm text-gray-500 mt-1">
+            Australian phone number to transfer calls to when a representative is requested. 
+            Accepts mobile (+61 4XX XXX XXX) or landline (+61 X XXXX XXXX) formats.
           </p>
         </div>
         

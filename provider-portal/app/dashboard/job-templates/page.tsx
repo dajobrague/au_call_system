@@ -40,7 +40,6 @@ interface Patient {
 }
 
 interface FormData {
-  jobCode: string;
   title: string;
   serviceType: string;
   priority: string;
@@ -63,9 +62,8 @@ export default function JobTemplatesPage() {
   const [saving, setSaving] = useState(false);
   
   const [formData, setFormData] = useState<FormData>({
-    jobCode: '',
     title: '',
-    serviceType: 'Home Health',
+    serviceType: '',
     priority: 'Normal',
     patientRecordId: '',
     defaultEmployeeRecordId: '',
@@ -115,9 +113,8 @@ export default function JobTemplatesPage() {
   const handleAdd = () => {
     setEditingTemplate(null);
     setFormData({
-      jobCode: '',
       title: '',
-      serviceType: 'Home Health',
+      serviceType: '',
       priority: 'Normal',
       patientRecordId: '',
       defaultEmployeeRecordId: '',
@@ -133,9 +130,8 @@ export default function JobTemplatesPage() {
   const handleEdit = (template: JobTemplate) => {
     setEditingTemplate(template);
     setFormData({
-      jobCode: template.fields['Job Code'] || '',
       title: template.fields['Title'] || '',
-      serviceType: template.fields['Service Type'] || 'Home Health',
+      serviceType: template.fields['Service Type'] || '',
       priority: template.fields['Priority'] || 'Normal',
       patientRecordId: template.fields['Patient']?.[0] || '',
       defaultEmployeeRecordId: template.fields['Default Employee']?.[0] || '',
@@ -175,7 +171,7 @@ export default function JobTemplatesPage() {
   
   const handleSubmit = async () => {
     // Validate required fields
-    if (!formData.jobCode || !formData.title || !formData.serviceType || !formData.priority || !formData.patientRecordId) {
+    if (!formData.title || !formData.serviceType || !formData.priority || !formData.patientRecordId) {
       setError('Please fill in all required fields');
       return;
     }
@@ -189,7 +185,6 @@ export default function JobTemplatesPage() {
       const method = isEditing ? 'PATCH' : 'POST';
       
       const body: any = {
-        jobCode: formData.jobCode,
         title: formData.title,
         serviceType: formData.serviceType,
         priority: formData.priority,
@@ -366,37 +361,6 @@ export default function JobTemplatesPage() {
               </div>
               
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Job Code <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.jobCode}
-                      onChange={(e) => setFormData({ ...formData, jobCode: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="ABC123"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Priority <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={formData.priority}
-                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="Low">Low</option>
-                      <option value="Normal">Normal</option>
-                      <option value="High">High</option>
-                      <option value="Critical">Critical</option>
-                    </select>
-                  </div>
-                </div>
-                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Title <span className="text-red-500">*</span>
@@ -405,9 +369,25 @@ export default function JobTemplatesPage() {
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     placeholder="Patient Visit"
                   />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Normal">Normal</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                  </select>
                 </div>
                 
                 <div>
@@ -417,13 +397,13 @@ export default function JobTemplatesPage() {
                   <select
                     value={formData.serviceType}
                     onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   >
-                    <option value="Home Health">Home Health</option>
-                    <option value="Personal Care">Personal Care</option>
+                    <option value="">Select Service Type</option>
                     <option value="Nursing">Nursing</option>
                     <option value="Therapy">Therapy</option>
-                    <option value="Companion Care">Companion Care</option>
+                    <option value="Follow-up">Follow-up</option>
+                    <option value="Billing">Billing</option>
                     <option value="Other">Other</option>
                   </select>
                 </div>
@@ -435,7 +415,7 @@ export default function JobTemplatesPage() {
                   <select
                     value={formData.patientRecordId}
                     onChange={(e) => setFormData({ ...formData, patientRecordId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   >
                     <option value="">Select Patient</option>
                     {patients.map((patient) => (
@@ -453,7 +433,7 @@ export default function JobTemplatesPage() {
                   <select
                     value={formData.defaultEmployeeRecordId}
                     onChange={(e) => setFormData({ ...formData, defaultEmployeeRecordId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   >
                     <option value="">No Default Employee</option>
                     {employees.map((employee) => (
@@ -472,7 +452,7 @@ export default function JobTemplatesPage() {
                     <select
                       value={formData.timeWindowStart}
                       onChange={(e) => setFormData({ ...formData, timeWindowStart: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     >
                       {timeSlots.map((slot) => (
                         <option key={slot} value={slot}>
@@ -489,7 +469,7 @@ export default function JobTemplatesPage() {
                     <select
                       value={formData.timeWindowEnd}
                       onChange={(e) => setFormData({ ...formData, timeWindowEnd: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     >
                       {timeSlots.map((slot) => (
                         <option key={slot} value={slot}>

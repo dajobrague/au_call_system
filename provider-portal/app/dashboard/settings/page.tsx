@@ -200,7 +200,7 @@ export default function SettingsPage() {
                 id="startTime"
                 value={onCallStartTime}
                 onChange={(e) => setOnCallStartTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -217,7 +217,7 @@ export default function SettingsPage() {
                 id="endTime"
                 value={onCallEndTime}
                 onChange={(e) => setOnCallEndTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">

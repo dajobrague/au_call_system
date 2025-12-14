@@ -252,7 +252,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                   id="patient"
                   value={patientRecordId}
                   onChange={(e) => setPatientRecordId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   required
                 >
                   <option value="">Select a patient...</option>
@@ -276,7 +276,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                   id="employee"
                   value={employeeRecordId}
                   onChange={(e) => setEmployeeRecordId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   required
                 >
                   <option value="">Select an employee...</option>
@@ -301,7 +301,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                   id="scheduledAt"
                   value={scheduledAt}
                   onChange={(e) => setScheduledAt(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   required
                 />
               </div>
@@ -318,7 +318,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                   id="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   required
                 >
                   {timeSlots.map((slot) => (
@@ -341,7 +341,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                   id="timeWindowEnd"
                   value={timeWindowEnd}
                   onChange={(e) => setTimeWindowEnd(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   required
                 >
                   {timeSlots.map((slot) => (
