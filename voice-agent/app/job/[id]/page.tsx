@@ -5,16 +5,7 @@
  * Built with Tailwind CSS
  */
 
-import { useState, useEffect } from 'react';
-
-interface JobAcceptancePageProps {
-  params: {
-    id: string;
-  };
-  searchParams: {
-    emp?: string;
-  };
-}
+import { useState, useEffect, use } from 'react';
 
 interface JobDetails {
   id: string;
@@ -44,15 +35,24 @@ interface JobDetails {
   };
 }
 
-export default function JobAcceptancePage({ params, searchParams }: JobAcceptancePageProps) {
+export default function JobAcceptancePage({ 
+  params, 
+  searchParams 
+}: { 
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ emp?: string }>;
+}) {
+  const resolvedParams = use(params);
+  const resolvedSearchParams = use(searchParams);
+  
   const [jobDetails, setJobDetails] = useState<JobDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionResult, setActionResult] = useState<string | null>(null);
 
-  const jobId = params.id;
-  const employeeId = searchParams.emp;
+  const jobId = resolvedParams.id;
+  const employeeId = resolvedSearchParams.emp;
 
   useEffect(() => {
     if (!employeeId) {

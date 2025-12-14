@@ -9,18 +9,15 @@ import { logger } from '../../../../src/lib/logger';
 // Set runtime to nodejs for compatibility
 export const runtime = 'nodejs';
 
-interface JobDetailsParams {
-  params: {
-    id: string;
-  };
-}
-
 /**
  * Get job details for acceptance page
  */
-export async function GET(request: NextRequest, { params }: JobDetailsParams) {
+export async function GET(
+  request: NextRequest, 
+  { params }: { params: Promise<{ id: string }> }
+) {
   const startTime = Date.now();
-  const jobId = params.id;
+  const { id: jobId } = await params;
   
   try {
     const url = new URL(request.url);
@@ -280,9 +277,12 @@ export async function GET(request: NextRequest, { params }: JobDetailsParams) {
 /**
  * Handle job acceptance/decline actions
  */
-export async function POST(request: NextRequest, { params }: JobDetailsParams) {
+export async function POST(
+  request: NextRequest, 
+  { params }: { params: Promise<{ id: string }> }
+) {
   const startTime = Date.now();
-  const jobId = params.id;
+  const { id: jobId } = await params;
   
   try {
     const body = await request.json();

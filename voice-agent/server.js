@@ -62,12 +62,281 @@ app.prepare().then(() => {
     path: '/stream',
   });
 
-  // Import WebSocket connection handler
-  const { handleWebSocketConnection } = require('./src/websocket/connection-handler');
-  
+  // Import WebSocket handlers and services
+  const url = require('url');
+  const { handleWebSocketMessage } = require('./src/websocket/message-handler');
+  const {
+    handleConnectionOpen,
+    handleConnectionClose,
+    handleConnectionError,
+    saveCallState: saveWsCallState,
+    loadCallState: loadWsCallState
+  } = require('./src/websocket/connection-handler');
+  const { routeDTMFInput } = require('./src/websocket/dtmf-router');
+  const { authenticateByPhone, prefetchBackgroundData } = require('./src/handlers/authentication-handler');
+  const { generateOccurrenceBasedGreeting, generateMultiProviderGreeting } = require('./src/handlers/provider-handler');
+  const { generateSpeech, streamAudioToTwilio, stopCurrentAudio } = require('./src/services/elevenlabs');
+  const { startCallRecording } = require('./src/services/twilio/call-recorder');
+  const { twilioConfig } = require('./src/config/twilio');
+  const { initializeDisclaimerCache, playDisclaimerFromCache } = require('./src/audio/disclaimer-cache');
+  const twilioClient = require('twilio');
+
+  const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || '';
+  const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'aEO01A4wXwd1O8GPgGlF';
+
+  // Pre-generate disclaimer audio for instant playback
+  initializeDisclaimerCache().catch(error => {
+    console.error('Failed to initialize disclaimer cache:', error.message);
+  });
+
   wss.on('connection', (ws, req) => {
     console.log('🔌 New WebSocket connection from:', req.socket.remoteAddress);
-    handleWebSocketConnection(ws, req);
+    
+    const parsedUrl = url.parse(req.url || '', true);
+    const from = parsedUrl.query.phone || parsedUrl.query.from || 'Unknown';
+
+    handleConnectionOpen(ws);
+
+    // Helper function to generate and speak text
+    const generateAndSpeak = async (text) => {
+      if (!ws.streamSid) {
+        console.error('Cannot speak - no streamSid');
+        return;
+      }
+
+      stopCurrentAudio(ws);
+
+      const result = await generateSpeech(text, {
+        apiKey: ELEVENLABS_API_KEY,
+        voiceId: ELEVENLABS_VOICE_ID
+      });
+
+      if (result.success && result.frames) {
+        await streamAudioToTwilio(ws, result.frames, ws.streamSid);
+      }
+    };
+
+    // Message handlers
+    const handlers = {
+      onStart: async (message) => {
+        if (!message.start) return;
+
+        ws.streamSid = message.start.streamSid;
+        ws.callSid = message.start.callSid;
+        ws.parentCallSid = message.start.customParameters?.parentCallSid || 
+                           message.start.customParameters?.callSid || 
+                           ws.callSid;
+
+        let callerPhone = message.start.customParameters?.phone || message.start.customParameters?.from || from;
+
+        console.log('📞 Call started:', ws.callSid, '(Total:', wss.clients.size + ')');
+
+        ws.callEvents = [];
+        ws.callStartTime = new Date();
+
+        // Start call recording
+        startCallRecording({
+          callSid: ws.parentCallSid,
+          recordingChannels: 'dual',
+          trim: 'do-not-trim'
+        }).then((result) => {
+          if (result.success) {
+            ws.recordingSid = result.recordingSid;
+            ws.cachedData = { ...ws.cachedData, recordingSid: result.recordingSid };
+          }
+        }).catch((error) => {
+          console.error('Call recording error:', error.message);
+        });
+
+        // Start authentication in parallel
+        const authPromise = (async () => {
+          try {
+            if (!callerPhone || callerPhone === 'Unknown' || callerPhone.length < 10) {
+              try {
+                const client = twilioClient(twilioConfig.accountSid, twilioConfig.authToken);
+                const call = await client.calls(ws.parentCallSid).fetch();
+                callerPhone = call.from;
+              } catch (error) {
+                callerPhone = 'Unknown';
+              }
+            }
+            return await authenticateByPhone(callerPhone);
+          } catch (error) {
+            return { success: false, error: 'Authentication failed' };
+          }
+        })();
+
+        // Play disclaimer while auth happens
+        await playDisclaimerFromCache(ws, ws.streamSid);
+
+        const authResult = await authPromise;
+
+        if (!authResult.success || !authResult.employee) {
+          // Fall back to PIN authentication
+          const pinAuthState = {
+            sid: ws.callSid,
+            parentCallSid: ws.parentCallSid,
+            from: callerPhone,
+            phase: 'pin_auth',
+            authMethod: 'pin_pending',
+            pinBuffer: '',
+            attempts: { clientId: 0, confirmClientId: 0, jobNumber: 0, confirmJobNumber: 0, jobOptions: 0, occurrenceSelection: 0 },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          await saveWsCallState(ws, pinAuthState);
+          await generateAndSpeak('I could not find your phone number in our system. Please use your keypad to enter your employee PIN followed by the pound key.');
+          return;
+        }
+
+        // Track successful auth
+        if (ws.callEvents) {
+          const { trackCallEvent } = require('./src/services/airtable/call-log-service');
+          trackCallEvent(ws.callEvents, 'authentication', 'phone_auth_success', {
+            employeeId: authResult.employee.id,
+            employeeName: authResult.employee.name,
+            phone: callerPhone
+          });
+        }
+
+        // Create initial call state
+        const callState = {
+          sid: ws.callSid,
+          parentCallSid: ws.parentCallSid,
+          from: callerPhone,
+          phase: 'provider_selection',
+          employee: authResult.employee,
+          provider: authResult.provider,
+          authMethod: 'phone',
+          attempts: { clientId: 0, confirmClientId: 0, jobNumber: 0, confirmJobNumber: 0, jobOptions: 0, occurrenceSelection: 0 },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        await saveWsCallState(ws, callState);
+
+        // Prefetch background data
+        const backgroundData = await prefetchBackgroundData(authResult.employee);
+        ws.cachedData = { ...ws.cachedData, ...backgroundData };
+
+        // Create call log
+        let providerId = authResult.provider?.id;
+        if (!providerId && backgroundData.providers?.providers?.length > 0) {
+          providerId = backgroundData.providers.providers[0].id;
+        }
+
+        const { createCallLog } = require('./src/services/airtable/call-log-service');
+        const startedAt = ws.callStartTime.toLocaleString('en-AU', {
+          timeZone: 'Australia/Sydney',
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+        });
+
+        const callLogResult = await createCallLog({
+          callSid: ws.callSid,
+          employeeId: authResult.employee.id,
+          providerId: providerId,
+          direction: 'Inbound',
+          startedAt
+        });
+
+        if (callLogResult.success && callLogResult.recordId) {
+          ws.callLogRecordId = callLogResult.recordId;
+        }
+
+        // Generate greeting
+        const providerResult = backgroundData.providers;
+        const enrichedOccurrences = backgroundData.enrichedOccurrences || [];
+
+        if (!providerResult?.hasMultipleProviders) {
+          const provider = providerResult?.providers?.[0];
+          const greeting = generateOccurrenceBasedGreeting(
+            authResult.employee,
+            provider,
+            enrichedOccurrences,
+            1
+          );
+
+          if (greeting.shouldPresentJobs) {
+            const updatedState = {
+              ...callState,
+              phase: 'occurrence_selection',
+              provider: provider ? { id: provider.id, name: provider.name, greeting: provider.greeting } : null,
+              enrichedOccurrences: enrichedOccurrences,
+              currentPage: 1
+            };
+            await saveWsCallState(ws, updatedState);
+          } else {
+            const updatedState = {
+              ...callState,
+              phase: 'no_occurrences_found',
+              provider: provider ? { id: provider.id, name: provider.name, greeting: provider.greeting } : null,
+              enrichedOccurrences: enrichedOccurrences,
+              updatedAt: new Date().toISOString()
+            };
+            await saveWsCallState(ws, updatedState);
+          }
+
+          await generateAndSpeak(greeting.message);
+        } else {
+          const greeting = generateMultiProviderGreeting(
+            authResult.employee,
+            providerResult.providers
+          );
+
+          const updatedState = {
+            ...callState,
+            availableProviders: providerResult.providers.map((p, index) => ({ ...p, selectionNumber: index + 1 })),
+            enrichedOccurrences: enrichedOccurrences
+          };
+
+          await saveWsCallState(ws, updatedState);
+          await generateAndSpeak(greeting);
+        }
+      },
+
+      onMedia: async () => {
+        // Media frames - no action needed
+      },
+
+      onDtmf: async (message) => {
+        if (!message.dtmf || !ws.callSid) return;
+
+        const digit = message.dtmf.digit;
+        const callState = await loadWsCallState(ws, ws.callSid);
+
+        if (!callState) return;
+
+        await routeDTMFInput({
+          ws,
+          callState,
+          digit,
+          streamSid: ws.streamSid,
+          generateAndSpeak,
+          saveState: (state) => saveWsCallState(ws, state)
+        });
+      },
+
+      onStop: async (message) => {
+        if (ws.inConference) return;
+        await handleConnectionClose(ws, 1000, Buffer.from('Stream stopped'));
+      }
+    };
+
+    // Handle incoming messages
+    ws.on('message', async (data) => {
+      await handleWebSocketMessage(data, ws, handlers);
+    });
+
+    // Handle connection close
+    ws.on('close', async (code, reason) => {
+      await handleConnectionClose(ws, code, reason);
+    });
+
+    // Handle errors
+    ws.on('error', (error) => {
+      handleConnectionError(ws, error);
+    });
   });
 
   wss.on('error', (error) => {
