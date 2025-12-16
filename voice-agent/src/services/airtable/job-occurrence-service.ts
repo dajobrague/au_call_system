@@ -670,46 +670,88 @@ export class JobOccurrenceService {
     });
 
     try {
-      // If no jobs found via Job Templates, fetch occurrences directly
-      if (!employeeJobs || employeeJobs.length === 0) {
-        logger.info('No jobs found via templates, fetching occurrences directly', {
+      // ALWAYS fetch occurrences via both paths:
+      // 1. Via job templates (if any exist)
+      // 2. Direct query (to catch occurrences not linked to templates)
+      
+      let templateOccurrences: EnrichedOccurrence[] = [];
+      
+      // Path 1: Fetch occurrences via job templates
+      if (employeeJobs && employeeJobs.length > 0) {
+        logger.info('Fetching occurrences via job templates', {
           employeeId,
-          type: 'enriched_occurrences_direct_fetch'
+          jobCount: employeeJobs.length,
+          type: 'enriched_occurrences_via_templates'
         });
         
-        return await this.getOccurrencesDirectly(employeeId);
+        const occurrencePromises = employeeJobs.map(async ({ jobTemplate, patient }) => {
+          const result = await this.getFutureOccurrences(jobTemplate, employeeId);
+          
+          if (!result.success || result.occurrences.length === 0) {
+            return [];
+          }
+          
+          // Enrich each occurrence with job and patient details
+          return result.occurrences.map(occurrence => ({
+            occurrenceId: occurrence.occurrenceId,
+            occurrenceRecordId: occurrence.id,
+            jobTemplate: {
+              id: jobTemplate.id,
+              jobCode: jobTemplate.jobCode,
+              title: jobTemplate.title
+            },
+            patient: {
+              id: patient?.id || '',
+              fullName: patient?.name || 'Unknown Patient',
+              firstName: extractFirstName(patient?.name || '')
+            },
+            scheduledAt: occurrence.scheduledAt,
+            time: occurrence.time,
+            displayDateTime: formatDateTimeForGreeting(occurrence.scheduledAt, occurrence.time),
+            status: occurrence.status
+          }));
+        });
+        
+        const allOccurrencesNested = await Promise.all(occurrencePromises);
+        templateOccurrences = allOccurrencesNested.flat();
+        
+        logger.info('Occurrences fetched via templates', {
+          employeeId,
+          count: templateOccurrences.length,
+          type: 'template_occurrences_fetched'
+        });
       }
-      // Fetch occurrences for each job in parallel
-      const occurrencePromises = employeeJobs.map(async ({ jobTemplate, patient }) => {
-        const result = await this.getFutureOccurrences(jobTemplate, employeeId);
-        
-        if (!result.success || result.occurrences.length === 0) {
-          return [];
-        }
-        
-        // Enrich each occurrence with job and patient details
-        return result.occurrences.map(occurrence => ({
-          occurrenceId: occurrence.occurrenceId,
-          occurrenceRecordId: occurrence.id,
-          jobTemplate: {
-            id: jobTemplate.id,
-            jobCode: jobTemplate.jobCode,
-            title: jobTemplate.title
-          },
-          patient: {
-            id: patient?.id || '',
-            fullName: patient?.name || 'Unknown Patient',
-            firstName: extractFirstName(patient?.name || '')
-          },
-          scheduledAt: occurrence.scheduledAt,
-          time: occurrence.time, // Use the time field directly from occurrence
-          displayDateTime: formatDateTimeForGreeting(occurrence.scheduledAt, occurrence.time),
-          status: occurrence.status
-        }));
+      
+      // Path 2: ALWAYS fetch occurrences directly (to catch non-template-linked occurrences)
+      logger.info('Fetching occurrences directly from Job Occurrences table', {
+        employeeId,
+        type: 'enriched_occurrences_direct_fetch'
       });
       
-      const allOccurrencesNested = await Promise.all(occurrencePromises);
-      const allOccurrences = allOccurrencesNested.flat();
+      const directOccurrences = await this.getOccurrencesDirectly(employeeId);
+      
+      logger.info('Occurrences fetched directly', {
+        employeeId,
+        count: directOccurrences.length,
+        type: 'direct_occurrences_fetched'
+      });
+      
+      // Merge occurrences and remove duplicates (by occurrenceRecordId)
+      const occurrenceMap = new Map<string, EnrichedOccurrence>();
+      
+      // Add template occurrences first (they have complete job template info)
+      for (const occ of templateOccurrences) {
+        occurrenceMap.set(occ.occurrenceRecordId, occ);
+      }
+      
+      // Add direct occurrences (only if not already in map)
+      for (const occ of directOccurrences) {
+        if (!occurrenceMap.has(occ.occurrenceRecordId)) {
+          occurrenceMap.set(occ.occurrenceRecordId, occ);
+        }
+      }
+      
+      const allOccurrences = Array.from(occurrenceMap.values());
       
       // Sort by date, then by time (earliest first)
       allOccurrences.sort((a, b) => {
@@ -722,6 +764,8 @@ export class JobOccurrenceService {
       
       logger.info('Employee occurrences enriched successfully', {
         employeeId,
+        templateCount: templateOccurrences.length,
+        directCount: directOccurrences.length,
         totalOccurrences: allOccurrences.length,
         duration,
         type: 'enriched_occurrences_success'
@@ -781,7 +825,7 @@ export class JobOccurrenceService {
         });
         
         // Add all field parameters
-        const fields = ['Occurrence ID', 'Job Template', 'Scheduled At', 'Time', 'Status', 'Assigned Employee', 'Patient', 'Provider', 'Patient TXT', 'Employee TXT', 'recordId (from Assigned Employee)'];
+        const fields = ['Occurrence ID', 'Job Template', 'Scheduled At', 'Time', 'Status', 'Assigned Employee', 'Provider', 'Patient TXT', 'Employee TXT', 'recordId (from Assigned Employee)'];
         fields.forEach(field => params.append('fields[]', field));
         
         // Add sort parameter (Airtable expects sort[0][field] and sort[0][direction])

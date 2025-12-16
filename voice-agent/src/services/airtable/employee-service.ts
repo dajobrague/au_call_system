@@ -48,6 +48,7 @@ function transformProviderRecord(record: ProviderRecord): Provider {
     providerId: fields['Provider ID'] || 0,
     greeting: fields['Greeting (IVR)'],
     timezone: fields['Timezone'],
+    transferNumber: fields['Transfer Number'],
     active: fields['Active'] !== false, // Default to true if not specified
   };
 }

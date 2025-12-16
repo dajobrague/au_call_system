@@ -44,6 +44,7 @@ export interface ProviderFields {
   'Address'?: string;
   'Timezone'?: string;
   'Greeting (IVR)'?: string;
+  'Transfer Number'?: string;
   'Logo'?: Array<{
     id: string;
     url: string;
@@ -136,6 +137,7 @@ export interface Provider {
   providerId: number;
   greeting?: string;
   timezone?: string;
+  transferNumber?: string;
   active: boolean;
 }
 
