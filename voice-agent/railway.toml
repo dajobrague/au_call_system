@@ -1,0 +1,14 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "node server.js"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# This runs the unified server which includes:
+# - Next.js (web pages like /job/[id] for SMS links)
+# - WebSocket server (for voice calls)
+# - SMS Wave Worker (for 3-wave notifications)
+# All on Railway's assigned PORT
+
