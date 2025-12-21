@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
     }
     
     // Load call state to get dynamic transfer number
-    let transferNumber = process.env.REPRESENTATIVE_PHONE || '+61490550941';
-    let transferNumberSource = process.env.REPRESENTATIVE_PHONE ? 'environment' : 'default';
+    let transferNumber: string | undefined = process.env.REPRESENTATIVE_PHONE;
+    let transferNumberSource = process.env.REPRESENTATIVE_PHONE ? 'environment' : 'none';
     
     try {
       const callState = await loadCallState(callSid);
@@ -69,10 +69,27 @@ export async function POST(request: NextRequest) {
         });
       }
     } catch (stateError) {
-      logger.warn('Could not load call state for transfer number, using fallback', {
+      logger.warn('Could not load call state for transfer number', {
         callSid,
         error: stateError instanceof Error ? stateError.message : 'Unknown error',
         type: 'transfer_state_load_error'
+      });
+    }
+    
+    // Validate transfer number exists
+    if (!transferNumber) {
+      logger.error('No transfer number configured for provider', {
+        callSid,
+        from,
+        type: 'transfer_no_number_configured'
+      });
+      
+      const twiml = new VoiceResponse();
+      twiml.say({ voice: 'Polly.Amy' }, 'Transfer is not configured for this provider. Please contact support.');
+      twiml.hangup();
+      
+      return new NextResponse(twiml.toString(), {
+        headers: { 'Content-Type': 'text/xml' }
       });
     }
     

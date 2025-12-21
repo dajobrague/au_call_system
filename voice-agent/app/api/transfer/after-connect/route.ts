@@ -57,14 +57,29 @@ export async function POST(request: NextRequest) {
       // Use the transfer number from pendingTransfer, or fallback to provider's transfer number
       const transferNumber = callState.pendingTransfer.representativePhone 
         || callState.provider?.transferNumber
-        || process.env.REPRESENTATIVE_PHONE 
-        || '+61490550941';
+        || process.env.REPRESENTATIVE_PHONE;
+      
+      if (!transferNumber) {
+        logger.error('No transfer number available after connect', {
+          callSid,
+          hasPendingTransfer: !!callState.pendingTransfer,
+          hasProvider: !!callState.provider,
+          type: 'after_connect_no_transfer_number'
+        });
+        
+        twiml.say({ voice: 'Polly.Amy' }, 'Transfer is not configured. Please contact support.');
+        twiml.hangup();
+        
+        return new NextResponse(twiml.toString(), {
+          headers: { 'Content-Type': 'text/xml' }
+        });
+      }
       
       const transferNumberSource = callState.pendingTransfer.representativePhone 
         ? 'pending_transfer'
         : callState.provider?.transferNumber 
           ? 'provider' 
-          : (process.env.REPRESENTATIVE_PHONE ? 'environment' : 'default');
+          : 'environment';
       
       logger.info('Pending transfer found - generating Dial TwiML', {
         callSid,

@@ -41,6 +41,7 @@ export async function processProviderSelectionPhase(state: CallState, input: str
             id: providerResult.providers[0].id,
             name: providerResult.providers[0].name,
             greeting: providerResult.providers[0].greeting,
+            transferNumber: providerResult.providers[0].transferNumber,
           } : null,
           phase: PHASES.JOB_SELECTION,
         };
@@ -65,6 +66,7 @@ export async function processProviderSelectionPhase(state: CallState, input: str
           id: p.id,
           name: p.name,
           greeting: p.greeting,
+          transferNumber: p.transferNumber,
           selectionNumber: p.selectionNumber,
         })),
         attempts: {

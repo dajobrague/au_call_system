@@ -575,14 +575,38 @@ async function handleTransferToRepresentative(context: DTMFRoutingContext): Prom
     });
   }
   
-  // Get transfer number from provider, with fallbacks
+  // DEBUG: Log entire provider object to see what's there
+  logger.info('🔍 DEBUG: Provider object in call state', {
+    callSid: callState.sid,
+    hasProvider: !!callState.provider,
+    providerKeys: callState.provider ? Object.keys(callState.provider) : [],
+    providerId: callState.provider?.id,
+    providerName: callState.provider?.name,
+    providerTransferNumber: callState.provider?.transferNumber,
+    providerObject: JSON.stringify(callState.provider),
+    type: 'debug_provider_transfer'
+  });
+  
+  // Get transfer number from provider, with environment fallback only
   const transferNumber = callState.provider?.transferNumber 
-    || process.env.REPRESENTATIVE_PHONE 
-    || '+61490550941';
+    || process.env.REPRESENTATIVE_PHONE;
+  
+  if (!transferNumber) {
+    logger.error('No transfer number configured', {
+      callSid: callState.sid,
+      providerId: callState.provider?.id,
+      providerName: callState.provider?.name,
+      hasProviderObject: !!callState.provider,
+      providerKeys: callState.provider ? Object.keys(callState.provider) : [],
+      type: 'transfer_no_number'
+    });
+    await generateAndSpeak('Sorry, transfer is not configured for this provider. Please contact support.');
+    return;
+  }
   
   const transferNumberSource = callState.provider?.transferNumber 
     ? 'provider' 
-    : (process.env.REPRESENTATIVE_PHONE ? 'environment' : 'default');
+    : 'environment';
   
   const callerPhone = callState.employee?.phone || callState.from || 'Unknown';
   

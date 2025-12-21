@@ -362,6 +362,19 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
         if (!providerResult?.hasMultipleProviders) {
           // Single provider - show occurrence list directly
           const provider = providerResult?.providers?.[0];
+          
+          // DEBUG: Log provider object from backgroundData
+          logger.info('🔍 DEBUG: Provider from backgroundData.providers', {
+            callSid: ws.callSid,
+            hasProvider: !!provider,
+            providerKeys: provider ? Object.keys(provider) : [],
+            providerId: provider?.id,
+            providerName: provider?.name,
+            providerTransferNumber: provider?.transferNumber,
+            providerObject: JSON.stringify(provider),
+            type: 'debug_provider_from_background'
+          });
+          
           const greeting = generateOccurrenceBasedGreeting(
             authResult.employee,
             provider,
@@ -377,7 +390,8 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
               provider: provider ? {
                 id: provider.id,
                 name: provider.name,
-                greeting: provider.greeting
+                greeting: provider.greeting,
+                transferNumber: provider.transferNumber
               } : null,
               enrichedOccurrences: enrichedOccurrences,
               currentPage: 1
@@ -385,6 +399,18 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
 
             await saveCallState(ws, updatedState);
           } else {
+            // DEBUG: Log provider object before creating state
+            logger.info('🔍 DEBUG: Provider object BEFORE creating no_occurrences state', {
+              callSid: ws.callSid,
+              hasProvider: !!provider,
+              providerKeys: provider ? Object.keys(provider) : [],
+              providerId: provider?.id,
+              providerName: provider?.name,
+              providerTransferNumber: provider?.transferNumber,
+              providerObject: JSON.stringify(provider),
+              type: 'debug_provider_before_state'
+            });
+            
             // Update state to allow DTMF input (press 1 for representative)
             const updatedState = {
               ...callState,
@@ -392,11 +418,25 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
               provider: provider ? {
                 id: provider.id,
                 name: provider.name,
-                greeting: provider.greeting
+                greeting: provider.greeting,
+                transferNumber: provider.transferNumber
               } : null,
               enrichedOccurrences: enrichedOccurrences,
               updatedAt: new Date().toISOString()
             };
+            
+            // DEBUG: Log what we're saving to state
+            logger.info('🔍 DEBUG: Provider object AFTER creating no_occurrences state', {
+              callSid: ws.callSid,
+              hasProvider: !!updatedState.provider,
+              providerKeys: updatedState.provider ? Object.keys(updatedState.provider) : [],
+              providerId: updatedState.provider?.id,
+              providerName: updatedState.provider?.name,
+              providerTransferNumber: updatedState.provider?.transferNumber,
+              providerObject: JSON.stringify(updatedState.provider),
+              type: 'debug_provider_after_state'
+            });
+            
             await saveCallState(ws, updatedState);
             
             logger.info('No shifts found - state updated for representative transfer', {
@@ -448,7 +488,8 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
               provider: provider ? {
                 id: provider.id,
                 name: provider.name,
-                greeting: provider.greeting
+                greeting: provider.greeting,
+                transferNumber: provider.transferNumber
               } : null,
               employeeJobs: employeeJobs.map((job: any, index: number) => ({
                 ...job,
