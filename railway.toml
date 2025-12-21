@@ -1,7 +1,6 @@
 [build]
 builder = "NIXPACKS"
 buildCommand = "cd voice-agent && npm install && npm run build"
-watchPatterns = ["voice-agent/**"]
 
 [deploy]
 startCommand = "cd voice-agent && node server.js"
