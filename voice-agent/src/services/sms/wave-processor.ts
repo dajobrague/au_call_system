@@ -86,11 +86,24 @@ export async function processScheduledWave(waveJob: WaveJobData): Promise<void> 
       // Privacy-safe format: FirstName LastInitial
       const privacyName = formatPrivacyName(jobDetails.patientFullName);
       
-      // Extract date and time from jobDetails
+      // Extract date and times (use 24-hour format)
       const shortDate = formatDateForSMS(scheduledAt);
-      const shortTime = extractTimeFromDisplay(jobDetails.displayDate);
+      const startTime = jobDetails.startTime || extract24HourTimeFromDisplay(jobDetails.displayDate);
+      const endTime = jobDetails.endTime || '';
+      const suburb = jobDetails.suburb || '';
       
-      const smsContent = `JOB AVAILABLE (Wave ${waveNumber}): ${privacyName}, ${shortDate} ${shortTime}. Reply or view: ${jobUrl}`;
+      // Build time range string in 24-hour format
+      const timeRange = endTime ? `${startTime}-${endTime}` : startTime;
+      
+      // Build SMS content - different for wave 3
+      let smsContent: string;
+      if (waveNumber === 3) {
+        // URGENT message for wave 3
+        smsContent = `URGENT: No cover found. ${privacyName}, ${shortDate} ${timeRange}${suburb ? `, ${suburb}` : ''}. Click link to pick up shift: ${jobUrl}`;
+      } else {
+        // Regular message for waves 1 and 2
+        smsContent = `SHIFT AVAILABLE (Wave ${waveNumber}): ${privacyName}, ${shortDate} ${timeRange}${suburb ? `, ${suburb}` : ''}. Reply or view: ${jobUrl}`;
+      }
       
       return twilioSMSService.sendSMS(
         employee.phone,
@@ -204,16 +217,27 @@ function formatDateForSMS(dateString: string): string {
 }
 
 /**
- * Extract time from display date string
+ * Extract time from display date string and convert to 24-hour format
  */
-function extractTimeFromDisplay(displayDate: string): string {
-  if (!displayDate) return 'TBD';
+function extract24HourTimeFromDisplay(displayDate: string): string {
+  if (!displayDate) return '09:00';
   
   // Try to extract time from "September 9th at 4:30 PM" format
-  const timeMatch = displayDate.match(/(\d{1,2}:\d{2}\s?(AM|PM))/i);
+  const timeMatch = displayDate.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
   if (timeMatch) {
-    return timeMatch[0];
+    let hours = parseInt(timeMatch[1], 10);
+    const minutes = timeMatch[2];
+    const period = timeMatch[3].toUpperCase();
+    
+    // Convert to 24-hour format
+    if (period === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (period === 'AM' && hours === 12) {
+      hours = 0;
+    }
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes}`;
   }
   
-  return 'TBD';
+  return '09:00';
 }

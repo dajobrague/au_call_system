@@ -40,7 +40,14 @@ export default function CallLogsPage() {
     { 
       key: 'Start Time', 
       label: 'Date/Time',
-      render: (value: unknown) => value ? new Date(value as string).toLocaleString() : '-'
+      render: (value: unknown) => value ? new Date(value as string).toLocaleString('en-AU', { 
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }) : '-'
     },
     { 
       key: 'Duration', 

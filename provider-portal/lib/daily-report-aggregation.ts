@@ -214,14 +214,8 @@ function formatOnCallWindow(startTime?: string, endTime?: string): string {
     return 'Not configured';
   }
   
-  const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
-    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-  };
-  
-  return `${formatTime(startTime)} – ${formatTime(endTime)}`;
+  // Display in 24-hour format
+  return `${startTime} – ${endTime}`;
 }
 
 function buildDetailedCallLogs(

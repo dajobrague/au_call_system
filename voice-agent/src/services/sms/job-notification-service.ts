@@ -215,12 +215,18 @@ export class JobNotificationService {
     // Create privacy-safe patient name: FirstName LastInitial
     const privacyName = this.formatPrivacyName(patient.name);
     
-    // Create short, single-segment SMS (under 160 characters)
-    // Format: "JOB AVAILABLE: [FirstName L.], [Date] [Time]. Reply or view: [URL]"
+    // Extract date, times, and suburb
     const shortDate = this.formatDateForSMS(jobOccurrence.scheduledAt);
-    const shortTime = this.formatTimeForSMS(jobOccurrence.displayDate);
+    // Use 24-hour format times directly from job template or occurrence
+    const startTime = jobTemplate.timeWindowStart || jobOccurrence.time || this.extract24HourTime(jobOccurrence.displayDate);
+    const endTime = jobTemplate.timeWindowEnd || '';
+    const suburb = this.extractSuburbFromAddress(patient.address);
     
-    const smsContent = `JOB AVAILABLE: ${privacyName}, ${shortDate} ${shortTime}. Reply or view: ${jobUrl}`;
+    // Build time range string in 24-hour format
+    const timeRange = endTime ? `${startTime}-${endTime}` : startTime;
+    
+    // Format: "SHIFT AVAILABLE: [FirstName L.], [Date] [Time-Time], [Suburb]. Reply or view: [URL]"
+    const smsContent = `SHIFT AVAILABLE: ${privacyName}, ${shortDate} ${timeRange}${suburb ? `, ${suburb}` : ''}. Reply or view: ${jobUrl}`;
     
     logger.info('Privacy-safe SMS generated', {
       employeeId,
@@ -273,17 +279,46 @@ export class JobNotificationService {
   }
 
   /**
-   * Extract time from display date for SMS
+   * Extract time from display date and convert to 24-hour format
+   * Used as fallback when time fields are not available
    */
-  private formatTimeForSMS(displayDate: string): string {
-    // Extract time from "September 9th at 4:30 PM" format
-    const timeMatch = displayDate.match(/(\d{1,2}:\d{2}\s?(AM|PM))/i);
+  private extract24HourTime(displayDate: string): string {
+    // Try to extract time from "September 9th at 4:30 PM" format
+    const timeMatch = displayDate.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
     if (timeMatch) {
-      return timeMatch[0];
+      let hours = parseInt(timeMatch[1], 10);
+      const minutes = timeMatch[2];
+      const period = timeMatch[3].toUpperCase();
+      
+      // Convert to 24-hour format
+      if (period === 'PM' && hours !== 12) {
+        hours += 12;
+      } else if (period === 'AM' && hours === 12) {
+        hours = 0;
+      }
+      
+      return `${hours.toString().padStart(2, '0')}:${minutes}`;
     }
     
-    // Fallback to generic time
-    return '4:30PM';
+    // Fallback to default time in 24h format
+    return '09:00';
+  }
+
+  /**
+   * Extract suburb from address string
+   * Assumes address format: "Street, Suburb, State Postcode"
+   */
+  private extractSuburbFromAddress(address?: string): string {
+    if (!address) return '';
+    
+    // Split by comma and get the second part (suburb)
+    const parts = address.split(',').map(part => part.trim());
+    if (parts.length >= 2) {
+      // Return the suburb (second part)
+      return parts[1];
+    }
+    
+    return '';
   }
 
   /**
@@ -456,6 +491,9 @@ export class JobNotificationService {
           patientFullName: patient.name,
           dateTime: jobOccurrence.scheduledAt,
           displayDate: jobOccurrence.displayDate,
+          suburb: this.extractSuburbFromAddress(patient.address),
+          startTime: jobTemplate.timeWindowStart || jobOccurrence.time,
+          endTime: jobTemplate.timeWindowEnd,
         },
       };
 

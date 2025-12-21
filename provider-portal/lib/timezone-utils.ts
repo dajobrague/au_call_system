@@ -179,6 +179,6 @@ export function getTodayAustralian(): string {
  * Returns: "Dec 12, 2025, 3:45 PM"
  */
 export function formatTimestampForReport(date: Date = new Date()): string {
-  return formatInTimeZone(date, AUSTRALIAN_TIMEZONE, 'MMM d, yyyy, h:mm a');
+  return formatInTimeZone(date, AUSTRALIAN_TIMEZONE, 'MMM d, yyyy, HH:mm');
 }
 

@@ -107,15 +107,8 @@ export default function SettingsPage() {
     const start = provider.fields['On-Call Start Time'];
     const end = provider.fields['On-Call End Time'];
     
-    // Convert 24h to 12h format
-    const formatTime = (time: string) => {
-      const [hours, minutes] = time.split(':').map(Number);
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
-      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-    };
-    
-    return `${formatTime(start)} – ${formatTime(end)}`;
+    // Display in 24-hour format as-is
+    return `${start} – ${end}`;
   };
   
   if (loading) {
@@ -230,16 +223,9 @@ export default function SettingsPage() {
             <p className="text-sm text-blue-800">
               <strong>Preview:</strong> Your on-call window will be displayed as{' '}
               <span className="font-medium">
-                {(() => {
-                  const formatTime = (time: string) => {
-                    const [hours, minutes] = time.split(':').map(Number);
-                    const period = hours >= 12 ? 'PM' : 'AM';
-                    const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
-                    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-                  };
-                  return `${formatTime(onCallStartTime)} – ${formatTime(onCallEndTime)}`;
-                })()}
+                {onCallStartTime} – {onCallEndTime}
               </span>
+              {' '}(24-hour format)
             </p>
           </div>
         </div>

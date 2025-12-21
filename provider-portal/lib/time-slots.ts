@@ -18,20 +18,10 @@ export function generateTimeSlots(): string[] {
 }
 
 /**
- * Format time slot for display (24h -> 12h with AM/PM)
+ * Format time slot for display (24-hour format)
  */
 export function formatTimeSlot(time: string): string {
-  const [hourStr, minute] = time.split(':');
-  const hour = parseInt(hourStr, 10);
-  
-  if (hour === 0) {
-    return `12:${minute} AM`;
-  } else if (hour < 12) {
-    return `${hour}:${minute} AM`;
-  } else if (hour === 12) {
-    return `12:${minute} PM`;
-  } else {
-    return `${hour - 12}:${minute} PM`;
-  }
+  // Return as-is in 24-hour format
+  return time;
 }
 
