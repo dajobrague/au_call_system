@@ -8,6 +8,9 @@ import { logger } from '../../../../src/lib/logger';
 
 // Set runtime to nodejs for compatibility
 export const runtime = 'nodejs';
+// Force dynamic rendering - don't cache this route
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * Get job details for acceptance page
@@ -37,19 +40,10 @@ export async function GET(
       );
     }
 
-    // For testing, recognize employee ID recW1CXg3O5I3oR0g as David Bracho
-    let employeeName = 'Unknown Employee';
-    if (employeeId === 'recW1CXg3O5I3oR0g') {
-      employeeName = 'David Bracho';
-    } else if (employeeId === 'test_employee') {
-      employeeName = 'Test Employee';
-    }
-
-    logger.info('Employee recognized for job access', {
+    logger.info('Employee accessing job page', {
       jobId,
       employeeId,
-      employeeName,
-      type: 'employee_recognized'
+      type: 'employee_accessing_job'
     });
 
     try {
@@ -73,8 +67,11 @@ export async function GET(
       
       // If job is assigned to someone else, return limited info but include provider and employee for UI
       if (isAssignedToOthers) {
-        // Still get provider info for header
-        const providerId = jobOccurrence.fields['Provider']?.[0];
+        // Still get provider info for header - extract from lookup fields
+        const providerId = jobOccurrence.fields['Provider']?.[0]
+          || jobOccurrence.fields['recordId (from Provider) (from Job Template)']?.[0]
+          || jobOccurrence.fields['recordId (from Provider) (from Patient (Link))']?.[0];
+          
         let provider = null;
         if (providerId) {
           provider = await airtableClient.getProviderById(providerId);
@@ -84,33 +81,17 @@ export async function GET(
         let employee = null;
         if (employeeId && employeeId !== 'test_employee') {
           try {
-            // For now, use hardcoded employee data for known IDs
-            if (employeeId === 'recW1CXg3O5I3oR0g') {
+            // Fetch employee details from Airtable by employee ID
+            const employeeRecords = await airtableClient.findRecords('Employees', `RECORD_ID() = '${employeeId}'`, { maxRecords: 1 });
+            
+            if (employeeRecords && employeeRecords.length > 0) {
+              const employeeRecord = employeeRecords[0];
               employee = {
-                id: employeeId,
+                id: employeeRecord.id,
                 fields: {
-                  'Display Name': 'David Bracho'
+                  'Display Name': employeeRecord.fields['Display Name'] || 'Employee'
                 }
               };
-            } else if (employeeId === 'recX3JNx6p0KFNXjB') {
-              employee = {
-                id: employeeId,
-                fields: {
-                  'Display Name': 'Sarah Johnson'
-                }
-              };
-            } else {
-              // Try to fetch from Airtable
-              const { employeeService } = await import('../../../../src/services/airtable');
-              const employeeRecord = await employeeService.getEmployeeById(employeeId);
-              if (employeeRecord) {
-                employee = {
-                  id: employeeRecord.id,
-                  fields: {
-                    'Display Name': employeeRecord.name
-                  }
-                };
-              }
             }
           } catch (error) {
             logger.warn('Could not fetch employee details for assigned_to_others case', {
@@ -144,55 +125,71 @@ export async function GET(
       }
       
       // Get additional details (patient info, provider info, and employee info)
-      const patientId = jobOccurrence.fields['Patient']?.[0];
-      const providerId = jobOccurrence.fields['Provider']?.[0];
+      // Extract Patient ID - check both possible field names
+      const patientId = jobOccurrence.fields['Patient']?.[0]
+        || jobOccurrence.fields['Patient (Link)']?.[0]
+        || jobOccurrence.fields['Patient (Lookup)']?.[0];
       
-      let patient = null;
-      let provider = null;
+      // Extract Provider ID - check all possible lookup fields
+      const providerId = jobOccurrence.fields['Provider']?.[0]
+        || jobOccurrence.fields['recordId (from Provider) (from Job Template)']?.[0]
+        || jobOccurrence.fields['recordId (from Provider) (from Patient (Link))']?.[0];
+      
+      logger.info('Extracted IDs from job occurrence', {
+        jobId,
+        patientId,
+        providerId,
+        type: 'job_ids_extracted'
+      });
+      
+      // Fetch patient, provider, and employee data in parallel for faster loading
+      const [patient, provider, employeeRecords] = await Promise.all([
+        patientId ? airtableClient.getPatientById(patientId) : Promise.resolve(null),
+        providerId ? airtableClient.getProviderById(providerId) : Promise.resolve(null),
+        (employeeId && employeeId !== 'test_employee') 
+          ? airtableClient.findRecords('Employees', `RECORD_ID() = '${employeeId}'`, { maxRecords: 1 })
+          : Promise.resolve([])
+      ]);
+      
+      // Log warnings for missing data
+      if (!patientId) {
+        logger.warn('No patient ID found in job occurrence', {
+          jobId,
+          type: 'no_patient_id'
+        });
+      }
+      
+      if (!providerId) {
+        logger.warn('No provider ID found in job occurrence', {
+          jobId,
+          type: 'no_provider_id'
+        });
+      }
+      
+      // Process employee data
       let employee = null;
-      
-      if (patientId) {
-        patient = await airtableClient.getPatientById(patientId);
-      }
-      
-      if (providerId) {
-        provider = await airtableClient.getProviderById(providerId);
-      }
-      
-      // Get employee details for welcome message
-      if (employeeId && employeeId !== 'test_employee') {
-        try {
-          // For now, use hardcoded employee data for known IDs
-          if (employeeId === 'recW1CXg3O5I3oR0g') {
-            employee = {
-              id: employeeId,
-              fields: {
-                'Display Name': 'David Bracho'
-              }
-            };
-          } else {
-            // Try to fetch from Airtable
-            const { employeeService } = await import('../../../../src/services/airtable');
-            const employeeRecord = await employeeService.getEmployeeById(employeeId);
-            if (employeeRecord) {
-              employee = {
-                id: employeeRecord.id,
-                fields: {
-                  'Display Name': employeeRecord.name
-                }
-              };
-            }
+      if (employeeRecords && employeeRecords.length > 0) {
+        const employeeRecord = employeeRecords[0];
+        employee = {
+          id: employeeRecord.id,
+          fields: {
+            'Display Name': employeeRecord.fields['Display Name'] || 'Employee'
           }
-        } catch (error) {
-          logger.warn('Could not fetch employee details', {
-            jobId,
-            employeeId,
-            error: error instanceof Error ? error.message : 'Unknown error',
-            type: 'employee_fetch_warning'
-          });
-        }
+        };
+        
+        logger.info('Employee details fetched for job page', {
+          jobId,
+          employeeId,
+          employeeName: employeeRecord.fields['Display Name'],
+          type: 'employee_fetched_for_job_page'
+        });
+      } else if (employeeId && employeeId !== 'test_employee') {
+        logger.warn('Employee not found in Airtable', {
+          jobId,
+          employeeId,
+          type: 'employee_not_found_for_job_page'
+        });
       }
-      
       const duration = Date.now() - startTime;
       
       // Return job details
@@ -310,12 +307,26 @@ export async function POST(
       );
     }
 
-    // Recognize employee for job actions
+    // Get employee name from Airtable for confirmation message
     let employeeName = 'Unknown Employee';
-    if (employeeId === 'recW1CXg3O5I3oR0g') {
-      employeeName = 'David Bracho';
-    } else if (employeeId === 'test_employee') {
-      employeeName = 'Test Employee';
+    try {
+      if (employeeId !== 'test_employee') {
+        const employeeRecords = await import('../../../../src/services/airtable').then(services => 
+          services.airtableClient.findRecords('Employees', `RECORD_ID() = '${employeeId}'`, { maxRecords: 1 })
+        );
+        
+        if (employeeRecords && employeeRecords.length > 0) {
+          employeeName = employeeRecords[0].fields['Display Name'] || 'Unknown Employee';
+        }
+      } else {
+        employeeName = 'Test Employee';
+      }
+    } catch (error) {
+      logger.warn('Could not fetch employee name for action', {
+        employeeId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        type: 'employee_name_fetch_warning'
+      });
     }
 
     try {
@@ -361,7 +372,20 @@ export async function POST(
           'Reschedule Reason': '' // Clear reschedule reason
         };
 
+        logger.info('Attempting to update job occurrence', {
+          jobId,
+          employeeId,
+          updates,
+          type: 'job_update_attempt'
+        });
+
         const updateSuccess = await airtableClient.updateJobOccurrence(jobId, updates);
+
+        logger.info('Job occurrence update result', {
+          jobId,
+          updateSuccess,
+          type: 'job_update_result'
+        });
 
         if (updateSuccess) {
           logger.info('Job assigned successfully via web interface', {

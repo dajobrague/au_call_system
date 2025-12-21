@@ -20,7 +20,6 @@ import { routeDTMFInput } from './dtmf-router';
 import { authenticateByPhone, prefetchBackgroundData } from '../handlers/authentication-handler';
 import { generateSingleProviderGreeting, generateMultiProviderGreeting, generateOccurrenceBasedGreeting } from '../handlers/provider-handler';
 import { generateSpeech, streamAudioToTwilio, stopCurrentAudio } from '../services/elevenlabs';
-import { startCallRecording } from '../services/twilio/call-recorder';
 import { twilioConfig } from '../config/twilio';
 import { logger } from '../lib/logger';
 import { initializeDisclaimerCache, playDisclaimerFromCache } from '../audio/disclaimer-cache';
@@ -156,41 +155,13 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
         ws.callEvents = [];
         ws.callStartTime = new Date();
 
-        // Start call recording immediately (runs in parallel)
-        // Use parentCallSid for REST API operations
-        startCallRecording({
-          callSid: ws.parentCallSid!,
-          recordingChannels: 'dual', // Records both inbound and outbound audio
-          trim: 'do-not-trim'
-        }).then((result) => {
-          if (result.success) {
-            logger.info('Call recording started successfully', {
-              callSid: ws.callSid,
-              parentCallSid: ws.parentCallSid,
-              recordingSid: result.recordingSid,
-              type: 'recording_success'
-            });
-            // Store recording SID on WebSocket for later reference
-            ws.recordingSid = result.recordingSid;
-            ws.cachedData = {
-              ...ws.cachedData,
-              recordingSid: result.recordingSid
-            };
-          } else {
-            logger.error('Failed to start call recording', {
-              callSid: ws.callSid,
-              parentCallSid: ws.parentCallSid,
-              error: result.error,
-              type: 'recording_failure'
-            });
-          }
-        }).catch((error) => {
-          logger.error('Call recording error', {
-            callSid: ws.callSid,
-            parentCallSid: ws.parentCallSid,
-            error: error instanceof Error ? error.message : 'Unknown error',
-            type: 'recording_error'
-          });
+        // Recording is now handled by TwiML (record="record-from-answer-dual" in <Connect>)
+        // No need to start recording via API - Twilio starts it automatically
+        // The recordingStatusCallback will notify us when recording completes
+        logger.info('Call recording managed by TwiML', {
+          callSid: ws.callSid,
+          parentCallSid: ws.parentCallSid,
+          type: 'recording_twiml_managed'
         });
 
         // Start authentication immediately in parallel (don't wait for disclaimer)

@@ -127,26 +127,39 @@ export class JobNotificationService {
       const { twilioSMSService } = await import('./twilio-sms-service');
       
       // Send SMS to all provider employees (production mode)
-      console.log('📱 Production SMS - sending to all provider employees');
+      logger.info('Sending SMS to all provider employees', {
+        employeeCount: employees.length,
+        occurrenceId: jobDetails.jobOccurrence.id,
+        type: 'sms_send_to_all_employees'
+      });
       
-      // For demo, send to your phone with David Bracho's employee ID
-      const demoEmployee = {
-        id: 'recW1CXg3O5I3oR0g',
-        name: 'David Bracho', 
-        phone: '+522281957913'
+      // Send SMS to each employee with their personalized URL
+      const smsPromises = employees.map(async (employee) => {
+        // Generate SMS content with personalized job URL for this employee
+        const smsContent = await this.generateJobAvailabilitySMSWithURL(jobDetails, employee.id);
+        
+        // Send SMS via Twilio
+        return twilioSMSService.sendSMS(
+          employee.phone,
+          smsContent,
+          { occurrenceId: jobDetails.jobOccurrence.id, employeeId: employee.id }
+        );
+      });
+      
+      // Wait for all SMS to be sent (they send in parallel)
+      const results = await Promise.all(smsPromises);
+      
+      // Count successes and failures
+      const successCount = results.filter(r => r.success).length;
+      const failureCount = results.filter(r => !r.success).length;
+      
+      // Build smsResult object to match expected format
+      const smsResult = {
+        success: failureCount === 0,
+        successCount,
+        failureCount,
+        results
       };
-      
-      // Generate short SMS content with production URL
-      const smsContent = await this.generateJobAvailabilitySMSWithURL(jobDetails, demoEmployee.id);
-      
-      console.log('📱 Testing SMS - sending to +522281957913 only');
-      
-      // Send SMS using Twilio
-      const smsResult = await twilioSMSService.sendJobAvailabilityNotifications(
-        [demoEmployee], // Send to demo employee for now
-        smsContent,
-        jobDetails.jobOccurrence.id
-      );
       
       const duration = Date.now() - startTime;
       
@@ -301,10 +314,55 @@ export class JobNotificationService {
   ): Promise<{ success: boolean; employeesNotified: number; error?: string }> {
     const startTime = Date.now();
     
+    // Extract provider ID - try multiple sources for robustness
+    // JobOccurrence may have providerId set, or we may need to get from Airtable record
+    let providerId: string | undefined = jobOccurrence.providerId;
+    
+    // If providerId not set, try to get the full record from Airtable
+    if (!providerId) {
+      logger.warn('Provider ID not set in JobOccurrence, fetching from Airtable', {
+        occurrenceId: jobOccurrence.id,
+        type: 'missing_provider_id'
+      });
+      
+      try {
+        const occurrenceRecord = await airtableClient.getJobOccurrenceById(jobOccurrence.id);
+        if (occurrenceRecord) {
+          // Try to extract provider ID from various possible fields
+          providerId = occurrenceRecord.fields['Provider']?.[0]
+            || occurrenceRecord.fields['recordId (from Provider) (from Job Template)']?.[0]
+            || occurrenceRecord.fields['recordId (from Provider) (from Patient (Link))']?.[0];
+        }
+      } catch (error) {
+        logger.error('Failed to fetch job occurrence for provider ID', {
+          occurrenceId: jobOccurrence.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          type: 'provider_id_fetch_error'
+        });
+      }
+    }
+    
+    // Validate we have a provider ID
+    if (!providerId) {
+      logger.error('No provider ID found for job occurrence', {
+        occurrenceId: jobOccurrence.id,
+        type: 'no_provider_for_sms'
+      });
+      
+      return {
+        success: false,
+        employeesNotified: 0,
+        error: 'No provider ID found for job occurrence'
+      };
+    }
+    
+    // At this point, providerId is guaranteed to be a string (TypeScript knows this after the check above)
+    const resolvedProviderId: string = providerId;
+    
     logger.info('Starting 3-wave job redistribution', {
       occurrenceId: jobOccurrence.id,
       jobCode: jobTemplate.jobCode,
-      providerId: jobOccurrence.providerId,
+      providerId: resolvedProviderId,
       originalEmployeeId: originalEmployee.id,
       type: 'wave_redistribution_start'
     });
@@ -312,13 +370,13 @@ export class JobNotificationService {
     try {
       // Find all employees for this provider (excluding the original employee)
       const providerEmployees = await this.findProviderEmployees(
-        jobOccurrence.providerId,
+        resolvedProviderId,
         originalEmployee.id
       );
       
       if (providerEmployees.length === 0) {
         logger.warn('No other employees found for provider', {
-          providerId: jobOccurrence.providerId,
+          providerId: resolvedProviderId,
           originalEmployeeId: originalEmployee.id,
           type: 'no_employees_for_redistribution'
         });
@@ -388,7 +446,7 @@ export class JobNotificationService {
       
       const waveData = {
         occurrenceId: jobOccurrence.id,
-        providerId: jobOccurrence.providerId,
+        providerId: resolvedProviderId, // Use extracted provider ID
         scheduledAt: jobOccurrence.scheduledAt,
         timeString: timeString,  // Include time for accurate wave processing
         timezone: providerTimezone, // Include timezone for wave processor

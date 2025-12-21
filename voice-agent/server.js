@@ -134,19 +134,9 @@ app.prepare().then(() => {
         ws.callEvents = [];
         ws.callStartTime = new Date();
 
-        // Start call recording
-        startCallRecording({
-          callSid: ws.parentCallSid,
-          recordingChannels: 'dual',
-          trim: 'do-not-trim'
-        }).then((result) => {
-          if (result.success) {
-            ws.recordingSid = result.recordingSid;
-            ws.cachedData = { ...ws.cachedData, recordingSid: result.recordingSid };
-          }
-        }).catch((error) => {
-          console.error('Call recording error:', error.message);
-        });
+        // Recording is now handled by TwiML (record="record-from-answer-dual" in <Connect>)
+        // No need to start recording via API - Twilio starts it automatically
+        console.log('📼 Call recording managed by TwiML');
 
         // Start authentication in parallel
         const authPromise = (async () => {
@@ -358,15 +348,15 @@ app.prepare().then(() => {
   // ============================================================
   // Twilio Voice Endpoints (needed for WebSocket)
   // ============================================================
-  server.use(express.urlencoded({ extended: true }));
-  server.use(express.json());
-
   const twilio = require('twilio');
   const { logger } = require('./src/lib/logger');
   const { loadCallState, saveCallState } = require('./src/fsm/state/state-manager');
 
+  // Body parsers ONLY for Twilio routes (not Next.js routes)
+  const twilioBodyParser = express.urlencoded({ extended: true });
+
   // Initial voice webhook
-  server.post('/api/twilio/voice', async (req, res) => {
+  server.post('/api/twilio/voice', twilioBodyParser, async (req, res) => {
     try {
       const host = req.get('host') || process.env.RAILWAY_PUBLIC_DOMAIN;
       const protocol = 'https'; // Railway always uses HTTPS
@@ -401,7 +391,7 @@ app.prepare().then(() => {
   });
 
   // After-connect handler
-  server.post('/api/transfer/after-connect', async (req, res) => {
+  server.post('/api/transfer/after-connect', twilioBodyParser, async (req, res) => {
     logger.info('After-connect endpoint called', {
       url: req.url,
       method: req.method,

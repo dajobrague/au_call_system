@@ -307,7 +307,8 @@ async function handleProviderSelection(context: DTMFRoutingContext): Promise<voi
     provider: {
       id: selectedProvider.id,
       name: selectedProvider.name,
-      greeting: selectedProvider.greeting
+      greeting: selectedProvider.greeting,
+      transferNumber: selectedProvider.transferNumber
     },
     employeeJobs: filteredJobs.map((job: any, index: number) => ({
       ...job,
@@ -574,16 +575,31 @@ async function handleTransferToRepresentative(context: DTMFRoutingContext): Prom
     });
   }
   
-  const REPRESENTATIVE_PHONE = process.env.REPRESENTATIVE_PHONE || '+61490550941';
+  // Get transfer number from provider, with fallbacks
+  const transferNumber = callState.provider?.transferNumber 
+    || process.env.REPRESENTATIVE_PHONE 
+    || '+61490550941';
+  
+  const transferNumberSource = callState.provider?.transferNumber 
+    ? 'provider' 
+    : (process.env.REPRESENTATIVE_PHONE ? 'environment' : 'default');
+  
   const callerPhone = callState.employee?.phone || callState.from || 'Unknown';
   
   // Use parent CallSid for REST API operations (the original call leg)
   const parentCallSid = callState.parentCallSid || callState.sid;
   
+  logger.info('Transfer number resolved', {
+    transferNumber,
+    source: transferNumberSource,
+    providerName: callState.provider?.name,
+    type: 'transfer_number_resolved'
+  });
+  
   logger.info('Initiating representative transfer', {
     callSid: callState.sid,
     parentCallSid: parentCallSid,
-    representativePhone: REPRESENTATIVE_PHONE,
+    representativePhone: transferNumber,
     callerPhone,
     type: 'transfer_start'
   });
@@ -602,7 +618,7 @@ async function handleTransferToRepresentative(context: DTMFRoutingContext): Prom
   logger.info('Setting pending transfer and closing WebSocket', {
     callSid: callState.sid,
     parentCallSid: parentCallSid,
-    representativePhone: REPRESENTATIVE_PHONE,
+    representativePhone: transferNumber,
     type: 'transfer_via_action_url'
   });
   
@@ -611,7 +627,7 @@ async function handleTransferToRepresentative(context: DTMFRoutingContext): Prom
     ...callState,
     phase: 'representative_transfer',
     pendingTransfer: {
-      representativePhone: REPRESENTATIVE_PHONE,
+      representativePhone: transferNumber,
       callerPhone: callerPhone,
       initiatedAt: new Date().toISOString()
     },

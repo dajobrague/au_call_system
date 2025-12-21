@@ -740,13 +740,15 @@ export class AirtableClient {
    * Find employees by provider ID
    */
   async findEmployeesByProvider(providerId: string): Promise<EmployeeRecord[]> {
-    const filterFormula = `FIND('${providerId}', ARRAYJOIN({Provider}))`;
+    // Use correct field name and filter for active employees only
+    // Field is "recordId (from Provider)" not "Provider"
+    const filterFormula = `AND(FIND('${providerId}', ARRAYJOIN({recordId (from Provider)})), {Active} = TRUE())`;
     
     return withRetry(async () => {
       const response = await makeAirtableRequest<EmployeeRecord['fields']>('Employees', {
         filterByFormula: filterFormula,
         maxRecords: 50, // Get up to 50 employees per provider
-        fields: ['Display Name', 'Employee PIN', 'Provider', 'Phone', 'Job Templates', 'Active', 'Notes']
+        fields: ['Display Name', 'Employee PIN', 'recordId (from Provider)', 'Phone', 'Job Templates', 'Active', 'Notes']
       });
       
       return response.records as EmployeeRecord[];

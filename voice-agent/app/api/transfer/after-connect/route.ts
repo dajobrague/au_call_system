@@ -5,8 +5,6 @@ const twilio = require('twilio');
 
 const VoiceResponse = twilio.twiml.VoiceResponse;
 
-const REPRESENTATIVE_PHONE = process.env.REPRESENTATIVE_PHONE || '+61490550941';
-
 /**
  * POST /api/transfer/after-connect
  * This endpoint is called by Twilio when the <Connect><Stream> ends.
@@ -56,9 +54,23 @@ export async function POST(request: NextRequest) {
     const callState = await loadCallState(callSid);
 
     if (callState && callState.pendingTransfer) {
+      // Use the transfer number from pendingTransfer, or fallback to provider's transfer number
+      const transferNumber = callState.pendingTransfer.representativePhone 
+        || callState.provider?.transferNumber
+        || process.env.REPRESENTATIVE_PHONE 
+        || '+61490550941';
+      
+      const transferNumberSource = callState.pendingTransfer.representativePhone 
+        ? 'pending_transfer'
+        : callState.provider?.transferNumber 
+          ? 'provider' 
+          : (process.env.REPRESENTATIVE_PHONE ? 'environment' : 'default');
+      
       logger.info('Pending transfer found - generating Dial TwiML', {
         callSid,
-        representativePhone: callState.pendingTransfer.representativePhone,
+        representativePhone: transferNumber,
+        source: transferNumberSource,
+        providerName: callState.provider?.name,
         type: 'after_connect_transfer_found'
       });
 
@@ -72,7 +84,7 @@ export async function POST(request: NextRequest) {
         action: `${APP_BASE_URL}/api/queue/transfer-status?callSid=${callSid}&from=${encodeURIComponent(from)}`
       });
       
-      dial.number(callState.pendingTransfer.representativePhone);
+      dial.number(transferNumber);
 
       // Fallback if representative doesn't answer
       twiml.say({ voice: 'Polly.Amy' }, 'The representative is not available. You will be placed in the queue.');

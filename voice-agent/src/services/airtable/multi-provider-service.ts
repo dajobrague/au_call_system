@@ -18,6 +18,7 @@ function transformProviderForSelection(record: ProviderRecord, index: number): P
     name: fields['Name'] || 'Unknown Provider',
     providerId: fields['Provider ID'] || 0,
     greeting: fields['Greeting (IVR)'],
+    transferNumber: fields['Transfer Number'],
     selectionNumber: index + 1, // 1-based selection (Press 1, Press 2, etc.)
     active: fields['Active'] !== false,
   };
@@ -31,6 +32,7 @@ export interface ProviderSelectionOption {
   name: string;
   providerId: number;
   greeting?: string;
+  transferNumber?: string;
   selectionNumber: number; // 1, 2, 3, etc.
   active: boolean;
 }

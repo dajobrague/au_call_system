@@ -38,11 +38,13 @@ export interface CallState {
     id: string;
     name: string;
     greeting?: string;
+    transferNumber?: string;
   } | null;
   availableProviders?: Array<{    // For multi-provider employees
     id: string;
     name: string;
     greeting?: string;
+    transferNumber?: string;
     selectionNumber: number;
   }>;
   jobTemplate?: {                 // Current job template data

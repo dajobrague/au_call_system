@@ -182,91 +182,133 @@ function scheduleRecordingTransferToS3(
         type: 'recording_download_success'
       });
 
-      // Step 2: Upload to S3
+      // Step 2: Attempt S3 upload with fallback to Twilio URL
+      let finalRecordingUrl: string;
+      let shouldDeleteFromTwilio = false;
+      let uploadedToS3 = false;
+
       const providerSlug = providerId || 'unknown-provider';
       const employeeSlug = employeeId || 'unknown-employee';
       const s3Key = `${env.AWS_S3_RECORDINGS_PREFIX}${providerSlug}/${employeeSlug}/${callSid}/twilio-recording.mp3`;
 
-      const s3Client = new S3Client({
-        region: env.AWS_REGION,
-        credentials: {
-          accessKeyId: env.AWS_ACCESS_KEY_ID,
-          secretAccessKey: env.AWS_SECRET_ACCESS_KEY
+      try {
+        const s3Client = new S3Client({
+          region: env.AWS_REGION,
+          credentials: {
+            accessKeyId: env.AWS_ACCESS_KEY_ID,
+            secretAccessKey: env.AWS_SECRET_ACCESS_KEY
+          }
+        });
+
+        const putCommand = new PutObjectCommand({
+          Bucket: env.AWS_S3_BUCKET,
+          Key: s3Key,
+          Body: downloadResult.audioBuffer,
+          ContentType: 'audio/mpeg',
+          ServerSideEncryption: 'AES256',
+          StorageClass: 'STANDARD_IA',
+          Metadata: {
+            'call-sid': callSid,
+            'recording-sid': recordingSid,
+            'provider': providerSlug,
+            'employee': employeeSlug,
+            'uploaded-at': new Date().toISOString()
+          }
+        });
+
+        await s3Client.send(putCommand);
+
+        // Generate presigned URL (valid for 7 days)
+        const getCommand = new GetObjectCommand({
+          Bucket: env.AWS_S3_BUCKET,
+          Key: s3Key
+        });
+        
+        const s3Url = await getSignedUrl(s3Client, getCommand, { 
+          expiresIn: 604800 // 7 days
+        });
+
+        // S3 upload successful
+        finalRecordingUrl = s3Url;
+        shouldDeleteFromTwilio = true;
+        uploadedToS3 = true;
+
+        logger.info('Recording uploaded to S3', {
+          recordingSid,
+          callSid,
+          s3Key,
+          type: 'recording_s3_upload_success'
+        });
+
+      } catch (s3Error) {
+        // S3 upload failed - fallback to Twilio URL
+        logger.warn('S3 upload failed, using Twilio URL as fallback', {
+          recordingSid,
+          callSid,
+          error: s3Error instanceof Error ? s3Error.message : 'Unknown error',
+          type: 'recording_s3_fallback_to_twilio'
+        });
+
+        // Get Twilio recording URL
+        const { getRecordingUrl } = require('../services/twilio/call-recorder');
+        const urlResult = await getRecordingUrl(recordingSid);
+        
+        if (urlResult.success && urlResult.url) {
+          finalRecordingUrl = urlResult.url;
+          shouldDeleteFromTwilio = false;
+          uploadedToS3 = false;
+        } else {
+          throw new Error(`Failed to get Twilio URL: ${urlResult.error}`);
         }
-      });
+      }
 
-      const putCommand = new PutObjectCommand({
-        Bucket: env.AWS_S3_BUCKET,
-        Key: s3Key,
-        Body: downloadResult.audioBuffer,
-        ContentType: 'audio/mpeg',
-        ServerSideEncryption: 'AES256',
-        StorageClass: 'STANDARD_IA',
-        Metadata: {
-          'call-sid': callSid,
-          'recording-sid': recordingSid,
-          'provider': providerSlug,
-          'employee': employeeSlug,
-          'uploaded-at': new Date().toISOString()
-        }
-      });
-
-      await s3Client.send(putCommand);
-
-      // Generate presigned URL (valid for 7 days)
-      const getCommand = new GetObjectCommand({
-        Bucket: env.AWS_S3_BUCKET,
-        Key: s3Key
-      });
-      
-      const s3Url = await getSignedUrl(s3Client, getCommand, { 
-        expiresIn: 604800 // 7 days
-      });
-
-      logger.info('Recording uploaded to S3', {
-        recordingSid,
-        callSid,
-        s3Key,
-        type: 'recording_s3_upload_success'
-      });
-
-      // Step 3: Update Airtable with S3 URL
+      // Step 3: Update Airtable with recording URL (S3 or Twilio fallback)
       const CALL_LOGS_TABLE_ID = 'tbl9BBKoeV45juYaj';
       await airtableClient.updateRecord(
         CALL_LOGS_TABLE_ID,
         callLogRecordId,
         {
-          'Recording URL (Twilio/S3)': s3Url
+          'Recording URL (Twilio/S3)': finalRecordingUrl
         }
       );
 
-      logger.info('Airtable updated with S3 URL', {
+      logger.info(uploadedToS3 ? 'Airtable updated with S3 URL' : 'Airtable updated with Twilio fallback URL', {
         recordingSid,
         callSid,
         recordId: callLogRecordId,
-        type: 'airtable_updated_s3'
+        uploadedToS3,
+        type: uploadedToS3 ? 'recording_saved_to_airtable_s3' : 'recording_saved_to_airtable_twilio'
       });
 
-      // Step 4: Delete from Twilio
-      const deleteResult = await deleteRecording(recordingSid);
-      
-      if (deleteResult.success) {
-        logger.info('Recording deleted from Twilio', {
+      // Step 4: Delete from Twilio only if S3 upload succeeded
+      if (shouldDeleteFromTwilio) {
+        const deleteResult = await deleteRecording(recordingSid);
+        
+        if (deleteResult.success) {
+          logger.info('Recording deleted from Twilio', {
+            recordingSid,
+            callSid,
+            type: 'twilio_recording_deleted'
+          });
+        } else {
+          logger.warn('Failed to delete recording from Twilio', {
+            recordingSid,
+            error: deleteResult.error,
+            type: 'twilio_delete_warning'
+          });
+        }
+      } else {
+        logger.info('Twilio recording preserved (S3 upload failed)', {
           recordingSid,
           callSid,
-          type: 'twilio_recording_deleted'
-        });
-      } else {
-        logger.warn('Failed to delete recording from Twilio', {
-          recordingSid,
-          error: deleteResult.error,
-          type: 'twilio_delete_warning'
+          type: 'twilio_recording_preserved'
         });
       }
 
-      logger.info('S3 transfer completed successfully', {
+      logger.info('Recording transfer completed', {
         recordingSid,
         callSid,
+        uploadedToS3,
         type: 'recording_transfer_completed'
       });
 

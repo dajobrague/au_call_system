@@ -7,11 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callQueueService } from '@/services/queue/call-queue-service';
 import { transferCallToPhone } from '@/services/queue/twilio-availability';
 import { logger } from '@/lib/logger';
+import { loadCallState } from '@/fsm/state/state-manager';
 const twilio = require('twilio');
 
 const VoiceResponse = twilio.twiml.VoiceResponse;
-
-const REPRESENTATIVE_PHONE = '+61490550941';
 
 export interface TransferRequest {
   callSid: string;
@@ -47,17 +46,51 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Load dynamic transfer number from call state (provider-specific)
+    let transferNumber = process.env.REPRESENTATIVE_PHONE || '+61490550941';
+    let transferNumberSource = process.env.REPRESENTATIVE_PHONE ? 'environment' : 'default';
+    
+    try {
+      const callState = await loadCallState(callSid);
+      if (callState?.pendingTransfer?.representativePhone) {
+        transferNumber = callState.pendingTransfer.representativePhone;
+        transferNumberSource = 'call_state';
+        logger.info('Transfer number loaded from call state', {
+          callSid,
+          transferNumber,
+          providerName: callState.provider?.name,
+          type: 'transfer_number_from_state'
+        });
+      } else if (callState?.provider?.transferNumber) {
+        transferNumber = callState.provider.transferNumber;
+        transferNumberSource = 'provider';
+        logger.info('Transfer number loaded from provider', {
+          callSid,
+          transferNumber,
+          providerName: callState.provider.name,
+          type: 'transfer_number_from_provider'
+        });
+      }
+    } catch (stateError) {
+      logger.warn('Could not load call state for transfer number, using fallback', {
+        callSid,
+        error: stateError instanceof Error ? stateError.message : 'Unknown error',
+        type: 'transfer_state_load_error'
+      });
+    }
+    
     // Always attempt transfer - let Twilio Dial handle availability
     logger.info('Attempting transfer to representative', {
       callSid,
       callerPhone,
-      representativePhone: REPRESENTATIVE_PHONE,
+      representativePhone: transferNumber,
+      source: transferNumberSource,
       type: 'transfer_attempt'
     });
     
     const transferResult = await transferCallToPhone(
       callSid,
-      REPRESENTATIVE_PHONE,
+      transferNumber,
       callerPhone
     );
     

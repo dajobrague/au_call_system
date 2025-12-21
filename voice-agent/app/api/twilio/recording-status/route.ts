@@ -80,6 +80,13 @@ function extractProviderEmployee(callLog: any): { provider?: string; employee?: 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   
+  // Log immediately to confirm endpoint is being called
+  logger.info('📼 Recording status endpoint called', {
+    url: request.url,
+    method: request.method,
+    type: 'recording_status_endpoint_called'
+  });
+  
   try {
     const formData = await request.formData();
     
@@ -135,72 +142,102 @@ export async function POST(request: NextRequest) {
       const callLog = await findCallLogByCallSid(callSid);
       const { provider, employee } = extractProviderEmployee(callLog);
 
-      // Step 3: Upload to S3
+      // Step 3: Attempt S3 upload with fallback to Twilio URL
+      let finalRecordingUrl: string;
+      let shouldDeleteFromTwilio = false;
+      let uploadedToS3 = false;
+
       const providerSlug = provider || 'unknown-provider';
       const employeeSlug = employee || 'unknown-employee';
       const s3Key = `${env.AWS_S3_RECORDINGS_PREFIX}${providerSlug}/${employeeSlug}/${callSid}/twilio-recording.mp3`;
 
-      // Create S3 client
-      const s3Client = new S3Client({
-        region: env.AWS_REGION,
-        credentials: {
-          accessKeyId: env.AWS_ACCESS_KEY_ID,
-          secretAccessKey: env.AWS_SECRET_ACCESS_KEY
-        }
-      });
+      try {
+        // Create S3 client
+        const s3Client = new S3Client({
+          region: env.AWS_REGION,
+          credentials: {
+            accessKeyId: env.AWS_ACCESS_KEY_ID,
+            secretAccessKey: env.AWS_SECRET_ACCESS_KEY
+          }
+        });
 
-      const putCommand = new PutObjectCommand({
-        Bucket: env.AWS_S3_BUCKET,
-        Key: s3Key,
-        Body: downloadResult.audioBuffer,
-        ContentType: 'audio/mpeg',
-        ServerSideEncryption: 'AES256',
-        StorageClass: 'STANDARD_IA',
-        Metadata: {
-          'call-sid': callSid,
-          'recording-sid': recordingSid,
-          'provider': providerSlug,
-          'employee': employeeSlug,
-          'duration': recordingDuration,
-          'uploaded-at': new Date().toISOString()
-        }
-      });
+        const putCommand = new PutObjectCommand({
+          Bucket: env.AWS_S3_BUCKET,
+          Key: s3Key,
+          Body: downloadResult.audioBuffer,
+          ContentType: 'audio/mpeg',
+          ServerSideEncryption: 'AES256',
+          StorageClass: 'STANDARD_IA',
+          Metadata: {
+            'call-sid': callSid,
+            'recording-sid': recordingSid,
+            'provider': providerSlug,
+            'employee': employeeSlug,
+            'duration': recordingDuration,
+            'uploaded-at': new Date().toISOString()
+          }
+        });
 
-      await s3Client.send(putCommand);
+        await s3Client.send(putCommand);
 
-      // Generate presigned URL (valid for 7 days)
-      const getCommand = new GetObjectCommand({
-        Bucket: env.AWS_S3_BUCKET,
-        Key: s3Key
-      });
-      
-      const s3Url = await getSignedUrl(s3Client, getCommand, { 
-        expiresIn: 604800 // 7 days
-      });
+        // Generate presigned URL (valid for 7 days)
+        const getCommand = new GetObjectCommand({
+          Bucket: env.AWS_S3_BUCKET,
+          Key: s3Key
+        });
+        
+        const s3Url = await getSignedUrl(s3Client, getCommand, { 
+          expiresIn: 604800 // 7 days
+        });
 
-      logger.info('Recording uploaded to S3 successfully', {
-        callSid,
-        recordingSid,
-        s3Key,
-        size: downloadResult.audioBuffer.length,
-        type: 'recording_s3_upload_success'
-      });
+        // S3 upload successful
+        finalRecordingUrl = s3Url;
+        shouldDeleteFromTwilio = true;
+        uploadedToS3 = true;
 
-      // Step 4: Update Airtable with S3 presigned URL
+        logger.info('Recording uploaded to S3 successfully', {
+          callSid,
+          recordingSid,
+          s3Key,
+          size: downloadResult.audioBuffer.length,
+          type: 'recording_s3_upload_success'
+        });
+
+      } catch (s3Error) {
+        // S3 upload failed - fallback to Twilio URL
+        logger.warn('S3 upload failed, using Twilio URL as fallback', {
+          callSid,
+          recordingSid,
+          error: s3Error instanceof Error ? s3Error.message : 'Unknown error',
+          type: 'recording_s3_fallback_to_twilio'
+        });
+
+        // Convert Twilio relative URL to full URL with .mp3 extension
+        const twilioFullUrl = recordingUrl.includes('http') 
+          ? recordingUrl 
+          : `https://api.twilio.com${recordingUrl}`;
+        
+        finalRecordingUrl = twilioFullUrl.replace('.json', '') + '.mp3';
+        shouldDeleteFromTwilio = false;
+        uploadedToS3 = false;
+      }
+
+      // Step 4: Update Airtable with recording URL (S3 or Twilio fallback)
       if (callLog) {
         try {
           await airtableClient.updateRecord(
             CALL_LOGS_TABLE_ID,
             callLog.id,
             {
-              'Recording URL (Twilio/S3)': s3Url
+              'Recording URL (Twilio/S3)': finalRecordingUrl
             }
           );
 
-          logger.info('Airtable updated with S3 presigned URL', {
+          logger.info(uploadedToS3 ? 'Airtable updated with S3 URL' : 'Airtable updated with Twilio fallback URL', {
             callSid,
             recordId: callLog.id,
-            type: 'airtable_updated'
+            uploadedToS3,
+            type: uploadedToS3 ? 'recording_saved_to_airtable_s3' : 'recording_saved_to_airtable_twilio'
           });
         } catch (error) {
           logger.error('Failed to update Airtable', {
@@ -211,21 +248,36 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Step 5: Schedule deletion from Twilio (24h retention for testing)
-      scheduleRecordingDeletion(recordingSid, 24);
+      // Step 5: Schedule deletion from Twilio only if S3 upload succeeded
+      if (shouldDeleteFromTwilio) {
+        scheduleRecordingDeletion(recordingSid, 24);
+        logger.info('Twilio recording deletion scheduled', {
+          callSid,
+          recordingSid,
+          type: 'twilio_deletion_scheduled'
+        });
+      } else {
+        logger.info('Twilio recording preserved (S3 upload failed)', {
+          callSid,
+          recordingSid,
+          type: 'twilio_recording_preserved'
+        });
+      }
 
       logger.info('Recording archival process completed', {
         callSid,
         recordingSid,
-        s3Url: s3Url.substring(0, 100) + '...',
+        uploadedToS3,
+        recordingUrl: finalRecordingUrl.substring(0, 100) + '...',
         totalDuration: Date.now() - startTime,
         type: 'recording_archival_completed'
       });
 
       return NextResponse.json({
         status: 'ok',
-        message: 'Recording archived to S3',
-        s3Url: s3Url
+        message: uploadedToS3 ? 'Recording archived to S3' : 'Recording preserved on Twilio (S3 fallback)',
+        recordingUrl: finalRecordingUrl,
+        uploadedToS3
       });
     }
     

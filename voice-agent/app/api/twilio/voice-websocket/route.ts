@@ -53,21 +53,26 @@ export async function POST(request: NextRequest) {
       type: 'call_incoming'
     });
     
-    // Generate TwiML with bidirectional WebSocket stream
+    // Generate TwiML with bidirectional WebSocket stream AND call recording
     // Using <Connect><Stream> for bidirectional audio (send + receive)
+    // record="record-from-answer-dual" starts recording immediately in dual-channel mode
+    // recordingStatusCallback receives notification when recording completes
     // action attribute tells Twilio where to go when stream ends
     // IMPORTANT: action URL points to Railway (where HTTP endpoint lives), not Vercel
     const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN || 'aucallsystem-ivr-system.up.railway.app';
     const actionUrl = `https://${railwayDomain}`;
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Connect action="${actionUrl}/api/transfer/after-connect?callSid=${callSid}&amp;from=${encodeURIComponent(from)}">
+  <Connect action="${actionUrl}/api/transfer/after-connect?callSid=${callSid}&amp;from=${encodeURIComponent(from)}" record="true" recordingStatusCallback="${RECORDING_STATUS_CALLBACK}">
     <Stream url="${WEBSOCKET_URL}?from=${encodeURIComponent(from)}&callSid=${callSid}" />
   </Connect>
 </Response>`;
     
     logger.info('TwiML generated with recording', {
       callSid,
+      recordingStatusCallback: RECORDING_STATUS_CALLBACK,
+      websocketUrl: WEBSOCKET_URL,
+      actionUrl,
       duration: Date.now() - startTime,
       type: 'twiml_generated'
     });

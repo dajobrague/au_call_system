@@ -26,7 +26,8 @@ export interface AirtableError {
 export interface EmployeeFields {
   'Display Name': string;
   'Employee PIN': number;
-  'Provider': string[]; // Array of provider record IDs
+  'Provider'?: string[]; // Array of provider record IDs (may not exist in all schemas)
+  'recordId (from Provider)'?: string[]; // Lookup field with provider record IDs (correct field name)
   'Phone': string;
   'Notes'?: string;
   'Job Templates'?: string[]; // Array of job template record IDs
@@ -102,18 +103,24 @@ export type PatientRecord = AirtableRecord<PatientFields>;
 // Job Occurrence record from Airtable
 export interface JobOccurrenceFields {
   'Occurrence ID': string;
-  'Job Template': string[];      // Array of job template record IDs
+  'Job Template'?: string[];     // Array of job template record IDs (optional for direct patient jobs)
   'Scheduled At': string;        // Date in YYYY-MM-DD format
   'Status': string;              // "Scheduled", "Open", "Completed", "Cancelled", etc.
-  'Assigned Employee': string[]; // Array of employee record IDs
+  'Assigned Employee'?: string[]; // Array of employee record IDs
   'Occurrence Label': string;    // Display label
-  'Provider': string[];          // Array of provider record IDs
-  'Patient': string[];           // Array of patient record IDs
+  'Provider'?: string[];         // Array of provider record IDs (may not exist for all jobs)
+  'Patient'?: string[];          // Array of patient record IDs (may be in different field)
+  'Patient (Link)'?: string[];   // Alternate patient link field
+  'Patient (Lookup)'?: string[]; // Alternate patient lookup field
   'Time': string;                // Time in HH:MM format (single select)
+  'Time Window End'?: string;    // End time for time window
+  'Display Date'?: string;       // Formatted date for display
   'Reschedule Reason'?: string;  // Reason why job was left open (speech-to-text)
   'Patient TXT'?: string;        // Lookup field showing patient name
   'Employee TXT'?: string;       // Lookup field showing employee name
   'recordId (from Assigned Employee)'?: string[]; // Lookup field with employee record IDs
+  'recordId (from Provider) (from Job Template)'?: string[]; // Provider lookup for template jobs
+  'recordId (from Provider) (from Patient (Link))'?: string[]; // Provider lookup for direct patient jobs
 }
 
 export type JobOccurrenceRecord = AirtableRecord<JobOccurrenceFields>;

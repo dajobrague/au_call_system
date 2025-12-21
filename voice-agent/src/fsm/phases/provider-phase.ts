@@ -168,6 +168,7 @@ export async function processProviderSelectionPhase(state: CallState, input: str
         id: selectedProvider.id,
         name: selectedProvider.name,
         greeting: selectedProvider.greeting,
+        transferNumber: selectedProvider.transferNumber,
       },
       phase: PHASES.JOB_SELECTION,
     };

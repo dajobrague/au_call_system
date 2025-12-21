@@ -5,7 +5,8 @@
  * Built with Tailwind CSS
  */
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useMemo } from 'react';
+import Image from 'next/image';
 
 interface JobDetails {
   id: string;
@@ -62,6 +63,7 @@ export default function JobAcceptancePage({
     }
 
     loadJobDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId, employeeId]);
 
   const loadJobDetails = async () => {
@@ -91,6 +93,7 @@ export default function JobAcceptancePage({
   const handleAction = async (action: 'accept' | 'decline') => {
     try {
       setActionLoading(true);
+      setError(null); // Clear any previous errors
       
       const response = await fetch(`/api/job/${jobId}`, {
         method: 'POST',
@@ -107,12 +110,15 @@ export default function JobAcceptancePage({
 
       if (response.ok) {
         setActionResult(data.message);
+        // Reload job details to show updated state
+        await loadJobDetails();
       } else {
         setError(data.error || 'Failed to process action');
+        setActionLoading(false);
       }
     } catch (error) {
-      setError('Failed to process action');
-    } finally {
+      console.error('Job action error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to process action');
       setActionLoading(false);
     }
   };
@@ -126,12 +132,14 @@ export default function JobAcceptancePage({
           {/* Provider Logo & Header */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center gap-4 p-6">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 alt="Healthcare Provider Logo"
                 height={80}
                 src={jobDetails?.provider?.logo || "/On-Call-After-Hours-Logo-Updated-1.webp"}
                 width={160}
                 className="object-contain rounded-sm"
+                loading="eager"
               />
               <div className="flex flex-col justify-center">
                 <p className="text-lg font-semibold text-[#bd1e2b]">
@@ -191,51 +199,19 @@ export default function JobAcceptancePage({
                       )}
                       <div>
                         <p className="text-sm text-[#414141] mb-2"><strong>Address:</strong> {jobDetails.patient?.address || ''}</p>
-                        {/* Google Maps Embed */}
-                        {process.env.NEXT_PUBLIC_MAPS_API ? (
-                          <div className="rounded-lg overflow-hidden border border-red-200 bg-white relative cursor-pointer group">
-                            <iframe
-                              width="100%"
-                              height="200"
-                              style={{ border: 0, pointerEvents: 'none' }}
-                              loading="lazy"
-                              referrerPolicy="no-referrer-when-downgrade"
-                              src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_MAPS_API}&q=${encodeURIComponent(jobDetails.patient?.address || '')}&zoom=15&maptype=roadmap`}
-                              title="Patient Location"
-                            />
-                            <div 
-                              className="absolute inset-0 bg-transparent hover:bg-[#bd1e2b]/5 transition-colors flex items-center justify-center"
-                              onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(jobDetails.patient?.address || '')}`, '_blank')}
-                            >
-                              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#bd1e2b] text-white px-3 py-1 rounded-full text-xs font-medium">
-                                Tap to open in Maps
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="rounded-lg border border-red-200 bg-white p-4 text-center">
-                            <svg className="w-12 h-12 text-[#bd1e2b] mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <p className="text-sm text-[#bd1e2b]">Map unavailable</p>
-                            <p className="text-xs text-[#414141]">Google Maps API key not configured</p>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 mt-2">
-                          <svg className="w-4 h-4 text-[#bd1e2b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {/* Google Maps Link - Opens in native maps app */}
+                        <a 
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(jobDetails.patient?.address || '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 mt-2 px-3 py-2 bg-[#bd1e2b] text-white rounded-lg text-sm font-medium hover:bg-[#9d1824] transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
-                          <a 
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(jobDetails.patient?.address || '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-[#bd1e2b] hover:text-[#9d1824] underline"
-                          >
-                            Open in Google Maps
-                          </a>
-                        </div>
+                          Open in Google Maps
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -395,51 +371,19 @@ export default function JobAcceptancePage({
                       )}
                       <div>
                         <p className="text-sm text-[#414141] mb-2"><strong>Address:</strong> {jobDetails.patient?.address || ''}</p>
-                        {/* Google Maps Embed */}
-                        {process.env.NEXT_PUBLIC_MAPS_API ? (
-                          <div className="rounded-lg overflow-hidden border border-red-200 bg-white relative cursor-pointer group">
-                            <iframe
-                              width="100%"
-                              height="200"
-                              style={{ border: 0, pointerEvents: 'none' }}
-                              loading="lazy"
-                              referrerPolicy="no-referrer-when-downgrade"
-                              src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_MAPS_API}&q=${encodeURIComponent(jobDetails.patient?.address || '')}&zoom=15&maptype=roadmap`}
-                              title="Patient Location"
-                            />
-                            <div 
-                              className="absolute inset-0 bg-transparent hover:bg-[#bd1e2b]/5 transition-colors flex items-center justify-center"
-                              onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(jobDetails.patient?.address || '')}`, '_blank')}
-                            >
-                              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#bd1e2b] text-white px-3 py-1 rounded-full text-xs font-medium">
-                                Tap to open in Maps
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="rounded-lg border border-red-200 bg-white p-4 text-center">
-                            <svg className="w-12 h-12 text-[#bd1e2b] mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <p className="text-sm text-[#bd1e2b]">Map unavailable</p>
-                            <p className="text-xs text-[#414141]">Google Maps API key not configured</p>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 mt-2">
-                          <svg className="w-4 h-4 text-[#bd1e2b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {/* Google Maps Link - Opens in native maps app */}
+                        <a 
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(jobDetails.patient?.address || '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 mt-2 px-3 py-2 bg-[#bd1e2b] text-white rounded-lg text-sm font-medium hover:bg-[#9d1824] transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
-                          <a 
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(jobDetails.patient?.address || '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-[#bd1e2b] hover:text-[#9d1824] underline"
-                          >
-                            Open in Google Maps
-                          </a>
-                        </div>
+                          Open in Google Maps
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -453,13 +397,18 @@ export default function JobAcceptancePage({
                     </svg>
                     Schedule Details
                   </h3>
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-700"><strong>Provider:</strong> {jobDetails.provider?.name || 'Healthcare Provider'}</p>
-                    <p className="text-sm text-gray-700"><strong>Date:</strong> {new Date(jobDetails.scheduledAt || '').toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                    <p className="text-sm text-gray-700"><strong>Time:</strong> {jobDetails.time}</p>
-                    <p className="text-sm text-gray-700"><strong>Service:</strong> {jobDetails.jobTemplate?.title || 'Healthcare Service'}</p>
-                    <p className="text-sm text-gray-700"><strong>Type:</strong> {jobDetails.jobTemplate?.serviceType || 'General'}</p>
-                  </div>
+                    <div className="space-y-2">
+                      <p className="text-sm text-gray-700"><strong>Provider:</strong> {jobDetails.provider?.name || 'Healthcare Provider'}</p>
+                      <p className="text-sm text-gray-700"><strong>Date:</strong> {jobDetails.scheduledAt ? (() => {
+                        // Parse date as local date (not UTC) to avoid timezone shift
+                        const [year, month, day] = jobDetails.scheduledAt.split('-').map(Number);
+                        const date = new Date(year, month - 1, day);
+                        return date.toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                      })() : 'Date not set'}</p>
+                      <p className="text-sm text-gray-700"><strong>Time:</strong> {jobDetails.time}</p>
+                      <p className="text-sm text-gray-700"><strong>Service:</strong> {jobDetails.jobTemplate?.title || 'Healthcare Service'}</p>
+                      <p className="text-sm text-gray-700"><strong>Type:</strong> {jobDetails.jobTemplate?.serviceType || 'General'}</p>
+                    </div>
                 </div>
                 
                 {/* Availability Reason */}
