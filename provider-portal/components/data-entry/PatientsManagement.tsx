@@ -6,7 +6,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, X, Save } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Save, Eye, AlertTriangle } from 'lucide-react';
+import MultiSelectEmployee from '../MultiSelectEmployee';
 
 interface Patient {
   id: string;
@@ -18,6 +19,7 @@ interface Patient {
     'Address'?: string;
     'Important Notes'?: string;
     'Active'?: boolean;
+    'Related Staff Pool'?: string[];
   };
 }
 
@@ -28,14 +30,25 @@ interface PatientFormData {
   address: string;
   notes: string;
   active: boolean;
+  relatedStaffPool: string[];
+}
+
+interface Employee {
+  id: string;
+  fields: {
+    'Display Name': string;
+  };
 }
 
 export default function PatientsManagement() {
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingPatient, setViewingPatient] = useState<Patient | null>(null);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState<PatientFormData>({
     patientName: '',
@@ -44,11 +57,13 @@ export default function PatientsManagement() {
     address: '',
     notes: '',
     active: true,
+    relatedStaffPool: [],
   });
   const [saving, setSaving] = useState(false);
   
   useEffect(() => {
     fetchPatients();
+    fetchEmployees();
   }, []);
   
   const fetchPatients = async () => {
@@ -67,6 +82,19 @@ export default function PatientsManagement() {
       setLoading(false);
     }
   };
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('/api/provider/employees');
+      const data = await response.json();
+      
+      if (data.success) {
+        setEmployees(data.data);
+      }
+    } catch (_err) {
+      console.error('Error fetching employees:', _err);
+    }
+  };
   
   const handleAdd = () => {
     setEditingPatient(null);
@@ -77,21 +105,28 @@ export default function PatientsManagement() {
       address: '',
       notes: '',
       active: true,
+      relatedStaffPool: [],
     });
     setShowModal(true);
     setError('');
     setSuccess('');
   };
   
+  const handleView = (patient: Patient) => {
+    setViewingPatient(patient);
+    setShowViewModal(true);
+  };
+
   const handleEdit = (patient: Patient) => {
     setEditingPatient(patient);
     setFormData({
-      patientName: patient.fields['Patient Full Name'],
-      phone: patient.fields['Phone'],
-      dob: patient.fields['DOB'],
+      patientName: patient.fields['Patient Full Name'] || '',
+      phone: patient.fields['Phone'] || '',
+      dob: patient.fields['DOB'] || '',
       address: patient.fields['Address'] || '',
       notes: patient.fields['Important Notes'] || '',
       active: patient.fields['Active'] !== false,
+      relatedStaffPool: patient.fields['Related Staff Pool'] || [],
     });
     setShowModal(true);
     setError('');
@@ -144,6 +179,7 @@ export default function PatientsManagement() {
         address: formData.address,
         notes: formData.notes,
         active: formData.active,
+        relatedStaffPool: formData.relatedStaffPool,
       };
       
       if (isEditing) {
@@ -193,6 +229,17 @@ export default function PatientsManagement() {
       return dateString;
     }
   };
+
+  const getEmployeesByIds = (employeeIds: string[] | undefined) => {
+    if (!employeeIds || employeeIds.length === 0) return [];
+    const employeeNames = employeeIds
+      .map(id => {
+        const emp = employees.find(e => e.id === id);
+        return emp ? { id, name: emp.fields['Display Name'] } : null;
+      })
+      .filter(Boolean);
+    return employeeNames as { id: string; name: string }[];
+  };
   
   return (
     <div>
@@ -233,7 +280,7 @@ export default function PatientsManagement() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto shadow-sm border border-gray-200 rounded-lg">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -250,6 +297,9 @@ export default function PatientsManagement() {
                   DOB
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Related Staff
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -260,7 +310,7 @@ export default function PatientsManagement() {
             <tbody className="bg-white divide-y divide-gray-200">
               {patients.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     No patients found. Click &quot;Add Patient&quot; to get started.
                   </td>
                 </tr>
@@ -279,6 +329,22 @@ export default function PatientsManagement() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(patient.fields['DOB'])}
                     </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      <div className="flex flex-wrap gap-1 min-w-[320px] max-w-4xl">
+                        {getEmployeesByIds(patient.fields['Related Staff Pool']).length === 0 ? (
+                          <span className="text-gray-400">-</span>
+                        ) : (
+                          getEmployeesByIds(patient.fields['Related Staff Pool']).map((emp) => (
+                            <span
+                              key={emp.id}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                            >
+                              {emp.name}
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         patient.fields['Active'] !== false
@@ -290,6 +356,13 @@ export default function PatientsManagement() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleView(patient)}
+                          className="text-gray-600 hover:text-gray-900 p-1"
+                          title="View Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleEdit(patient)}
                           className="text-blue-600 hover:text-blue-900 p-1"
@@ -317,7 +390,7 @@ export default function PatientsManagement() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">
@@ -396,6 +469,19 @@ export default function PatientsManagement() {
                   />
                 </div>
                 
+                <div>
+                  <MultiSelectEmployee
+                    employees={employees.map(emp => ({
+                      id: emp.id,
+                      name: emp.fields['Display Name']
+                    }))}
+                    selectedIds={formData.relatedStaffPool}
+                    onChange={(selectedIds) => setFormData({ ...formData, relatedStaffPool: selectedIds })}
+                    label="Related Staff Pool"
+                    placeholder="Search and select employees..."
+                  />
+                </div>
+
                 <div className="flex items-center">
                   <input
                     type="checkbox"
@@ -424,6 +510,168 @@ export default function PatientsManagement() {
                 >
                   <Save className="w-4 h-4" />
                   {saving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View-Only Modal */}
+      {showViewModal && viewingPatient && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Patient Details
+                </h3>
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Warning Banner - No Staff Pool */}
+              {(!viewingPatient.fields['Related Staff Pool'] || viewingPatient.fields['Related Staff Pool'].length === 0) && (
+                <div className="mb-6 bg-amber-50 border-l-4 border-amber-400 p-4 rounded">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-semibold text-amber-900 mb-1">
+                        No Staff Pool Assigned
+                      </h4>
+                      <p className="text-sm text-amber-800">
+                        <strong>Warning:</strong> No one will receive open job notifications for this patient because there is no staffing pool associated yet. 
+                        Please edit this patient and assign employees to the Related Staff Pool to enable notifications.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Patient Information */}
+              <div className="space-y-6">
+                {/* Basic Info Grid */}
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Patient Full Name
+                    </label>
+                    <p className="text-base text-gray-900 font-medium">
+                      {viewingPatient.fields['Patient Full Name']}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Patient ID
+                    </label>
+                    <p className="text-base text-gray-900">
+                      {viewingPatient.fields['Patient ID']}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Phone Number
+                    </label>
+                    <p className="text-base text-gray-900">
+                      {formatPhoneNumber(viewingPatient.fields['Phone'])}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Date of Birth
+                    </label>
+                    <p className="text-base text-gray-900">
+                      {formatDate(viewingPatient.fields['DOB'])}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Status
+                    </label>
+                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+                      viewingPatient.fields['Active'] !== false
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {viewingPatient.fields['Active'] !== false ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Address */}
+                {viewingPatient.fields['Address'] && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Address
+                    </label>
+                    <p className="text-base text-gray-900">
+                      {viewingPatient.fields['Address']}
+                    </p>
+                  </div>
+                )}
+
+                {/* Important Notes */}
+                {viewingPatient.fields['Important Notes'] && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Important Notes
+                    </label>
+                    <p className="text-base text-gray-900 whitespace-pre-wrap">
+                      {viewingPatient.fields['Important Notes']}
+                    </p>
+                  </div>
+                )}
+
+                {/* Related Staff Pool */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-2">
+                    Related Staff Pool
+                  </label>
+                  {(!viewingPatient.fields['Related Staff Pool'] || viewingPatient.fields['Related Staff Pool'].length === 0) ? (
+                    <p className="text-sm text-gray-400 italic">
+                      No staff members assigned to this patient's pool
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {getEmployeesByIds(viewingPatient.fields['Related Staff Pool']).map((emp) => (
+                        <span
+                          key={emp.id}
+                          className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                        >
+                          {emp.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-between items-center gap-3 mt-8 pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    setShowViewModal(false);
+                    handleEdit(viewingPatient);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 transition-colors"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit Patient
+                </button>
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Close
                 </button>
               </div>
             </div>

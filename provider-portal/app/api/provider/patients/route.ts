@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     }
     
     const body = await request.json();
-    const { patientName, phone, dob, address, notes, active } = body;
+    const { patientName, phone, dob, address, notes, active, relatedStaffPool } = body;
     
     if (!patientName || !phone || !dob) {
       return NextResponse.json(
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       );
     }
     
-    const newPatient = await createPatient({
+    const fields: Record<string, any> = {
       'Patient Full Name': patientName,
       'Phone': phone,
       'DOB': dob,
@@ -61,7 +61,14 @@ export async function POST(request: Request) {
       'Address': address || '',
       'Important Notes': notes || '',
       'Active': active !== undefined ? active : true,
-    });
+    };
+
+    // Add Related Staff Pool if provided (array of employee record IDs)
+    if (relatedStaffPool && Array.isArray(relatedStaffPool) && relatedStaffPool.length > 0) {
+      fields['Related Staff Pool'] = relatedStaffPool;
+    }
+    
+    const newPatient = await createPatient(fields);
     
     return NextResponse.json({
       success: true,
@@ -88,7 +95,7 @@ export async function PATCH(request: Request) {
     }
     
     const body = await request.json();
-    const { recordId, patientName, phone, dob, address, notes, active } = body;
+    const { recordId, patientName, phone, dob, address, notes, active, relatedStaffPool } = body;
     
     if (!recordId) {
       return NextResponse.json(
@@ -97,13 +104,23 @@ export async function PATCH(request: Request) {
       );
     }
     
-    const fields: Record<string, string | number | boolean> = {};
+    const fields: Record<string, any> = {};
     if (patientName !== undefined) fields['Patient Full Name'] = patientName;
     if (phone !== undefined) fields['Phone'] = phone;
     if (dob !== undefined) fields['DOB'] = dob;
     if (address !== undefined) fields['Address'] = address;
     if (notes !== undefined) fields['Important Notes'] = notes;
     if (active !== undefined) fields['Active'] = active;
+    
+    // Handle Related Staff Pool (array of employee record IDs)
+    if (relatedStaffPool !== undefined) {
+      if (Array.isArray(relatedStaffPool) && relatedStaffPool.length > 0) {
+        fields['Related Staff Pool'] = relatedStaffPool;
+      } else {
+        // If empty array, clear the field
+        fields['Related Staff Pool'] = [];
+      }
+    }
     
     const updatedPatient = await updatePatient(recordId, fields);
     

@@ -258,7 +258,7 @@ export async function getPatientsByProvider(providerId: string): Promise<Airtabl
   const response = await makeAirtableRequest('Patients', {
     filterByFormula: filterFormula,
     maxRecords: 100,
-    fields: ['Patient Full Name', 'Phone', 'Address', 'Important Notes']
+    fields: ['Patient Full Name', 'Patient ID', 'Phone', 'DOB', 'Address', 'Important Notes', 'Active', 'Related Staff Pool']
   });
   
   return response.records;
@@ -694,15 +694,8 @@ export async function deleteEmployee(recordId: string): Promise<{ deleted: boole
  * Create a new patient
  */
 export async function createPatient(
-  fields: {
-    'Patient Full Name': string;
-    'Phone': string;
-    'DOB': string;
-    'Provider': string[];
-    'Address'?: string;
-    'Important Notes'?: string;
-    'Active'?: boolean;
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fields: Record<string, any>
 ): Promise<AirtableRecord> {
   return createAirtableRecord('Patients', fields);
 }
@@ -712,14 +705,8 @@ export async function createPatient(
  */
 export async function updatePatient(
   recordId: string,
-  fields: Partial<{
-    'Patient Full Name': string;
-    'Phone': string;
-    'DOB': string;
-    'Address': string;
-    'Important Notes': string;
-    'Active': boolean;
-  }>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fields: Record<string, any>
 ): Promise<AirtableRecord> {
   return updateAirtableRecord('Patients', recordId, fields);
 }
