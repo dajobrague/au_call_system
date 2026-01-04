@@ -17,7 +17,6 @@ export interface DailyReportData {
   shiftCancellations: ShiftCancellation[];
   staffEngagement: StaffEngagementSummary;
   additionalComments: string;
-  issuesRequireFollowUp: boolean;
   compliance: ComplianceNotes;
   attachments: Attachment[];
 }
@@ -35,7 +34,6 @@ export interface SnapshotSummary {
   totalShiftCancellations: number;
   totalDispatchAttempts: number;
   successfulFills: number;
-  issuesRequireFollowUp: boolean;
 }
 
 export interface DetailedCallLog {
@@ -184,7 +182,6 @@ export function aggregateDailyReport(
     shiftCancellations: cancellations,
     staffEngagement,
     additionalComments: '',
-    issuesRequireFollowUp: false, // Manual toggle in UI
     compliance: buildComplianceNotes(),
     attachments: buildAttachments(callLogs),
   };
@@ -296,12 +293,12 @@ function extractParticipant(
 ): string | null {
   if (log.fields.Employee && log.fields.Employee.length > 0) {
     const employee = employees.find(e => e.id === log.fields.Employee![0]);
-    return employee ? `Employee: ${employee.fields['Display Name']}` : null;
+    return employee ? employee.fields['Display Name'] : null;
   }
   
   if (log.fields.Patient && log.fields.Patient.length > 0) {
     const patient = patients.find(p => p.id === log.fields.Patient![0]);
-    return patient ? `Patient: ${patient.fields['Patient Full Name']}` : null;
+    return patient ? patient.fields['Patient Full Name'] : null;
   }
   
   return null;
@@ -484,7 +481,6 @@ function buildSnapshotSummary(
     totalShiftCancellations: cancellations.length,
     totalDispatchAttempts,
     successfulFills,
-    issuesRequireFollowUp: false, // Set manually in UI
   };
 }
 

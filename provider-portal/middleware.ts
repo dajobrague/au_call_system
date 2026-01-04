@@ -11,8 +11,12 @@ import { SessionData, sessionOptions } from './lib/session';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // Allow access to login page and API routes
-  if (pathname === '/login' || pathname.startsWith('/api/auth/login')) {
+  // Allow access to login page, auth API routes, and test endpoints
+  if (
+    pathname === '/login' || 
+    pathname.startsWith('/api/auth/login') ||
+    pathname.startsWith('/api/test-redis')
+  ) {
     return NextResponse.next();
   }
   

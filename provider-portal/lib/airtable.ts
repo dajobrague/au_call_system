@@ -18,7 +18,7 @@ if (!AIRTABLE_BASE_ID) {
   throw new Error('AIRTABLE_BASE_ID environment variable is required');
 }
 
-const REQUEST_TIMEOUT = 5000;
+const REQUEST_TIMEOUT = 30000; // 30 seconds - increased from 5s to handle large data fetches
 
 interface AirtableRecord {
   id: string;
@@ -29,6 +29,18 @@ interface AirtableRecord {
 interface AirtableResponse {
   records: AirtableRecord[];
   offset?: string;
+}
+
+/**
+ * CSV Mapping Profile Types
+ */
+export interface CSVMappingProfile {
+  id: string;
+  name: string;
+  fileType: 'staff' | 'participants' | 'pools' | 'shifts';
+  columnMappings: { csvColumn: string; systemField: string; }[];
+  createdAt: string;
+  lastUsedAt: string;
 }
 
 /**
@@ -928,5 +940,157 @@ export async function updateJobTemplate(
  */
 export async function deleteJobTemplate(recordId: string): Promise<{ deleted: boolean; id: string }> {
   return deleteAirtableRecord('Job Templates', recordId);
+}
+
+/**
+ * CSV Mapping Profile Management
+ */
+
+/**
+ * Get CSV mapping profiles for a provider
+ */
+export async function getProviderMappingProfiles(providerId: string): Promise<CSVMappingProfile[]> {
+  const provider = await getProviderById(providerId);
+  if (!provider) return [];
+  
+  const profilesJson = provider.fields['CSV Mapping Profiles'] as string;
+  if (!profilesJson) return [];
+  
+  try {
+    return JSON.parse(profilesJson);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Save a new CSV mapping profile for a provider
+ */
+export async function saveProviderMappingProfile(
+  providerId: string,
+  profile: CSVMappingProfile
+): Promise<void> {
+  const existingProfiles = await getProviderMappingProfiles(providerId);
+  existingProfiles.push(profile);
+  
+  await updateProvider(providerId, {
+    'CSV Mapping Profiles': JSON.stringify(existingProfiles)
+  });
+}
+
+/**
+ * Update an existing CSV mapping profile
+ */
+export async function updateProviderMappingProfile(
+  providerId: string,
+  profileId: string,
+  updates: Partial<CSVMappingProfile>
+): Promise<void> {
+  const profiles = await getProviderMappingProfiles(providerId);
+  const index = profiles.findIndex(p => p.id === profileId);
+  
+  if (index === -1) {
+    throw new Error(`Profile ${profileId} not found`);
+  }
+  
+  profiles[index] = { ...profiles[index], ...updates };
+  
+  await updateProvider(providerId, {
+    'CSV Mapping Profiles': JSON.stringify(profiles)
+  });
+}
+
+/**
+ * Delete a CSV mapping profile
+ */
+export async function deleteProviderMappingProfile(
+  providerId: string,
+  profileId: string
+): Promise<void> {
+  const profiles = await getProviderMappingProfiles(providerId);
+  const filtered = profiles.filter(p => p.id !== profileId);
+  
+  await updateProvider(providerId, {
+    'CSV Mapping Profiles': JSON.stringify(filtered)
+  });
+}
+
+/**
+ * Patient Lookup Helpers for CSV Import
+ */
+
+/**
+ * Find patient by full name
+ */
+export async function findPatientByName(
+  providerId: string,
+  patientName: string
+): Promise<AirtableRecord | null> {
+  const filterFormula = `AND(
+    FIND('${providerId}', ARRAYJOIN({recordId (from Provider)})),
+    {Patient Full Name} = '${patientName.replace(/'/g, "\\'")}'
+  )`;
+  
+  const response = await makeAirtableRequest('Patients', {
+    filterByFormula: filterFormula,
+    maxRecords: 1,
+    fields: ['Patient Full Name', 'Phone', 'Patient ID', 'Related Staff Pool']
+  });
+  
+  return response.records.length > 0 ? response.records[0] : null;
+}
+
+/**
+ * Find employee by PIN
+ */
+export async function findEmployeeByPin(
+  providerId: string,
+  employeePin: number
+): Promise<AirtableRecord | null> {
+  const filterFormula = `AND(
+    FIND('${providerId}', ARRAYJOIN({recordId (from Provider)})),
+    {Employee PIN} = ${employeePin}
+  )`;
+  
+  const response = await makeAirtableRequest('Employees', {
+    filterByFormula: filterFormula,
+    maxRecords: 1,
+    fields: ['Display Name', 'Phone', 'Employee PIN']
+  });
+  
+  return response.records.length > 0 ? response.records[0] : null;
+}
+
+/**
+ * Find employee by name
+ */
+export async function findEmployeeByName(
+  providerId: string,
+  employeeName: string
+): Promise<AirtableRecord | null> {
+  const filterFormula = `AND(
+    FIND('${providerId}', ARRAYJOIN({recordId (from Provider)})),
+    {Display Name} = '${employeeName.replace(/'/g, "\\'")}'
+  )`;
+  
+  const response = await makeAirtableRequest('Employees', {
+    filterByFormula: filterFormula,
+    maxRecords: 1,
+    fields: ['Display Name', 'Phone', 'Employee PIN']
+  });
+  
+  return response.records.length > 0 ? response.records[0] : null;
+}
+
+/**
+ * Update patient's staff pool (add employees to Related Staff Pool array)
+ */
+export async function updatePatientStaffPool(
+  patientRecordId: string,
+  employeeIds: string[]
+): Promise<AirtableRecord> {
+  return updatePatient(patientRecordId, {
+    'Related Staff Pool': employeeIds
+  });
 }
 

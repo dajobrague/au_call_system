@@ -13,7 +13,8 @@ import {
   ClipboardList, 
   Calendar,
   Settings,
-  FileText
+  FileText,
+  Upload
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { name: 'Job Templates', path: '/dashboard/job-templates', icon: ClipboardList },
   { name: 'Occurrences', path: '/dashboard/occurrences', icon: Calendar },
   { name: 'Reports', path: '/dashboard/reports', icon: FileText },
+  { name: 'Imports', path: '/dashboard/imports', icon: Upload },
   { name: 'Settings', path: '/dashboard/settings', icon: Settings },
 ];
 
@@ -68,7 +70,7 @@ export default function Sidebar() {
   }, []);
   
   return (
-    <div className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col">
+    <div className="w-64 bg-white border-r border-gray-200 h-full flex flex-col">
       <div className="p-6 border-b border-gray-200 flex items-center justify-center">
         {providerLogo ? (
           <div className="w-full">

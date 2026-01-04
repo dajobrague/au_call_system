@@ -3,7 +3,7 @@
  */
 
 import type { SnapshotSummary } from '@/lib/daily-report-aggregation';
-import { Phone, UserX, Send, CheckCircle, AlertCircle } from 'lucide-react';
+import { Phone, UserX, Send, CheckCircle } from 'lucide-react';
 
 interface SnapshotSectionProps {
   snapshot: SnapshotSummary;
@@ -54,22 +54,6 @@ export default function SnapshotSection({ snapshot }: SnapshotSectionProps) {
           <div>
             <p className="text-2xl font-bold text-gray-900 print:text-black">{snapshot.successfulFills}</p>
             <p className="text-xs text-gray-600 print:text-black">Successful Fills</p>
-          </div>
-        </div>
-        
-        <div className="flex items-start gap-3">
-          <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center print:bg-gray-200 ${
-            snapshot.issuesRequireFollowUp ? 'bg-red-100' : 'bg-gray-100'
-          }`}>
-            <AlertCircle className={`w-5 h-5 print:text-black ${
-              snapshot.issuesRequireFollowUp ? 'text-red-600' : 'text-gray-400'
-            }`} />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900 print:text-black">
-              {snapshot.issuesRequireFollowUp ? 'Yes' : 'No'}
-            </p>
-            <p className="text-xs text-gray-600 print:text-black">Issues to Follow-Up</p>
           </div>
         </div>
       </div>

@@ -373,8 +373,6 @@ export async function generateComprehensiveDailyPDF(
   pdf.text(`Dispatch Attempts: ${snapshot.totalDispatchAttempts}`, margin, yPosition);
   yPosition += 5;
   pdf.text(`Successful Fills: ${snapshot.successfulFills}`, margin, yPosition);
-  yPosition += 5;
-  pdf.text(`Issues Requiring Follow-Up: ${snapshot.issuesRequireFollowUp ? 'Yes' : 'No'}`, margin, yPosition);
   yPosition += 10;
   
   // ===== SECTION 3: DETAILED CALL LOG =====

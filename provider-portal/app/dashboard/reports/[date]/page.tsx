@@ -21,12 +21,27 @@ export default function DailyReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [downloading, setDownloading] = useState(false);
+  const [savedComments, setSavedComments] = useState('');
   
   useEffect(() => {
     if (dateParam) {
       fetchReportData(dateParam);
+      fetchSavedComments(dateParam);
     }
   }, [dateParam]);
+  
+  const fetchSavedComments = async (date: string) => {
+    try {
+      const response = await fetch(`/api/provider/report-comments?date=${date}`);
+      const data = await response.json();
+      
+      if (data.success && data.comments) {
+        setSavedComments(data.comments);
+      }
+    } catch (err) {
+      console.error('Error fetching saved comments:', err);
+    }
+  };
   
   const fetchReportData = async (date: string) => {
     setLoading(true);
@@ -49,7 +64,7 @@ export default function DailyReportPage() {
     }
   };
   
-  const handleDownloadPDF = async (comments: string, issuesRequireFollowUp: boolean) => {
+  const handleDownloadPDF = async (comments: string) => {
     if (!reportData) return;
     
     setDownloading(true);
@@ -59,11 +74,6 @@ export default function DailyReportPage() {
       const updatedReportData: DailyReportData = {
         ...reportData,
         additionalComments: comments,
-        issuesRequireFollowUp,
-        snapshot: {
-          ...reportData.snapshot,
-          issuesRequireFollowUp,
-        },
       };
       
       // Generate PDF
@@ -133,6 +143,7 @@ export default function DailyReportPage() {
     <DailyReportView 
       reportData={reportData}
       date={dateParam}
+      savedComments={savedComments}
       onDownloadPDF={handleDownloadPDF}
       downloading={downloading}
     />

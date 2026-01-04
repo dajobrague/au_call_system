@@ -5,7 +5,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FileText, Download, Calendar, Loader2, Archive, FileBarChart, Eye } from 'lucide-react';
+import { FileText, Download, Calendar, Loader2, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 import DateSelector, { DateRange } from '@/components/reports/DateSelector';
 import StatisticsCards from '@/components/reports/StatisticsCards';
@@ -14,8 +14,6 @@ import CallVolumeChart from '@/components/reports/charts/CallVolumeChart';
 import DurationBreakdownChart from '@/components/reports/charts/DurationBreakdownChart';
 import EmployeeActivityChart from '@/components/reports/charts/EmployeeActivityChart';
 import IntentDistributionChart from '@/components/reports/charts/IntentDistributionChart';
-import { downloadReportsAsZip, type ReportFile } from '@/lib/download-utils';
-import { generatePdfSummary } from '@/lib/pdf-summary-generator';
 import { formatYYYYMMDDForDisplay } from '@/lib/timezone-utils';
 import Link from 'next/link';
 
@@ -43,31 +41,54 @@ export default function ReportsPage() {
   const [reportsLoading, setReportsLoading] = useState(true);
   const [reportsError, setReportsError] = useState('');
   const [dateRange, setDateRange] = useState<DateRange>(getYesterday());
-  const [downloading, setDownloading] = useState(false);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
+  
+  // Date filter for PDF reports section - syncs with main date range or can be cleared
+  const [pdfReportsStartDate, setPdfReportsStartDate] = useState<string>('');
+  const [useSyncedFilter, setUseSyncedFilter] = useState(true); // Track if using synced filter
+  
+  // Pagination for PDF reports
+  const [currentPage, setCurrentPage] = useState(1);
+  const reportsPerPage = 5;
   
   // Use custom hook for call logs and statistics
   const { statistics, loading: statsLoading, error: statsError } = useReportData(dateRange);
   
+  // Sync PDF filter with main date range when enabled
   useEffect(() => {
-    fetchReports(dateRange);
-  }, [dateRange]);
+    if (useSyncedFilter && dateRange) {
+      const syncedDate = format(dateRange.startDate, 'yyyy-MM-dd');
+      setPdfReportsStartDate(syncedDate);
+    }
+  }, [dateRange, useSyncedFilter]);
   
-  const fetchReports = async (range: DateRange) => {
+  useEffect(() => {
+    fetchReports();
+    setCurrentPage(1); // Reset to first page when filter changes
+  }, [pdfReportsStartDate]);
+  
+  const fetchReports = async () => {
     setReportsLoading(true);
     setReportsError('');
     
     try {
-      const startDate = format(range.startDate, 'yyyy-MM-dd');
-      const endDate = format(range.endDate, 'yyyy-MM-dd');
+      // Build query params for date filtering
+      let url = '/api/provider/reports';
       
-      const response = await fetch(
-        `/api/provider/reports?startDate=${startDate}&endDate=${endDate}`
-      );
+      if (pdfReportsStartDate) {
+        url += `?startDate=${pdfReportsStartDate}`;
+      }
+      
+      const response = await fetch(url);
       const data = await response.json();
       
       if (data.success) {
-        setReports(data.data);
+        // Sort by date, most recent first
+        const sortedReports = [...data.data].sort((a, b) => {
+          const dateA = new Date(a.fields.Date);
+          const dateB = new Date(b.fields.Date);
+          return dateB.getTime() - dateA.getTime();
+        });
+        setReports(sortedReports);
       } else {
         setReportsError(data.error || 'Failed to fetch reports');
       }
@@ -80,15 +101,38 @@ export default function ReportsPage() {
   
   const handleDateRangeChange = (newDateRange: DateRange) => {
     setDateRange(newDateRange);
+    // Re-enable sync when main date range changes
+    setUseSyncedFilter(true);
+  };
+  
+  const handleClearPdfFilter = () => {
+    setPdfReportsStartDate('');
+    setUseSyncedFilter(false); // Disable sync when manually cleared
   };
   
   const loading = reportsLoading || statsLoading;
   const error = reportsError || statsError;
   
+  // Calculate pagination
+  const totalPages = Math.ceil(reports.length / reportsPerPage);
+  const startIndex = (currentPage - 1) * reportsPerPage;
+  const endIndex = startIndex + reportsPerPage;
+  const currentReports = reports.slice(startIndex, endIndex);
+  
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    // Scroll to reports section
+    document.getElementById('pdf-reports-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Unknown Date';
     try {
-      const date = new Date(dateString);
+      // Parse date string directly to avoid timezone conversion
+      // Airtable date format is YYYY-MM-DD
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day); // month is 0-indexed
+      
       return date.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
@@ -108,58 +152,6 @@ export default function ReportsPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-  
-  const handleDownloadAllReports = async () => {
-    if (reports.length === 0) return;
-    
-    setDownloading(true);
-    
-    try {
-      const reportFiles: ReportFile[] = reports.map(report => ({
-        name: report.fields.Name,
-        url: report.fields.PDF
-      }));
-      
-      const zipName = `reports-${format(dateRange.startDate, 'yyyy-MM-dd')}-to-${format(dateRange.endDate, 'yyyy-MM-dd')}`;
-      
-      await downloadReportsAsZip(reportFiles, zipName);
-    } catch (error) {
-      console.error('Error downloading reports:', error);
-      alert('Failed to download reports. Please try again.');
-    } finally {
-      setDownloading(false);
-    }
-  };
-  
-  const handleGenerateSummary = async () => {
-    if (!statistics) return;
-    
-    setGeneratingPdf(true);
-    
-    try {
-      // Generate PDF with charts
-      const pdfBlob = await generatePdfSummary({
-        statistics,
-        dateRange,
-        providerName: 'Provider' // TODO: Get from session
-      });
-      
-      // Download the PDF
-      const url = URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `summary-report-${format(dateRange.startDate, 'yyyy-MM-dd')}-to-${format(dateRange.endDate, 'yyyy-MM-dd')}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF report. Please try again.');
-    } finally {
-      setGeneratingPdf(false);
-    }
   };
   
   
@@ -253,7 +245,7 @@ export default function ReportsPage() {
         </div>
         
         {!statsLoading && statistics && statistics.callsByDate && statistics.callsByDate.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 divide-y divide-gray-200">
             {statistics.callsByDate.map((dayData) => {
               // dayData.date is already in YYYY-MM-DD format, use it directly
               const dateForLink = dayData.date;
@@ -264,33 +256,31 @@ export default function ReportsPage() {
                 <Link
                   key={dayData.date}
                   href={`/dashboard/reports/${dateForLink}`}
-                  className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all duration-200 p-5 group"
+                  className="p-4 hover:bg-gray-50 transition-colors duration-150 flex items-center justify-between gap-4 group"
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-blue-600" />
-                      <h3 className="font-semibold text-gray-900">{displayDate}</h3>
+                  {/* Report Info */}
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="flex-shrink-0">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                      </div>
                     </div>
-                    <Eye className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
-                  </div>
-                  
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total Calls:</span>
-                      <span className="font-medium text-gray-900">{dayData.callCount}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Duration:</span>
-                      <span className="font-medium text-gray-900">
-                        {Math.round(dayData.totalDuration / 60)} min
-                      </span>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        {displayDate}
+                      </h3>
+                      <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                        <span>{dayData.callCount} calls</span>
+                        <span>•</span>
+                        <span>{(dayData.totalDuration / 60).toFixed(1)} min</span>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="mt-4 pt-3 border-t border-gray-100">
-                    <span className="text-sm text-blue-600 group-hover:text-blue-700 font-medium">
-                      View Detailed Report →
-                    </span>
+                  {/* View Button */}
+                  <div className="flex items-center gap-2 text-sm text-blue-600 group-hover:text-blue-700 font-medium flex-shrink-0">
+                    <span>View Report</span>
+                    <Eye className="w-4 h-4" />
                   </div>
                 </Link>
               );
@@ -308,56 +298,39 @@ export default function ReportsPage() {
         )}
       </div>
       
-      {/* Reports Section Title with Download Options */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Legacy PDF Reports</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Previously generated PDF reports for archival purposes
-          </p>
-        </div>
-        
-        {!reportsLoading && reports.length > 0 && (
-          <div className="flex gap-3">
-            <button
-              onClick={handleDownloadAllReports}
-              disabled={downloading}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {downloading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Downloading...
-                </>
-              ) : (
-                <>
-                  <Archive className="w-4 h-4" />
-                  Download All ({reports.length})
-                </>
-              )}
-            </button>
-            
-            {statistics && statistics.totalCalls > 0 && (
-              <button
-                onClick={handleGenerateSummary}
-                disabled={generatingPdf}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {generatingPdf ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Generating PDF...
-                  </>
+      {/* Reports Section Title with Filter */}
+      <div id="pdf-reports-section" className="mb-6 scroll-mt-8">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">PDF Reports</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Generated daily call summary reports
+            </p>
+          </div>
+          
+          {/* Compact Date Filter */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-md">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-gray-700">
+                {pdfReportsStartDate ? (
+                  <>From: {format(new Date(pdfReportsStartDate + 'T00:00:00'), 'MMM d, yyyy')}</>
                 ) : (
-                  <>
-                    <FileBarChart className="w-4 h-4" />
-                    Download PDF Summary
-                  </>
+                  'All reports'
                 )}
+              </span>
+            </div>
+            {pdfReportsStartDate && (
+              <button
+                onClick={handleClearPdfFilter}
+                className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                title="Show all reports"
+              >
+                ✕
               </button>
             )}
           </div>
-        )}
+        </div>
       </div>
       
       {/* Loading State */}
@@ -370,7 +343,7 @@ export default function ReportsPage() {
         </div>
       ) : (
         <>
-          {/* Reports Grid */}
+          {/* Reports List */}
           {reports.length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
               <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -382,61 +355,101 @@ export default function ReportsPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {reports.map((report) => (
-                <div
-                  key={report.id}
-                  className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200"
-                >
-                  {/* Card Header */}
-                  <div className="p-6 border-b border-gray-100">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0">
-                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <FileText className="w-6 h-6 text-blue-600" />
+            <>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 divide-y divide-gray-200">
+                {currentReports.map((report) => (
+                  <div
+                    key={report.id}
+                    className="p-4 hover:bg-gray-50 transition-colors duration-150"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      {/* Report Info */}
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className="flex-shrink-0">
+                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <FileText className="w-5 h-5 text-blue-600" />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-semibold text-gray-900 truncate">
+                            {report.fields.Name}
+                          </h3>
+                          <div className="flex items-center text-sm text-gray-500 mt-1">
+                            <Calendar className="w-4 h-4 mr-1" />
+                            <span>{formatDate(report.fields.Date)}</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-gray-900 truncate mb-1">
-                          {report.fields.Name}
-                        </h3>
-                        <div className="flex items-center text-sm text-gray-500">
-                          <Calendar className="w-4 h-4 mr-1" />
-                          <span>{formatDate(report.fields.Date)}</span>
-                        </div>
+                      
+                      {/* Actions */}
+                      <div className="flex gap-2 flex-shrink-0">
+                        <a
+                          href={report.fields.PDF}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+                        >
+                          <FileText className="w-4 h-4" />
+                          View
+                        </a>
+                        <button
+                          onClick={() => handleDownload(report.fields.PDF, report.fields.Name)}
+                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                          Download
+                        </button>
                       </div>
                     </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    Showing {startIndex + 1} to {Math.min(endIndex, reports.length)} of {reports.length} report{reports.length !== 1 ? 's' : ''}
                   </div>
                   
-                  {/* Card Footer */}
-                  <div className="p-6">
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => window.open(report.fields.PDF, '_blank')}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
-                      >
-                        <FileText className="w-4 h-4" />
-                        View
-                      </button>
-                      <button
-                        onClick={() => handleDownload(report.fields.PDF, report.fields.Name)}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download
-                      </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Previous
+                    </button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                            pageNum === currentPage
+                              ? 'bg-blue-600 text-white'
+                              : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
                     </div>
+                    
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-          
-          {/* Reports Count */}
-          {reports.length > 0 && (
-            <div className="mt-6 text-center text-sm text-gray-600">
-              Showing {reports.length} report{reports.length !== 1 ? 's' : ''}
-            </div>
+              )}
+            </>
           )}
         </>
       )}
