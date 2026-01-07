@@ -227,7 +227,7 @@ export async function importPoolLinks(
 
       if (!patient) {
         // Try database lookup by name
-        patient = await findPatientByName(providerId, patientIdentifier);
+        patient = await findPatientByName(providerId, patientIdentifier) || undefined;
       }
 
       if (!patient) {
@@ -253,7 +253,7 @@ export async function importPoolLinks(
 
           if (!employee) {
             // Try database lookup by PIN
-            employee = await findEmployeeByPin(providerId, pin);
+            employee = await findEmployeeByPin(providerId, pin) || undefined;
           }
         }
       }
@@ -327,7 +327,7 @@ export async function importOccurrenceRecords(
       }
 
       if (!patient) {
-        patient = await findPatientByName(providerId, patientIdentifier);
+        patient = await findPatientByName(providerId, patientIdentifier) || undefined;
       }
 
       if (!patient) {
@@ -352,7 +352,7 @@ export async function importOccurrenceRecords(
           );
 
           if (!employee) {
-            employee = await findEmployeeByPin(providerId, pin);
+            employee = await findEmployeeByPin(providerId, pin) || undefined;
           }
         }
       }
@@ -364,7 +364,7 @@ export async function importOccurrenceRecords(
         );
 
         if (!employee) {
-          employee = await findEmployeeByName(providerId, employeeIdentifier);
+          employee = await findEmployeeByName(providerId, employeeIdentifier) || undefined;
         }
       }
 

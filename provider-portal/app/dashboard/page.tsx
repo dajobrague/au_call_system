@@ -8,7 +8,6 @@ import Link from 'next/link';
 import { 
   Users, 
   Hospital, 
-  ClipboardList, 
   Calendar,
   Settings,
   FileText
@@ -51,13 +50,6 @@ export default async function DashboardPage() {
       icon: Hospital, 
       description: 'Add and manage patients',
       color: 'text-green-600 bg-green-50'
-    },
-    { 
-      title: 'Job Templates', 
-      path: '/dashboard/job-templates', 
-      icon: ClipboardList, 
-      description: 'View job templates',
-      color: 'text-purple-600 bg-purple-50'
     },
     { 
       title: 'Occurrences', 

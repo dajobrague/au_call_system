@@ -11,11 +11,13 @@ import { SessionData, sessionOptions } from './lib/session';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // Allow access to login page, auth API routes, and test endpoints
+  // Allow public access to login page, wizard (for new provider registration), and test endpoints
   if (
     pathname === '/login' || 
     pathname.startsWith('/api/auth/login') ||
-    pathname.startsWith('/api/test-redis')
+    pathname.startsWith('/api/test-redis') ||
+    pathname.startsWith('/wizard') ||           // Allow wizard pages for new provider registration
+    pathname.startsWith('/api/wizard')          // Allow wizard API routes
   ) {
     return NextResponse.next();
   }

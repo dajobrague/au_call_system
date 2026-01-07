@@ -6,9 +6,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Upload, Plus, Edit, Trash2, Clock } from 'lucide-react';
+import { Upload, Plus, Edit, Trash2, Clock, AlertCircle } from 'lucide-react';
 import ImportWizard from '@/components/import/ImportWizard';
-import { CSVMappingProfile } from '@/lib/airtable';
+import { CSVMappingProfile, FileType } from '@/lib/airtable';
 
 export default function ImportsPage() {
   const [showWizard, setShowWizard] = useState(false);
@@ -88,8 +88,26 @@ export default function ImportsPage() {
 
   return (
     <div className="p-6">
+      {/* Coming Soon Banner */}
+      <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0">
+            <AlertCircle className="w-8 h-8 text-blue-600" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-xl font-bold text-blue-900 mb-2">Coming Soon</h2>
+            <p className="text-blue-800 mb-3">
+              Bulk CSV imports are currently under development. This feature will allow you to import large amounts of data quickly and efficiently with custom column mapping.
+            </p>
+            <p className="text-sm text-blue-700">
+              <strong>Note:</strong> You can still import individual records through the Patients, Employees, and Job Occurrences pages using the "Add" buttons.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-8 opacity-50">
         <div className="flex justify-between items-center mb-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">CSV Imports</h1>
@@ -98,8 +116,8 @@ export default function ImportsPage() {
             </p>
           </div>
           <button
-            onClick={() => setShowWizard(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            disabled
+            className="flex items-center gap-2 px-6 py-3 bg-gray-400 text-white rounded-lg cursor-not-allowed shadow-sm"
           >
             <Plus className="w-5 h-5" />
             New Import
@@ -108,11 +126,8 @@ export default function ImportsPage() {
       </div>
 
       {/* Import Type Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <button
-          onClick={() => handleStartImport('pools')}
-          className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4 hover:bg-purple-100 hover:border-purple-300 transition-all cursor-pointer text-left"
-        >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 opacity-50 pointer-events-none">
+        <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4 cursor-not-allowed text-left">
           <div className="flex items-center gap-3">
             <Upload className="w-8 h-8 text-purple-600" />
             <div>
@@ -120,12 +135,9 @@ export default function ImportsPage() {
               <div className="text-sm text-purple-700">Staff-patient links</div>
             </div>
           </div>
-        </button>
+        </div>
 
-        <button
-          onClick={() => handleStartImport('shifts')}
-          className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 hover:bg-orange-100 hover:border-orange-300 transition-all cursor-pointer text-left"
-        >
+        <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 cursor-not-allowed text-left">
           <div className="flex items-center gap-3">
             <Upload className="w-8 h-8 text-orange-600" />
             <div>
@@ -133,11 +145,11 @@ export default function ImportsPage() {
               <div className="text-sm text-orange-700">Job occurrences</div>
             </div>
           </div>
-        </button>
+        </div>
       </div>
 
       {/* Saved Mapping Profiles */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 opacity-50">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Saved Mapping Profiles</h2>
           <p className="text-sm text-gray-600 mt-1">
@@ -145,10 +157,10 @@ export default function ImportsPage() {
           </p>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 pointer-events-none">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
             </div>
           ) : profiles.length === 0 ? (
             <div className="text-center py-12">
@@ -163,7 +175,7 @@ export default function ImportsPage() {
               {profiles.map((profile) => (
                 <div
                   key={profile.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  className="border border-gray-200 rounded-lg p-4 cursor-not-allowed"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -174,19 +186,16 @@ export default function ImportsPage() {
                     </div>
                     <div className="flex gap-1">
                       <button
-                        onClick={() => {
-                          setSelectedProfile(profile);
-                          setShowWizard(true);
-                        }}
-                        className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                        title="Use this profile"
+                        disabled
+                        className="p-1 text-gray-400 rounded cursor-not-allowed"
+                        title="Coming soon"
                       >
                         <Upload className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteProfile(profile.id)}
-                        className="p-1 text-red-600 hover:bg-red-50 rounded"
-                        title="Delete profile"
+                        disabled
+                        className="p-1 text-gray-400 rounded cursor-not-allowed"
+                        title="Coming soon"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -208,14 +217,14 @@ export default function ImportsPage() {
         </div>
       </div>
 
-      {/* Import Wizard Modal */}
-      {showWizard && (
+      {/* Import Wizard Modal - Disabled for Coming Soon */}
+      {/* {showWizard && (
         <ImportWizard
           onClose={handleWizardClose}
           initialProfile={selectedProfile}
           preselectedFileType={preselectedFileType}
         />
-      )}
+      )} */}
     </div>
   );
 }

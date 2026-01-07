@@ -78,12 +78,12 @@ export default function DataPreview({ data, mappings, validationResults }: DataP
                         <div className="w-5 h-5 bg-gray-200 rounded-full animate-pulse" />
                       ) : isValid ? (
                         hasWarnings ? (
-                          <AlertTriangle className="w-5 h-5 text-yellow-600" title="Has warnings" />
+                          <span title="Has warnings"><AlertTriangle className="w-5 h-5 text-yellow-600" /></span>
                         ) : (
-                          <CheckCircle className="w-5 h-5 text-green-600" title="Valid" />
+                          <span title="Valid"><CheckCircle className="w-5 h-5 text-green-600" /></span>
                         )
                       ) : (
-                        <XCircle className="w-5 h-5 text-red-600" title="Has errors" />
+                        <span title="Has errors"><XCircle className="w-5 h-5 text-red-600" /></span>
                       )}
                     </td>
                     {mappedSystemFields.map(systemField => {

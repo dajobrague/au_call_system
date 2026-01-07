@@ -7,7 +7,7 @@
 
 import { useState, useRef } from 'react';
 import { X, ChevronRight, ChevronLeft, Upload, Check, AlertTriangle } from 'lucide-react';
-import { CSVMappingProfile } from '@/lib/airtable';
+import { CSVMappingProfile, FileType } from '@/lib/airtable';
 import ColumnMapper from './ColumnMapper';
 import DataPreview from './DataPreview';
 import ValidationResults from './ValidationResults';
@@ -17,8 +17,6 @@ interface ImportWizardProps {
   initialProfile?: CSVMappingProfile | null;
   preselectedFileType?: FileType | null;
 }
-
-type FileType = 'staff' | 'participants' | 'pools' | 'shifts';
 
 interface ParsedData {
   headers: string[];

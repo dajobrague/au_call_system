@@ -5,9 +5,10 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, X, Save, Eye, AlertTriangle } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Plus, Edit, Trash2, X, Save, Eye, AlertTriangle, ChevronDown, Upload, UserPlus } from 'lucide-react';
 import MultiSelectEmployee from '../MultiSelectEmployee';
+import ImportWizard from '../import/ImportWizard';
 
 interface Patient {
   id: string;
@@ -60,10 +61,24 @@ export default function PatientsManagement() {
     relatedStaffPool: [],
   });
   const [saving, setSaving] = useState(false);
+  const [showAddDropdown, setShowAddDropdown] = useState(false);
+  const [showImportWizard, setShowImportWizard] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     fetchPatients();
     fetchEmployees();
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowAddDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
   
   const fetchPatients = async () => {
@@ -248,13 +263,53 @@ export default function PatientsManagement() {
           <h1 className="text-2xl font-bold text-gray-900">Patients</h1>
           <p className="text-gray-600 mt-1">Add and manage your patients</p>
         </div>
-        <button
-          onClick={handleAdd}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Patient
-        </button>
+        
+        {/* Add Patient Dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setShowAddDropdown(!showAddDropdown)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Patient
+            <ChevronDown className="w-4 h-4" />
+          </button>
+
+          {showAddDropdown && (
+            <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+              <div className="py-1">
+                <button
+                  onClick={() => {
+                    setShowAddDropdown(false);
+                    handleAdd();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <UserPlus className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <div className="font-medium">Add One Patient</div>
+                    <div className="text-xs text-gray-500">Manually enter patient details</div>
+                  </div>
+                </button>
+                <button
+                  disabled
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left border-t border-gray-100 opacity-50 cursor-not-allowed"
+                >
+                  <Upload className="w-5 h-5 text-gray-400" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-500">Import Patients</span>
+                      <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                        Coming Soon
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-400">Upload CSV file to import</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       
       {error && (
@@ -390,7 +445,7 @@ export default function PatientsManagement() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
-          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">
@@ -520,7 +575,7 @@ export default function PatientsManagement() {
       {/* View-Only Modal */}
       {showViewModal && viewingPatient && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
-          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               {/* Header */}
               <div className="flex justify-between items-center mb-6">
@@ -677,6 +732,17 @@ export default function PatientsManagement() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Import Wizard */}
+      {showImportWizard && (
+        <ImportWizard
+          onClose={() => {
+            setShowImportWizard(false);
+            fetchPatients(); // Refresh the patient list after import
+          }}
+          preselectedFileType="participants"
+        />
       )}
     </div>
   );

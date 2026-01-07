@@ -59,7 +59,9 @@ export default function CallLogSection({ callLog }: CallLogSectionProps) {
                 <td className="px-3 py-3 text-sm text-gray-900 print:text-black whitespace-nowrap align-top">
                   <div className="flex items-center gap-2">
                     {call.issuesFlagged && (
-                      <AlertTriangle className="w-4 h-4 text-red-600 print:text-black flex-shrink-0" title="Issue Flagged" />
+                      <span title="Issue Flagged">
+                        <AlertTriangle className="w-4 h-4 text-red-600 print:text-black flex-shrink-0" />
+                      </span>
                     )}
                     <span>{call.timestamp}</span>
                   </div>

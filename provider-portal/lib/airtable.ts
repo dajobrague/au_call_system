@@ -34,10 +34,12 @@ interface AirtableResponse {
 /**
  * CSV Mapping Profile Types
  */
+export type FileType = 'staff' | 'participants' | 'pools' | 'shifts';
+
 export interface CSVMappingProfile {
   id: string;
   name: string;
-  fileType: 'staff' | 'participants' | 'pools' | 'shifts';
+  fileType: FileType;
   columnMappings: { csvColumn: string; systemField: string; }[];
   createdAt: string;
   lastUsedAt: string;
@@ -1092,5 +1094,74 @@ export async function updatePatientStaffPool(
   return updatePatient(patientRecordId, {
     'Related Staff Pool': employeeIds
   });
+}
+
+/**
+ * Get the highest Provider ID currently in use
+ */
+export async function getHighestProviderId(): Promise<number> {
+  try {
+    const response = await makeAirtableRequest('Providers', {
+      fields: ['Provider ID'],
+      sort: [{ field: 'Provider ID', direction: 'desc' }],
+      maxRecords: 1
+    });
+    
+    if (response.records.length === 0) {
+      return 1000; // Start from 1001 if no providers exist
+    }
+    
+    const highestId = response.records[0].fields['Provider ID'] as number;
+    return highestId || 1000;
+  } catch (error) {
+    console.error('Failed to get highest provider ID:', error);
+    return 1000; // Fallback to 1000
+  }
+}
+
+/**
+ * Create a new provider record
+ */
+export async function createProvider(
+  fields: {
+    'Name': string;
+    'Provider ID': number;
+    'State': string;
+    'Suburb': string;
+    'Address': string;
+    'Timezone': string;
+    'Greeting (IVR)'?: string;
+    'Transfer Number'?: string;
+    'Logo'?: Array<{ url: string }>;
+    'Active'?: boolean;
+  }
+): Promise<AirtableRecord> {
+  return createAirtableRecord('Providers', fields);
+}
+
+/**
+ * Link a user to a provider by updating the Provider field
+ */
+export async function linkUserToProvider(
+  userRecordId: string,
+  providerRecordId: string
+): Promise<AirtableRecord> {
+  return updateAirtableRecord(USER_TABLE_ID, userRecordId, {
+    'Provider': [providerRecordId]
+  });
+}
+
+/**
+ * Create a new user record in the user table
+ */
+export async function createUser(
+  fields: {
+    'Email': string;
+    'Pass': string;
+    'First Name': string;
+    'Last Name'?: string;
+  }
+): Promise<AirtableRecord> {
+  return createAirtableRecord(USER_TABLE_ID, fields);
 }
 

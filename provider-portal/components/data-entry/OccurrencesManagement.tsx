@@ -5,9 +5,10 @@
 
 'use client';
 
-import { useState, useImperativeHandle, forwardRef } from 'react';
-import { Plus, X, Loader2, Calendar, Clock, User, UserCircle } from 'lucide-react';
+import { useState, useImperativeHandle, forwardRef, useRef, useEffect } from 'react';
+import { Plus, X, Loader2, Calendar, Clock, User, UserCircle, ChevronDown, Upload, CalendarPlus } from 'lucide-react';
 import { generateTimeSlots, formatTimeSlot } from '@/lib/time-slots';
+import ImportWizard from '../import/ImportWizard';
 
 interface Employee {
   id: string;
@@ -54,6 +55,9 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
   const [editingOccurrence, setEditingOccurrence] = useState<Occurrence | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showAddDropdown, setShowAddDropdown] = useState(false);
+  const [showImportWizard, setShowImportWizard] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   
   // Form fields
   const [patientRecordId, setPatientRecordId] = useState('');
@@ -63,6 +67,20 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
   const [timeWindowEnd, setTimeWindowEnd] = useState('10:00');
   
   const timeSlots = generateTimeSlots();
+  
+  // Get today's date in YYYY-MM-DD format for min date restriction
+  const today = new Date().toISOString().split('T')[0];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowAddDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   
   const resetForm = () => {
     setPatientRecordId('');
@@ -198,14 +216,50 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
   return (
     <>
       {/* Add New Occurrence Button */}
-      <div className="mb-6">
+      <div className="mb-6 relative" ref={dropdownRef}>
         <button
-          onClick={() => handleOpenModal()}
+          onClick={() => setShowAddDropdown(!showAddDropdown)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
         >
           <Plus className="w-5 h-5" />
           Add New Occurrence
+          <ChevronDown className="w-4 h-4" />
         </button>
+
+        {showAddDropdown && (
+          <div className="absolute left-0 mt-2 w-64 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+            <div className="py-1">
+              <button
+                onClick={() => {
+                  setShowAddDropdown(false);
+                  handleOpenModal();
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <CalendarPlus className="w-5 h-5 text-blue-600" />
+                <div>
+                  <div className="font-medium">Add One Occurrence</div>
+                  <div className="text-xs text-gray-500">Manually schedule a shift</div>
+                </div>
+              </button>
+              <button
+                disabled
+                className="w-full flex items-center gap-3 px-4 py-3 text-left border-t border-gray-100 opacity-50 cursor-not-allowed"
+              >
+                <Upload className="w-5 h-5 text-gray-400" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-500">Import Shifts</span>
+                    <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                      Coming Soon
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-400">Upload CSV file to import</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Modal */}
@@ -301,7 +355,8 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                   id="scheduledAt"
                   value={scheduledAt}
                   onChange={(e) => setScheduledAt(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  min={today}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 [color-scheme:light]"
                   required
                 />
               </div>
@@ -382,6 +437,17 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
             </form>
           </div>
         </div>
+      )}
+
+      {/* Import Wizard */}
+      {showImportWizard && (
+        <ImportWizard
+          onClose={() => {
+            setShowImportWizard(false);
+            onOccurrenceAdded(); // Refresh the occurrences list after import
+          }}
+          preselectedFileType="shifts"
+        />
       )}
     </>
   );

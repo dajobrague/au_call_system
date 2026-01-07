@@ -17,10 +17,9 @@ export interface ParsedCSV {
  */
 export function parseCSVFile(file: File): Promise<ParsedCSV> {
   return new Promise((resolve, reject) => {
-    Papa.parse(file, {
+    Papa.parse(file as any, {
       header: true,
       skipEmptyLines: true,
-      trimHeaders: true,
       complete: (results) => {
         const errors: string[] = [];
         
@@ -38,7 +37,7 @@ export function parseCSVFile(file: File): Promise<ParsedCSV> {
           errors: errors.length > 0 ? errors : undefined
         });
       },
-      error: (error) => {
+      error: (error: any) => {
         reject(new Error(`CSV parsing failed: ${error.message}`));
       }
     });
@@ -53,7 +52,6 @@ export function parseCSVText(csvText: string): Promise<ParsedCSV> {
     Papa.parse(csvText, {
       header: true,
       skipEmptyLines: true,
-      trimHeaders: true,
       complete: (results) => {
         const errors: string[] = [];
         
@@ -70,7 +68,7 @@ export function parseCSVText(csvText: string): Promise<ParsedCSV> {
           errors: errors.length > 0 ? errors : undefined
         });
       },
-      error: (error) => {
+      error: (error: any) => {
         reject(new Error(`CSV parsing failed: ${error.message}`));
       }
     });
