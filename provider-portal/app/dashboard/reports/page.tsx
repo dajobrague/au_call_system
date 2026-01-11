@@ -159,10 +159,22 @@ export default function ReportsPage() {
     <div>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Daily Reports</h1>
-        <p className="text-gray-600 mt-2">
-          View and analyze your call activity reports
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Daily Reports</h1>
+            <p className="text-gray-600 mt-2">
+              View and analyze your call activity reports
+            </p>
+          </div>
+          
+          <Link
+            href="/dashboard/reports/today"
+            className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+          >
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            Today (Live)
+          </Link>
+        </div>
       </div>
       
       {/* Date Selector */}

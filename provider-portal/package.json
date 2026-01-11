@@ -26,7 +26,8 @@
     "react": "19.1.0",
     "react-datepicker": "^8.9.0",
     "react-dom": "19.1.0",
-    "recharts": "^3.5.0"
+    "recharts": "^3.5.0",
+    "swr": "^2.2.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

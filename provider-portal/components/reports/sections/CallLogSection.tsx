@@ -37,7 +37,10 @@ export default function CallLogSection({ callLog }: CallLogSectionProps) {
                 Time
               </th>
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider print:text-black">
-                Participant
+                Staff
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider print:text-black">
+                Patient
               </th>
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider print:text-black">
                 Outcome
@@ -67,7 +70,10 @@ export default function CallLogSection({ callLog }: CallLogSectionProps) {
                   </div>
                 </td>
                 <td className="px-3 py-3 text-sm text-gray-900 print:text-black align-top">
-                  {call.identifiedParticipant || '-'}
+                  {call.identifiedStaff || '-'}
+                </td>
+                <td className="px-3 py-3 text-sm text-gray-900 print:text-black align-top">
+                  {call.identifiedPatient || '-'}
                 </td>
                 <td className="px-3 py-3 text-sm text-gray-900 print:text-black align-top">
                   {call.outcome}

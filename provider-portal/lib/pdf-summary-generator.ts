@@ -406,8 +406,13 @@ export async function generateComprehensiveDailyPDF(
       pdf.text(`Purpose: ${call.purposeOfCall}`, margin + 5, yPosition);
       yPosition += 4;
       
-      if (call.identifiedParticipant) {
-        pdf.text(`Participant: ${call.identifiedParticipant}`, margin + 5, yPosition);
+      if (call.identifiedStaff) {
+        pdf.text(`Staff: ${call.identifiedStaff}`, margin + 5, yPosition);
+        yPosition += 4;
+      }
+      
+      if (call.identifiedPatient) {
+        pdf.text(`Patient: ${call.identifiedPatient}`, margin + 5, yPosition);
         yPosition += 4;
       }
       

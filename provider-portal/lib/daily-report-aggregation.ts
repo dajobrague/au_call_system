@@ -41,7 +41,9 @@ export interface DetailedCallLog {
   timestamp: string;
   callerId: string; // "Name (Phone)" or just phone if unknown
   purposeOfCall: string;
-  identifiedParticipant: string | null;
+  identifiedParticipant: string | null; // Keep for backward compatibility
+  identifiedStaff: string | null; // Staff/Employee name
+  identifiedPatient: string | null; // Patient name
   outcome: string;
   actionsTaken: string[];
   finalResolution: string;
@@ -231,13 +233,17 @@ function buildDetailedCallLogs(
     const callerId = identifyCallerWithPhone(log, employees, patients);
     const intent = log.fields['Detected Intent/Action'] || 'General inquiry';
     const duration = log.fields.Seconds || 0;
+    const staff = extractStaff(log, employees);
+    const patient = extractPatient(log, patients);
     
     return {
       callNumber: index + 1,
       timestamp: log.fields['Started At'] || 'Unknown',
       callerId,
       purposeOfCall: extractPurpose(intent),
-      identifiedParticipant: extractParticipant(log, employees, patients),
+      identifiedParticipant: staff || patient, // Keep for backward compatibility
+      identifiedStaff: staff,
+      identifiedPatient: patient,
       outcome: extractOutcome(intent, duration),
       actionsTaken: extractActions(intent),
       finalResolution: extractResolution(intent, log.fields.Notes),
@@ -296,6 +302,30 @@ function extractParticipant(
     return employee ? employee.fields['Display Name'] : null;
   }
   
+  if (log.fields.Patient && log.fields.Patient.length > 0) {
+    const patient = patients.find(p => p.id === log.fields.Patient![0]);
+    return patient ? patient.fields['Patient Full Name'] : null;
+  }
+  
+  return null;
+}
+
+function extractStaff(
+  log: CallLogRawData,
+  employees: EmployeeRawData[]
+): string | null {
+  if (log.fields.Employee && log.fields.Employee.length > 0) {
+    const employee = employees.find(e => e.id === log.fields.Employee![0]);
+    return employee ? employee.fields['Display Name'] : null;
+  }
+  
+  return null;
+}
+
+function extractPatient(
+  log: CallLogRawData,
+  patients: PatientRawData[]
+): string | null {
   if (log.fields.Patient && log.fields.Patient.length > 0) {
     const patient = patients.find(p => p.id === log.fields.Patient![0]);
     return patient ? patient.fields['Patient Full Name'] : null;
