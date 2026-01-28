@@ -81,11 +81,11 @@ export async function transferCallToPhone(
     await twilioClient.calls(callSid).update({
       twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Amy">Transferring you to a representative now. Please hold.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">Transferring you to a representative now. Please hold.</Say>
   <Dial callerId="${fromPhoneNumber}" timeout="30" action="/api/twilio/transfer-status">
     <Number>${toPhoneNumber}</Number>
   </Dial>
-  <Say voice="Polly.Amy">Sorry, the representative is not available. You will be placed in the queue.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">Sorry, the representative is not available. You will be placed in the queue.</Say>
   <Redirect>/api/queue/wait-handler?callSid=${callSid}</Redirect>
 </Response>`
     });
@@ -131,11 +131,11 @@ export async function connectQueuedCall(
     await twilioClient.calls(queuedCallSid).update({
       twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Amy">Connecting you to a representative now.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">Connecting you to a representative now.</Say>
   <Dial callerId="${callerPhone}" timeout="30">
     <Number>${representativePhone}</Number>
   </Dial>
-  <Say voice="Polly.Amy">The representative did not answer. Please call back later.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">The representative did not answer. Please call back later.</Say>
   <Hangup/>
 </Response>`
     });

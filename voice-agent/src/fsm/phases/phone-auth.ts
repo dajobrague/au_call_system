@@ -108,7 +108,7 @@ export async function processPhoneAuthPhase(
           result: {
             twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Google.en-AU-Wavenet-A">Hi ${employeeName}.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">Hi ${employeeName}.</Say>
   <Hangup/>
 </Response>`,
             action: 'phone_auth_success',
@@ -183,9 +183,9 @@ export async function processPhoneAuthPhase(
             twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather input="dtmf" timeout="10" finishOnKey="#" action="/api/twilio/voice" method="POST">
-    <Say voice="Google.en-AU-Wavenet-A">Welcome. I don't recognize your phone number. Please use your keypad to enter your employee PIN followed by the pound key.</Say>
+    <Say voice="Google.en-AU-Wavenet-C">Welcome. I don't recognize your phone number. Please use your keypad to enter your employee PIN followed by the pound key.</Say>
   </Gather>
-  <Say voice="Google.en-AU-Wavenet-A">I didn't receive your PIN. Please try again.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">I didn't receive your PIN. Please try again.</Say>
   <Hangup/>
 </Response>`,
             action: 'phone_auth_failed',
@@ -228,7 +228,7 @@ export async function processPhoneAuthPhase(
       result: {
         twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Google.en-AU-Wavenet-A">Our automated system is not available at this time. We are connecting you with a representative.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">Our automated system is not available at this time. We are connecting you with a representative.</Say>
   <Hangup/>
 </Response>`,
         action: 'system_error',

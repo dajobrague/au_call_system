@@ -34,15 +34,16 @@ export function generateSingleProviderGreeting(options: ProviderGreetingOptions)
   }
   
   // Generate job list message with last name only and job title
+  // Option 1 is always "speak to a representative", jobs start from option 2
   let jobListMessage = '';
   if (employeeJobs.length === 1) {
     const job = employeeJobs[0];
     const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
-    jobListMessage = `You have one job: ${job.jobTemplate.title} for ${patientLastName}. Press 1 to select this job.`;
+    jobListMessage = `Press 1 to speak to a representative, or Press 2 for ${job.jobTemplate.title} for ${patientLastName}.`;
   } else {
-    jobListMessage = `You have ${employeeJobs.length} jobs. `;
+    jobListMessage = `Press 1 to speak to a representative. You have ${employeeJobs.length} jobs. `;
     employeeJobs.forEach((job: any, index: number) => {
-      const number = index + 1;
+      const number = index + 2; // Jobs start from 2
       const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
       jobListMessage += `Press ${number} for ${job.jobTemplate.title} for ${patientLastName}. `;
     });
@@ -86,15 +87,16 @@ export function generateProviderSelectionGreeting(
   }
   
   // Generate job list message
+  // Option 1 is always "speak to a representative", jobs start from option 2
   let jobListMessage = '';
   if (employeeJobs.length === 1) {
     const job = employeeJobs[0];
     const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
-    jobListMessage = `You have one job. Press 1 for ${job.jobTemplate.title} for ${patientLastName}. `;
+    jobListMessage = `Press 1 to speak to a representative. You have one job. Press 2 for ${job.jobTemplate.title} for ${patientLastName}. `;
   } else {
-    jobListMessage = `You have ${employeeJobs.length} jobs. `;
+    jobListMessage = `Press 1 to speak to a representative. You have ${employeeJobs.length} jobs. `;
     employeeJobs.forEach((job: any, index: number) => {
-      const number = index + 1;
+      const number = index + 2; // Jobs start from 2
       const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
       jobListMessage += `Press ${number} for ${job.jobTemplate.title} for ${patientLastName}. `;
     });

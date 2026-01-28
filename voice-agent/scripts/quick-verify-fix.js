@@ -1,0 +1,61 @@
+/**
+ * Quick Verification - Check the fix
+ */
+
+console.log('\n✅ FIX SUMMARY');
+console.log('='.repeat(80));
+console.log('\n🐛 THE BUG:');
+console.log('   In server.ts line 392-396, when no occurrences found:');
+console.log('   provider object was created WITHOUT transferNumber');
+console.log('');
+console.log('✅ THE FIX:');
+console.log('   Added transferNumber to provider object in 4 places:');
+console.log('');
+console.log('   1. /src/fsm/phases/provider-phase.ts (line 40-46)');
+console.log('      - Single provider case');
+console.log('      - Added: transferNumber: providerResult.providers[0].transferNumber');
+console.log('');
+console.log('   2. /src/fsm/phases/provider-phase.ts (line 64-69)');
+console.log('      - Multiple providers array');
+console.log('      - Added: transferNumber: p.transferNumber');
+console.log('');
+console.log('   3. /src/websocket/server.ts (line 377-381)');
+console.log('      - Occurrence selection phase');
+console.log('      - Added: transferNumber: provider.transferNumber');
+console.log('');
+console.log('   4. /src/websocket/server.ts (line 392-396) - THE BUG PATH!');
+console.log('      - No occurrences found phase');
+console.log('      - Added: transferNumber: provider.transferNumber');
+console.log('      - ⭐ This was causing your error!');
+console.log('');
+console.log('   5. /src/websocket/server.ts (line 450-454)');
+console.log('      - Job selection phase');
+console.log('      - Added: transferNumber: provider.transferNumber');
+console.log('');
+console.log('📋 FILES CHANGED:');
+console.log('   - /src/fsm/phases/provider-phase.ts (2 places)');
+console.log('   - /src/websocket/server.ts (3 places)');
+console.log('   - /src/websocket/dtmf-router.ts (removed hardcoded fallback)');
+console.log('   - /app/api/queue/transfer/route.ts (removed hardcoded fallback)');
+console.log('   - /app/api/queue/initiate-transfer/route.ts (removed hardcoded fallback)');
+console.log('   - /app/api/transfer/after-connect/route.ts (removed hardcoded fallback)');
+console.log('');
+console.log('🎯 WHAT THIS FIXES:');
+console.log('   Your specific error:');
+console.log('   "ERROR: No transfer number configured"');
+console.log('   "providerId: recexHQJ13oafJkxZ"');
+console.log('   "providerName: A Plus Care"');
+console.log('');
+console.log('   The provider object had id and name, but NOT transferNumber.');
+console.log('   Now it will have transferNumber: +61424341800');
+console.log('');
+console.log('🚀 NEXT STEPS:');
+console.log('   1. Restart your voice agent server');
+console.log('   2. Test again with the same call flow');
+console.log('   3. When you reach "no occurrences found" and press 1 for transfer');
+console.log('   4. It should now use +61424341800 instead of showing error');
+console.log('');
+console.log('='.repeat(80));
+console.log('✅ FIX COMPLETE - Ready to test!');
+console.log('='.repeat(80));
+

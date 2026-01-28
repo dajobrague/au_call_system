@@ -28,7 +28,7 @@ export function createTwiMLResponse(twiml: string): NextResponse {
 export function createErrorResponse(message: string, status: number = 500): NextResponse {
   const errorTwiML = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">Sorry, there was an error processing your request. Please try again later.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">Sorry, there was an error processing your request. Please try again later.</Say>
   <Hangup/>
 </Response>`
 

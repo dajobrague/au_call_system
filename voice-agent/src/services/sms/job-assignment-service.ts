@@ -5,6 +5,7 @@
 
 import { airtableClient } from '../airtable/client';
 import { twilioSMSService } from './twilio-sms-service';
+import { cancelOutboundCalls } from '../queue/outbound-call-queue';
 import { logger } from '../../lib/logger';
 import { normalizePhoneNumber } from '../../utils/phone-formatter';
 import type { EmployeeRecord, JobOccurrenceRecord, JobOccurrenceFields } from '../airtable/types';
@@ -245,7 +246,7 @@ async function assignJobToEmployee(
       return { success: false, error: 'Job occurrence not found' };
     }
     
-    if (currentJob.fields['Status'] !== 'Open') {
+    if (currentJob.fields['Status'] !== 'Open' && currentJob.fields['Status'] !== 'UNFILLED_AFTER_SMS') {
       logger.info('Job no longer open', {
         occurrenceId,
         currentStatus: currentJob.fields['Status'],
@@ -270,6 +271,34 @@ async function assignJobToEmployee(
         employeeName: employee.name,
         type: 'job_assignment_complete'
       });
+      
+      // Phase 5: Cancel any pending outbound calls for this job
+      try {
+        const cancelResult = await cancelOutboundCalls(occurrenceId);
+        
+        if (cancelResult.cancelled > 0) {
+          logger.info('Cancelled outbound calls after SMS assignment', {
+            occurrenceId,
+            employeeId: employee.id,
+            cancelledCount: cancelResult.cancelled,
+            type: 'outbound_calls_cancelled_after_sms'
+          });
+        } else {
+          logger.info('No outbound calls to cancel', {
+            occurrenceId,
+            employeeId: employee.id,
+            type: 'no_outbound_calls_to_cancel'
+          });
+        }
+      } catch (cancelError) {
+        logger.warn('Error cancelling outbound calls (non-critical)', {
+          occurrenceId,
+          employeeId: employee.id,
+          error: cancelError instanceof Error ? cancelError.message : 'Unknown error',
+          type: 'outbound_cancel_error'
+        });
+        // Don't fail the assignment if cancel fails
+      }
       
       return { success: true };
     } else {

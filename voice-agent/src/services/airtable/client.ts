@@ -19,6 +19,35 @@ import type {
 } from './types';
 
 /**
+ * HTTPS Agent with connection pooling
+ * Prevents socket exhaustion and enables keep-alive
+ */
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 5,        // Limit concurrent connections
+  maxFreeSockets: 2,    // Keep some sockets alive for reuse
+  timeout: 60000,       // Socket timeout
+  keepAliveMsecs: 1000  // Keep-alive ping interval
+});
+
+/**
+ * Socket connection pool tracking
+ * Helps diagnose connection leaks and pool exhaustion
+ */
+let activeSocketCount = 0;
+let totalSocketsCreated = 0;
+let requestIdCounter = 0;
+
+// Track all active sockets
+const activeSockets = new Map<number, {
+  requestId: string;
+  created: number;
+  connected: boolean;
+  destroyed: boolean;
+  listenerCount: number;
+}>();
+
+/**
  * HTTP request helper for Airtable API
  */
 function makeAirtableRequest<T>(
@@ -26,6 +55,10 @@ function makeAirtableRequest<T>(
   options: QueryOptions = {}
 ): Promise<AirtableResponse<T>> {
   return new Promise((resolve, reject) => {
+    // Generate unique ID for this request
+    const requestId = `req_${++requestIdCounter}_${Date.now()}`;
+    const requestStartTime = Date.now();
+    
     const { filterByFormula, maxRecords, fields, sort, view } = options;
     
     // Build query parameters
@@ -68,15 +101,34 @@ function makeAirtableRequest<T>(
         'User-Agent': 'VoiceAgent/1.0',
       },
       timeout: REQUEST_TIMEOUT,
+      agent: httpsAgent,
     };
 
-    logger.info('Airtable API request', {
+    logger.info('🔌 Airtable request starting', {
+      requestId,
       table: tableName,
       path,
       filterByFormula,
       maxRecords,
-      type: 'airtable_request'
+      activeSocketCount,
+      totalSocketsCreated,
+      activeSocketIds: Array.from(activeSockets.keys()),
+      type: 'airtable_request_start'
     });
+
+    // Socket tracking variables
+    let socketId: number | null = null;
+    let socketConnected = false;
+    let socketDestroyed = false;
+    const socketTimestamps = {
+      created: 0,
+      lookup: 0,
+      connect: 0,
+      secureConnect: 0,
+      timeout: 0,
+      destroyed: 0,
+      error: 0
+    };
 
     const req = https.request(requestOptions, (res) => {
       let data = '';
@@ -87,6 +139,30 @@ function makeAirtableRequest<T>(
       
       res.on('end', () => {
         try {
+          // Check for rate limiting first (429 status)
+          if (res.statusCode === 429) {
+            logger.warn('Airtable rate limit hit', {
+              table: tableName,
+              status: 429,
+              retryAfter: res.headers['retry-after'],
+              type: 'airtable_rate_limit'
+            });
+            reject(new Error('Airtable rate limit exceeded'));
+            return;
+          }
+          
+          // Check for other non-200 status codes
+          if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+            logger.error('Airtable HTTP error', {
+              table: tableName,
+              status: res.statusCode,
+              rawData: data.substring(0, 200),
+              type: 'airtable_http_error'
+            });
+            reject(new Error(`Airtable HTTP ${res.statusCode}: ${data.substring(0, 100)}`));
+            return;
+          }
+          
           const jsonData = JSON.parse(data);
           
           // Check for API errors
@@ -111,6 +187,19 @@ function makeAirtableRequest<T>(
           });
           
           resolve(jsonData as AirtableResponse<T>);
+          
+          // Log successful completion
+          const duration = Date.now() - requestStartTime;
+          logger.info('✅ Airtable request complete', {
+            requestId,
+            socketId,
+            table: tableName,
+            duration,
+            socketConnected,
+            socketTimestamps,
+            activeSocketCount,
+            type: 'airtable_request_complete'
+          });
         } catch (parseError) {
           logger.error('Airtable response parse error', {
             table: tableName,
@@ -123,22 +212,184 @@ function makeAirtableRequest<T>(
       });
     });
 
+    // Track socket lifecycle
+    req.on('socket', (socket) => {
+      socketId = (socket as any)._handle?.fd || Math.floor(Math.random() * 1000000);
+      socketTimestamps.created = Date.now();
+      activeSocketCount++;
+      totalSocketsCreated++;
+      
+      if (socketId !== null) {
+        activeSockets.set(socketId, {
+          requestId,
+          created: socketTimestamps.created,
+          connected: false,
+          destroyed: false,
+          listenerCount: socket.listenerCount('connect')
+        });
+      }
+      
+      logger.info('🔌 Socket created', {
+        requestId,
+        socketId,
+        activeSocketCount,
+        totalSocketsCreated,
+        socketListenerCount: socket.listenerCount('connect'),
+        type: 'socket_created'
+      });
+      
+      // Track DNS lookup
+      socket.on('lookup', (err, address, family, host) => {
+        socketTimestamps.lookup = Date.now();
+        logger.info('🔍 DNS lookup', {
+          requestId,
+          socketId,
+          duration: socketTimestamps.lookup - socketTimestamps.created,
+          address,
+          family,
+          host,
+          error: err?.message,
+          type: 'socket_lookup'
+        });
+      });
+      
+      // Track TCP connection
+      socket.on('connect', () => {
+        socketTimestamps.connect = Date.now();
+        socketConnected = true;
+        
+        if (socketId !== null && activeSockets.has(socketId)) {
+          activeSockets.get(socketId)!.connected = true;
+        }
+        
+        logger.info('✅ Socket connected (TCP)', {
+          requestId,
+          socketId,
+          durationFromCreated: socketTimestamps.connect - socketTimestamps.created,
+          durationFromLookup: socketTimestamps.lookup ? socketTimestamps.connect - socketTimestamps.lookup : 0,
+          type: 'socket_connected'
+        });
+      });
+      
+      // Track TLS handshake
+      socket.on('secureConnect', () => {
+        socketTimestamps.secureConnect = Date.now();
+        logger.info('🔒 TLS handshake complete', {
+          requestId,
+          socketId,
+          durationFromConnect: socketTimestamps.connect ? socketTimestamps.secureConnect - socketTimestamps.connect : 0,
+          type: 'socket_secure'
+        });
+      });
+      
+      // Track socket timeout
+      socket.on('timeout', () => {
+        socketTimestamps.timeout = Date.now();
+        logger.error('⏱️ Socket timeout', {
+          requestId,
+          socketId,
+          durationFromCreated: socketTimestamps.timeout - socketTimestamps.created,
+          socketConnected,
+          socketDestroyed,
+          type: 'socket_timeout'
+        });
+      });
+      
+      // Track socket close
+      socket.on('close', (hadError) => {
+        socketTimestamps.destroyed = Date.now();
+        socketDestroyed = true;
+        activeSocketCount--;
+        
+        if (socketId !== null && activeSockets.has(socketId)) {
+          activeSockets.get(socketId)!.destroyed = true;
+        }
+        
+        logger.info('🔴 Socket closed', {
+          requestId,
+          socketId,
+          hadError,
+          activeSocketCount,
+          totalDuration: socketTimestamps.destroyed - socketTimestamps.created,
+          everConnected: socketConnected,
+          type: 'socket_closed'
+        });
+        
+        // Cleanup tracking after a delay
+        setTimeout(() => {
+          if (socketId !== null) {
+            activeSockets.delete(socketId);
+          }
+        }, 1000);
+      });
+      
+      // Track socket errors
+      socket.on('error', (err) => {
+        socketTimestamps.error = Date.now();
+        logger.error('❌ Socket error', {
+          requestId,
+          socketId,
+          error: err.message,
+          errorCode: (err as any).code,
+          socketConnected,
+          socketDestroyed,
+          type: 'socket_error'
+        });
+      });
+    });
+
     req.on('error', (error) => {
-      logger.error('Airtable request error', {
+      const errDetails = error as NodeJS.ErrnoException & { hostname?: string };
+      const duration = Date.now() - requestStartTime;
+      
+      logger.error('❌ Airtable request error', {
+        requestId,
+        socketId,
         table: tableName,
-        error: error.message,
+        error: error.message || 'Empty error',
+        errorCode: errDetails.code,
+        errorErrno: errDetails.errno,
+        errorSyscall: errDetails.syscall,
+        hostname: errDetails.hostname,
+        duration,
+        socketConnected,
+        socketDestroyed,
+        socketTimestamps,
+        activeSocketCount,
         type: 'airtable_request_error'
       });
+      
+      // Ensure socket is destroyed
+      if (!socketDestroyed) {
+        logger.warn('🧹 Destroying socket on error', { requestId, socketId });
+        req.destroy();
+      }
+      
       reject(error);
     });
 
     req.on('timeout', () => {
-      req.destroy();
-      logger.error('Airtable request timeout', {
+      const duration = Date.now() - requestStartTime;
+      
+      logger.error('⏱️ Airtable request timeout', {
+        requestId,
+        socketId,
         table: tableName,
         timeout: REQUEST_TIMEOUT,
+        duration,
+        socketConnected,
+        socketDestroyed,
+        socketTimestamps,
+        activeSocketCount,
         type: 'airtable_timeout'
       });
+      
+      // Destroy socket
+      if (!socketDestroyed) {
+        logger.warn('🧹 Destroying socket on timeout', { requestId, socketId });
+        req.destroy();
+      }
+      
       reject(new Error(`Airtable request timeout after ${REQUEST_TIMEOUT}ms`));
     });
 

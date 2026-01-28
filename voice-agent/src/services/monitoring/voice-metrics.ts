@@ -273,7 +273,7 @@ function getProductionConfig() {
     },
     voice: {
       enabled: process.env.VOICE_AI_ENABLED === 'true',
-      elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID || 'aGkVQvWUZi16EH8aZJvT',
+      elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID || 'aEO01A4wXwd1O8GPgGlF',
     },
     twilio: {
       mediaStreamUrl: `${appUrl.includes('localhost') ? 'ws' : 'wss'}://${appUrl}/api/twilio/media-stream`,

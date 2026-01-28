@@ -127,7 +127,7 @@ export function processConfirmClientIdPhase(state: CallState, input: string, has
         result: {
           twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Google.en-AU-Wavenet-A">Let me restart the authentication process.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">Let me restart the authentication process.</Say>
   <Hangup/>
 </Response>`,
           action: 'restart',

@@ -5,8 +5,8 @@
  */
 
 export const telephonyConfig = {
-  // Voice settings (Google Australian Neural)
-  voice: 'Google.en-AU-Wavenet-A' as const,
+  // Voice settings (Google Australian Neural - Female to match ElevenLabs)
+  voice: 'Google.en-AU-Wavenet-C' as const,
   language: 'en-AU' as const,
   
   // Gather settings

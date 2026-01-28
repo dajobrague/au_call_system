@@ -61,6 +61,11 @@ export interface ProviderFields {
     };
   }>;
   'Active'?: boolean;
+  // Outbound calling configuration (Phase 1)
+  'Outbound Call Wait Minutes'?: number;  // Minutes to wait after Wave 3 before starting calls (default: 15)
+  'Outbound Call Max Rounds'?: number;    // Maximum rounds to call each staff member (default: 3)
+  'Outbound Call Message Template'?: string; // Custom message template with variables
+  'Outbound Call Enabled'?: boolean;      // Enable/disable outbound calling feature (default: false)
 }
 
 export type ProviderRecord = AirtableRecord<ProviderFields>;
@@ -96,6 +101,7 @@ export interface PatientFields {
   'Provider': string[];
   'Job Templates': string[];
   'Active'?: boolean;
+  'Related Staff Pool'?: string[]; // Array of employee record IDs for SMS notifications
 }
 
 export type PatientRecord = AirtableRecord<PatientFields>;
@@ -146,6 +152,11 @@ export interface Provider {
   timezone?: string;
   transferNumber?: string;
   active: boolean;
+  // Outbound calling configuration (Phase 1)
+  outboundCallWaitMinutes?: number;     // Default: 15
+  outboundCallMaxRounds?: number;       // Default: 3
+  outboundCallMessageTemplate?: string; // Custom message template
+  outboundCallEnabled?: boolean;        // Default: false
 }
 
 // Processed job template data for our application
@@ -176,6 +187,7 @@ export interface Patient {
   notes?: string;
   providerId: string;
   active: boolean;
+  staffPoolIds: string[]; // Employee IDs who should receive SMS notifications for this patient
 }
 
 // Processed job occurrence data for our application

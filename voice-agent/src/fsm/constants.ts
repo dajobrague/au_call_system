@@ -33,14 +33,14 @@ export const PHASES: Record<string, CallPhase> = {
 export const DEFAULT_LANGUAGE = 'en-AU';
 
 export const VOICE_CONFIG = {
-  // For traditional DTMF mode (fallback)
-  voice: 'Google.en-AU-Wavenet-A', 
+  // For traditional DTMF mode (fallback) - Female Australian voice to match ElevenLabs
+  voice: 'Google.en-AU-Wavenet-C', 
   language: 'en-AU',
 } as const;
 
 export const ELEVENLABS_VOICE_CONFIG = {
   // ElevenLabs voice configuration for AI mode
-  voiceId: process.env.ELEVENLABS_VOICE_ID || 'aGkVQvWUZi16EH8aZJvT', // Steve - Australian Male
+  voiceId: process.env.ELEVENLABS_VOICE_ID || 'aEO01A4wXwd1O8GPgGlF', // Australian Female
   modelId: 'eleven_monolingual_v1',
   language: 'en-AU',
 } as const;

@@ -50,6 +50,11 @@ function transformProviderRecord(record: ProviderRecord): Provider {
     timezone: fields['Timezone'],
     transferNumber: fields['Transfer Number'],
     active: fields['Active'] !== false, // Default to true if not specified
+    // Outbound calling configuration (Phase 1)
+    outboundCallWaitMinutes: fields['Outbound Call Wait Minutes'],
+    outboundCallMaxRounds: fields['Outbound Call Max Rounds'],
+    outboundCallMessageTemplate: fields['Outbound Call Message Template'],
+    outboundCallEnabled: fields['Outbound Call Enabled'] || false,
   };
 }
 

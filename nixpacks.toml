@@ -1,3 +1,6 @@
+[phases.setup]
+nixPkgs = ["nodejs_latest"]
+
 [phases.install]
 cmds = ["cd voice-agent && npm install"]
 

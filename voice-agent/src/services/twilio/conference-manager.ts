@@ -55,7 +55,7 @@ export async function transferToRepresentative(
       from: twilioConfig.phoneNumber,
       twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Amy">You have an incoming call from an employee. Connecting now.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">You have an incoming call from an employee. Connecting now.</Say>
   <Dial>
     <Conference 
       beep="false"

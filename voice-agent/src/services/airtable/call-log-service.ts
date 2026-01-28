@@ -51,6 +51,14 @@ export async function createCallLog(data: CallLogCreateData): Promise<CallLogRes
     if (data.employeeId) {
       fields['Employee'] = [data.employeeId];
     }
+    
+    // Add outbound calling fields (Phase 4)
+    if (data.callPurpose) {
+      fields['Call Purpose'] = data.callPurpose;
+    }
+    if (data.attemptRound) {
+      fields['Attempt Round'] = data.attemptRound;
+    }
 
     const response = await airtableClient.createRecord(CALL_LOGS_TABLE_ID, fields);
 
@@ -113,6 +121,14 @@ export async function updateCallLog(recordId: string, data: CallLogUpdateData): 
     if (data.notes) {
       fields['Notes'] = data.notes;
     }
+    
+    // Add outbound calling fields (Phase 4)
+    if (data.callOutcome) {
+      fields['Call Outcome'] = data.callOutcome;
+    }
+    if (data.dtmfResponse) {
+      fields['DTMF Response'] = data.dtmfResponse;
+    }
 
     await airtableClient.updateRecord(CALL_LOGS_TABLE_ID, recordId, fields);
 
@@ -128,6 +144,68 @@ export async function updateCallLog(recordId: string, data: CallLogUpdateData): 
       recordId,
       error: error instanceof Error ? error.message : 'Unknown error',
       type: 'call_log_update_error'
+    });
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * Update call log with transfer recording URL
+ * This is called separately after the conference recording is processed
+ */
+export async function updateCallLogWithTransferRecording(
+  callSid: string,
+  transferRecordingUrl: string
+): Promise<CallLogResult> {
+  try {
+    logger.info('Updating call log with transfer recording', {
+      callSid,
+      type: 'call_log_transfer_recording_update_start'
+    });
+
+    // Find the call log record by CallSid
+    const { airtableClient } = await import('./client');
+    const records = await airtableClient.findRecords(
+      CALL_LOGS_TABLE_ID, 
+      `{CallSid} = '${callSid}'`,
+      { maxRecords: 1 }
+    );
+
+    if (!records || records.length === 0) {
+      logger.error('Call log record not found for transfer recording update', {
+        callSid,
+        type: 'call_log_not_found'
+      });
+      return {
+        success: false,
+        error: 'Call log record not found'
+      };
+    }
+
+    const recordId = records[0].id;
+    const fields: any = {
+      'Transfer Recording URL': transferRecordingUrl
+    };
+
+    await airtableClient.updateRecord(CALL_LOGS_TABLE_ID, recordId, fields);
+
+    logger.info('✅ Call log updated with transfer recording URL', {
+      callSid,
+      recordId,
+      type: 'call_log_transfer_recording_updated'
+    });
+
+    return { success: true, recordId };
+
+  } catch (error) {
+    logger.error('Failed to update call log with transfer recording', {
+      callSid,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      type: 'call_log_transfer_recording_update_error'
     });
 
     return {

@@ -23,6 +23,12 @@ import { generateSpeech, streamAudioToTwilio, stopCurrentAudio } from '../servic
 import { twilioConfig } from '../config/twilio';
 import { logger } from '../lib/logger';
 import { initializeDisclaimerCache, playDisclaimerFromCache } from '../audio/disclaimer-cache';
+import { 
+  publishCallStarted, 
+  publishCallAuthenticated, 
+  publishAuthenticationFailed,
+  publishCallEnded 
+} from '../services/redis/call-event-publisher';
 
 // Use require for twilio to avoid TypeScript import issues
 const twilio = require('twilio');
@@ -149,6 +155,20 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
           streamSid: ws.streamSid,
           from: callerPhone,
           type: 'call_start'
+        });
+
+        // Publish call_started event to Redis Stream (non-blocking)
+        publishCallStarted(
+          ws.callSid!,
+          'pending', // Provider ID will be determined during authentication
+          callerPhone
+        ).catch(err => {
+          logger.error('Failed to publish call_started event', {
+            callSid: ws.callSid,
+            error: err.message,
+            type: 'redis_stream_error'
+          });
+          // Don't throw - this is non-critical
         });
 
         // Initialize call logging
@@ -345,6 +365,22 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
             recordId: callLogResult.recordId,
             type: 'call_log_initialized'
           });
+
+          // Publish call_authenticated event to Redis Stream (non-blocking)
+          if (providerId) {
+            publishCallAuthenticated(
+              ws.callSid!,
+              providerId,
+              authResult.employee.name || 'Unknown',
+              authResult.employee.id
+            ).catch(err => {
+              logger.error('Failed to publish call_authenticated event', {
+                callSid: ws.callSid,
+                error: err.message,
+                type: 'redis_stream_error'
+              });
+            });
+          }
         } else {
           logger.error('Failed to create call log record', {
             callSid: ws.callSid,
@@ -493,7 +529,7 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
               } : null,
               employeeJobs: employeeJobs.map((job: any, index: number) => ({
                 ...job,
-                index: index + 1
+                index: index + 2 // Start from 2 (1 is reserved for "speak to representative")
               }))
             };
 

@@ -82,37 +82,78 @@ export async function handleWebSocketMessage(
         
       case 'media':
         // Media frames - handled silently for performance
-        // Check if we're actively recording speech AND it's the inbound track (user speech)
         const wsExt = ws as WebSocketWithExtensions;
         
-        // 🔍 DEBUG: Log track info when recording
-        if (wsExt.speechState && isRecording(wsExt.speechState)) {
-          // Initialize frame counters if not present
-          if (!(wsExt as any).trackFrameCount) {
-            (wsExt as any).trackFrameCount = { inbound: 0, outbound: 0 };
+        // CAPTURE INBOUND AUDIO FOR CALL RECORDING (caller audio from WebSocket)
+        // Note: Outbound audio (bot) is captured separately when we generate it with ElevenLabs
+        // Audio is stored in memory first, then periodically flushed to Redis
+        if (message.media?.payload && message.media.track === 'inbound') {
+          // Initialize audio buffers if not present
+          if (!wsExt.callAudioBuffers) {
+            wsExt.callAudioBuffers = { inbound: [], outbound: [] };
+            wsExt.audioFrameCount = 0;
+            logger.info('🎙️ Started capturing call audio for recording', {
+              callSid: wsExt.callSid,
+              parentCallSid: wsExt.parentCallSid,
+              type: 'ws_audio_capture_start'
+            });
           }
           
-          const track = message.media?.track;
-          if (track === 'inbound') {
-            (wsExt as any).trackFrameCount.inbound++;
-          } else if (track === 'outbound') {
-            (wsExt as any).trackFrameCount.outbound++;
-          }
+          // Decode and store inbound audio chunk (caller)
+          const audioChunk = Buffer.from(message.media.payload, 'base64');
+          wsExt.callAudioBuffers.inbound.push(audioChunk);
           
-          // Log every 50 frames
-          const totalFrames = (wsExt as any).trackFrameCount.inbound + (wsExt as any).trackFrameCount.outbound;
-          if (totalFrames % 50 === 0) {
-            console.log(`📻 Track stats: inbound=${(wsExt as any).trackFrameCount.inbound}, outbound=${(wsExt as any).trackFrameCount.outbound}, current=${track}`);
+          wsExt.audioFrameCount = (wsExt.audioFrameCount || 0) + 1;
+          
+          // Flush to Redis every 500 frames (~10 seconds) to persist across transfers
+          if (wsExt.audioFrameCount % 500 === 0) {
+            logger.info('📼 Recording audio - flushing to Redis', {
+              callSid: wsExt.callSid,
+              frames: wsExt.audioFrameCount,
+              inboundChunks: wsExt.callAudioBuffers.inbound.length,
+              outboundChunks: wsExt.callAudioBuffers.outbound.length,
+              type: 'ws_audio_capture_progress'
+            });
+            
+            // Flush to Redis in background (don't block media stream)
+            if (wsExt.callSid && wsExt.callAudioBuffers.inbound.length > 0) {
+              import('../services/redis/audio-buffer-store').then(({ appendAudioToRedis }) => {
+                appendAudioToRedis(
+                  wsExt.callSid!,
+                  wsExt.parentCallSid,
+                  [...wsExt.callAudioBuffers!.inbound],
+                  [...wsExt.callAudioBuffers!.outbound]
+                ).then(() => {
+                  // Clear local buffers after successful Redis flush
+                  wsExt.callAudioBuffers!.inbound = [];
+                  wsExt.callAudioBuffers!.outbound = [];
+                }).catch((err: Error) => {
+                  logger.error('Failed to flush audio to Redis', {
+                    callSid: wsExt.callSid,
+                    error: err.message,
+                    type: 'audio_flush_error'
+                  });
+                });
+              }).catch((err: Error) => {
+                logger.error('Failed to import audio-buffer-store', {
+                  callSid: wsExt.callSid,
+                  error: err.message,
+                  type: 'audio_import_error'
+                });
+              });
+            }
           }
         }
         
+        // ALSO check if we're actively recording speech for transcription (separate from call recording)
         if (wsExt.speechState && 
             isRecording(wsExt.speechState) && 
             message.media?.payload &&
-            message.media?.track === 'inbound') { // Only capture user speech!
+            message.media?.track === 'inbound') {
           const audioChunk = Buffer.from(message.media.payload, 'base64');
           processAudioChunk(wsExt, audioChunk);
         }
+        
         await handlers.onMedia(message, ws);
         break;
         

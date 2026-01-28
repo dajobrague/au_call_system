@@ -193,7 +193,7 @@ export function isFutureDate(day: string, month: string, year?: number): boolean
 /**
  * Generate auto-advancing TwiML for date/time input
  */
-export function generateDateTimeTwiML(prompt: string, numDigits: number, voice: string = 'Google.en-AU-Wavenet-A'): string {
+export function generateDateTimeTwiML(prompt: string, numDigits: number, voice: string = 'Google.en-AU-Wavenet-C'): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather input="dtmf" timeout="15" numDigits="${numDigits}">

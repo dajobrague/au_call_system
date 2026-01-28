@@ -13,6 +13,7 @@ interface JobDetails {
   occurrenceId?: string;
   scheduledAt?: string;
   time?: string;
+  timeWindowEnd?: string;
   status: string;
   reason?: string;
   assignedToCurrentEmployee?: boolean;
@@ -229,7 +230,7 @@ export default function JobAcceptancePage({
                     <div className="space-y-2">
                       <p className="text-sm text-gray-700"><strong>Provider:</strong> {jobDetails.provider?.name || 'Healthcare Provider'}</p>
                       <p className="text-sm text-gray-700"><strong>Date:</strong> {new Date(jobDetails.scheduledAt || '').toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                      <p className="text-sm text-gray-700"><strong>Time:</strong> {jobDetails.time}</p>
+                      <p className="text-sm text-gray-700"><strong>Time:</strong> {jobDetails.time}{jobDetails.timeWindowEnd ? ` - ${jobDetails.timeWindowEnd}` : ''}</p>
                       {jobDetails.jobTemplate && (
                         <>
                           <p className="text-sm text-gray-700"><strong>Service:</strong> {jobDetails.jobTemplate?.title || 'Healthcare Service'}</p>
@@ -405,7 +406,7 @@ export default function JobAcceptancePage({
                         const date = new Date(year, month - 1, day);
                         return date.toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
                       })() : 'Date not set'}</p>
-                      <p className="text-sm text-gray-700"><strong>Time:</strong> {jobDetails.time}</p>
+                      <p className="text-sm text-gray-700"><strong>Time:</strong> {jobDetails.time}{jobDetails.timeWindowEnd ? ` - ${jobDetails.timeWindowEnd}` : ''}</p>
                       <p className="text-sm text-gray-700"><strong>Service:</strong> {jobDetails.jobTemplate?.title || 'Healthcare Service'}</p>
                       <p className="text-sm text-gray-700"><strong>Type:</strong> {jobDetails.jobTemplate?.serviceType || 'General'}</p>
                     </div>

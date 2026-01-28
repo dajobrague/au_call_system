@@ -14,6 +14,7 @@ import { logger } from '../lib/logger';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from '../config/env';
+import { publishCallEnded } from '../services/redis/call-event-publisher';
 
 export interface WebSocketWithExtensions extends WebSocket {
   streamSid?: string;
@@ -48,6 +49,13 @@ export interface WebSocketWithExtensions extends WebSocket {
   conferenceName?: string;
   providerId?: string;
   employeeId?: string;
+  
+  // WebSocket audio recording (for full call recording)
+  callAudioBuffers?: {
+    inbound: Buffer[];
+    outbound: Buffer[];
+  };
+  audioFrameCount?: number;
 }
 
 /**
@@ -75,6 +83,18 @@ export async function handleConnectionClose(
     reason: reason.toString(),
     type: 'ws_connection_close'
   });
+  
+  // Calculate call duration and publish call_ended event (non-blocking)
+  if (ws.callStartTime && ws.providerId && callSid !== 'unknown') {
+    const duration = Math.floor((Date.now() - ws.callStartTime.getTime()) / 1000);
+    publishCallEnded(callSid, ws.providerId, duration).catch(err => {
+      logger.error('Failed to publish call_ended event', {
+        callSid,
+        error: err.message,
+        type: 'redis_stream_error'
+      });
+    });
+  }
   
   // Finalize call log before cleanup
   await finalizeCallLog(ws, code, reason.toString());
@@ -389,6 +409,147 @@ async function finalizeCallLog(
           callSid: ws.callSid,
           recordingSid: ws.recordingSid,
           type: 'recording_url_pending'
+        });
+      }
+    }
+    
+    // Process WebSocket recorded audio with transfer support
+    // Step 1: Flush any remaining in-memory buffers to Redis
+    if (ws.callAudioBuffers && (ws.callAudioBuffers.inbound.length > 0 || ws.callAudioBuffers.outbound.length > 0)) {
+      try {
+        const { appendAudioToRedis } = require('../services/redis/audio-buffer-store');
+        await appendAudioToRedis(
+          ws.callSid,
+          ws.parentCallSid,
+          ws.callAudioBuffers.inbound,
+          ws.callAudioBuffers.outbound
+        );
+        logger.info('📼 Final audio buffers flushed to Redis', {
+          callSid: ws.callSid,
+          parentCallSid: ws.parentCallSid,
+          inboundChunks: ws.callAudioBuffers.inbound.length,
+          outboundChunks: ws.callAudioBuffers.outbound.length,
+          type: 'ws_audio_final_flush'
+        });
+      } catch (error) {
+        logger.error('Failed to flush final audio to Redis', {
+          callSid: ws.callSid,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          type: 'ws_audio_final_flush_error'
+        });
+      }
+    }
+    
+    // Step 2: Check if this is the final WebSocket (no pending transfers)
+    // Pass the WebSocket object so it can check cached state first (prevents race conditions)
+    const { isFinalWebSocket, getAudioFromRedis, deleteAudioFromRedis } = require('../services/redis/audio-buffer-store');
+    const isFinal = await isFinalWebSocket(ws);
+    
+    if (!isFinal) {
+      logger.info('📼 WebSocket closed but transfer pending - audio stored in Redis', {
+        callSid: ws.callSid,
+        parentCallSid: ws.parentCallSid,
+        closeReason,
+        type: 'ws_audio_transfer_pending'
+      });
+      // Don't upload yet - wait for final WebSocket to close
+    } else {
+      // Step 3: This is the final WebSocket - retrieve ALL audio from Redis and upload
+      logger.info('📼 Final WebSocket closed - retrieving complete audio from Redis', {
+        callSid: ws.callSid,
+        parentCallSid: ws.parentCallSid,
+        type: 'ws_audio_final_retrieve'
+      });
+      
+      const completeAudio = await getAudioFromRedis(ws.callSid, ws.parentCallSid);
+      
+      if (completeAudio && (completeAudio.inbound.length > 0 || completeAudio.outbound.length > 0)) {
+        try {
+          const { tracksToWav, getAudioStats } = require('../services/audio/websocket-recorder');
+          
+          // Get audio statistics
+          const stats = getAudioStats(completeAudio);
+          logger.info('🎵 Complete call audio statistics', {
+            ...stats,
+            type: 'ws_audio_complete_stats'
+          });
+          
+          // Convert to WAV file
+          const wavBuffer = tracksToWav(completeAudio);
+          logger.info('✅ Complete WAV file created', {
+            size: wavBuffer.length,
+            type: 'ws_audio_wav_created'
+          });
+          
+          // Upload to S3
+          const providerSlug = ws.providerId || 'unknown-provider';
+          const employeeSlug = ws.employeeId || 'unknown-employee';
+          const rootCallSid = ws.parentCallSid || ws.callSid;
+          const s3Key = `${env.AWS_S3_RECORDINGS_PREFIX}${providerSlug}/${employeeSlug}/${rootCallSid}/complete-recording.wav`;
+          
+          const s3Client = new S3Client({
+            region: env.AWS_REGION,
+            credentials: {
+              accessKeyId: env.AWS_ACCESS_KEY_ID!,
+              secretAccessKey: env.AWS_SECRET_ACCESS_KEY!
+            }
+          });
+          
+          const putCommand = new PutObjectCommand({
+            Bucket: env.AWS_S3_BUCKET,
+            Key: s3Key,
+            Body: wavBuffer,
+            ContentType: 'audio/wav',
+            ServerSideEncryption: 'AES256',
+            StorageClass: 'STANDARD_IA',
+            Metadata: {
+              'call-sid': rootCallSid,
+              'provider': providerSlug,
+              'employee': employeeSlug,
+              'duration': durationSeconds.toString(),
+              'source': 'websocket-multi',
+              'uploaded-at': new Date().toISOString()
+            }
+          });
+          
+          await s3Client.send(putCommand);
+          
+          // Generate presigned URL (valid for 7 days)
+          const getCommand = new GetObjectCommand({
+            Bucket: env.AWS_S3_BUCKET,
+            Key: s3Key
+          });
+          
+          const s3Url = await getSignedUrl(s3Client, getCommand, { 
+            expiresIn: 604800 // 7 days
+          });
+          
+          recordingUrl = s3Url; // Use complete recording URL
+          
+          logger.info('✅ Complete WebSocket recording uploaded to S3', {
+            callSid: ws.callSid,
+            rootCallSid,
+            s3Key,
+            size: wavBuffer.length,
+            duration: stats.estimatedDuration,
+            type: 'ws_audio_s3_success'
+          });
+          
+          // Clean up Redis after successful upload
+          await deleteAudioFromRedis(ws.callSid, ws.parentCallSid);
+          
+        } catch (error) {
+          logger.error('❌ Failed to process complete WebSocket recording', {
+            callSid: ws.callSid,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            type: 'ws_audio_process_error'
+          });
+        }
+      } else {
+        logger.warn('No audio found in Redis for final WebSocket', {
+          callSid: ws.callSid,
+          parentCallSid: ws.parentCallSid,
+          type: 'ws_audio_no_data'
         });
       }
     }

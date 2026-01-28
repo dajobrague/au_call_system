@@ -51,7 +51,7 @@ export function getProductionConfig(): ProductionConfig {
     },
     voice: {
       enabled: process.env.VOICE_AI_ENABLED === 'true',
-      elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID || 'aGkVQvWUZi16EH8aZJvT',
+      elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID || 'aEO01A4wXwd1O8GPgGlF',
       fallbackToGoogle: environment === 'development',
     },
     twilio: {

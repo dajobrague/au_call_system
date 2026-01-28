@@ -116,3 +116,6 @@ export async function getVoicePrompt(callSid: string): Promise<string | null> {
     return null;
   }
 }
+
+// Export the Redis client for direct access
+export const redis = getRedisClient();

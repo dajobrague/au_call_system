@@ -63,37 +63,37 @@ export function createHttpRoutes(): express.Application {
       const callState = await loadCallState(callSid);
 
       if (callState && callState.pendingTransfer) {
-        logger.info('Pending transfer found - generating Dial TwiML', {
-          callSid,
-          representativePhone: callState.pendingTransfer.representativePhone,
-          type: 'after_connect_transfer_found'
-        });
-
         // Store representative phone before clearing state
         const representativePhone = callState.pendingTransfer.representativePhone;
         const callerPhone = callState.pendingTransfer.callerPhone;
         
-        // Generate TwiML for transfer with Dial
+        logger.info('Pending transfer found - generating simple Dial TwiML', {
+          callSid,
+          representativePhone,
+          type: 'after_connect_transfer_found'
+        });
+        
+        // Generate TwiML for simple direct transfer (no recording, no conference)
         twiml.say({ voice: 'Polly.Amy' }, 'Connecting you to a representative. Please hold.');
         
         const dial = twiml.dial({
           callerId: callerPhone,
           timeout: 30,
-          record: 'record-from-answer',
           action: `${APP_BASE_URL}/api/queue/transfer-status?callSid=${callSid}&from=${encodeURIComponent(from)}`
         });
         
+        // Simple direct dial to representative - no conference, no recording
         dial.number(representativePhone);
-
-        // Fallback if representative doesn't answer
-        twiml.say({ voice: 'Polly.Amy' }, 'The representative is not available. You will be placed in the queue.');
-        twiml.redirect(`${APP_BASE_URL}/api/queue/enqueue-caller?callSid=${callSid}&from=${encodeURIComponent(from)}`);
 
         // Clear the pending transfer flag
         callState.pendingTransfer = undefined;
         await saveCallState(callState);
 
-        logger.info('Dial TwiML generated for transfer', {
+        // Fallback if representative doesn't answer
+        twiml.say({ voice: 'Polly.Amy' }, 'The representative is not available. You will be placed in the queue.');
+        twiml.redirect(`${APP_BASE_URL}/api/queue/enqueue-caller?callSid=${callSid}&from=${encodeURIComponent(from)}`);
+
+        logger.info('Simple Dial TwiML generated for transfer', {
           callSid,
           representativePhone,
           duration: Date.now() - startTime,
@@ -134,6 +134,8 @@ export function createHttpRoutes(): express.Application {
       return res.type('text/xml').send(twiml.toString());
     }
   });
+
+  // Conference recording endpoint removed - transfer recordings disabled for reliability
 
   /**
    * GET /health

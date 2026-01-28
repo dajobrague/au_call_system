@@ -198,10 +198,11 @@ export async function GET(
         occurrenceId: jobOccurrence.fields['Occurrence ID'],
         scheduledAt: jobOccurrence.fields['Scheduled At'],
         time: jobOccurrence.fields['Time'],
+        timeWindowEnd: jobOccurrence.fields['Time Window End'],
         status: jobOccurrence.fields['Status'],
         reason: jobOccurrence.fields['Reschedule Reason'],
         assignedToCurrentEmployee: isAssignedToCurrentEmployee,
-        isAvailable: !isAssignedToOthers && (jobOccurrence.fields['Status'] === 'Open' || jobOccurrence.fields['Status'] === 'Scheduled'),
+        isAvailable: !isAssignedToOthers && (jobOccurrence.fields['Status'] === 'Open' || jobOccurrence.fields['Status'] === 'Scheduled' || jobOccurrence.fields['Status'] === 'UNFILLED_AFTER_SMS'),
         patient: patient ? {
           name: patient.fields['Patient Full Name'],
           address: patient.fields['Address'],
@@ -351,7 +352,7 @@ export async function POST(
           }, { status: 404 });
         }
 
-        if (jobOccurrence.fields['Status'] !== 'Open') {
+        if (jobOccurrence.fields['Status'] !== 'Open' && jobOccurrence.fields['Status'] !== 'UNFILLED_AFTER_SMS') {
           logger.info('Job no longer available for acceptance', {
             jobId,
             currentStatus: jobOccurrence.fields['Status'],

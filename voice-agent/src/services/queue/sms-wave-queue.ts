@@ -14,6 +14,8 @@ export interface WaveJobData {
   occurrenceId: string;
   waveNumber: 1 | 2 | 3;
   providerId: string;
+  excludeEmployeeId?: string; // Employee who left job open - should not receive notifications
+  staffPoolIds: string[]; // Employee IDs in patient's staff pool for filtering
   scheduledAt: string;
   timeString?: string;  // Time of shift (e.g., "14:00") for timezone calculations
   timezone?: string;    // Provider timezone (e.g., "Australia/Sydney")
@@ -23,6 +25,9 @@ export interface WaveJobData {
     patientFullName: string;
     dateTime: string;
     displayDate: string;
+    suburb?: string;      // Suburb from patient address
+    startTime?: string;   // Start time of shift
+    endTime?: string;     // End time of shift
   };
 }
 

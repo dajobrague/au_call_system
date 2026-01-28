@@ -18,7 +18,7 @@ export interface JobOptionsMessage {
 /**
  * Select a job from the employee's job list
  * @param employeeJobs - List of available jobs
- * @param selectionNumber - DTMF digit pressed (1-based)
+ * @param selectionNumber - DTMF digit pressed (2-based, since 1 is reserved for representative)
  * @returns Selected job or error
  */
 export function selectJob(employeeJobs: any[], selectionNumber: number): JobSelectionResult {
@@ -29,10 +29,13 @@ export function selectJob(employeeJobs: any[], selectionNumber: number): JobSele
     };
   }
   
-  if (selectionNumber < 1 || selectionNumber > employeeJobs.length) {
+  // Option 1 is reserved for "speak to representative"
+  // Jobs start from option 2
+  if (selectionNumber < 2 || selectionNumber > (employeeJobs.length + 1)) {
+    const maxOption = employeeJobs.length + 1;
     return {
       success: false,
-      error: `Invalid selection. Please press a number from 1 to ${employeeJobs.length}`
+      error: `Invalid selection. Please press a number from 2 to ${maxOption}`
     };
   }
   
@@ -61,7 +64,7 @@ export function generateJobOptionsMessage(job: any): JobOptionsMessage {
   const jobTitle = job.jobTemplate?.title || 'this shift';
   
   // NEW simplified message - only 2 options
-  const message = `Confirm: press 1 if you want to leave this shift open for someone else, or press 2 to connect with a representative.`;
+  const message = `Confirm: Press 1 to cancel your shift, or press 2 to connect with a representative.`;
   
   // OLD message with reschedule (commented out for future use):
   // const message = `You selected ${jobTitle} for ${patientFirstName}. What would you like to do? Press 1 to reschedule, Press 2 to leave the job open for someone else, Press 3 to talk to a representative, or Press 4 to select a different job.`;

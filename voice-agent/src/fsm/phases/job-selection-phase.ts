@@ -53,7 +53,7 @@ export async function processJobSelectionPhase(
       const newState: CallState = {
         ...state,
         employeeJobs: jobListResult.jobs.map((job, index) => ({
-          index: index + 1, // 1-based index for DTMF
+          index: index + 2, // Start from 2 (1 is reserved for "speak to representative")
           jobTemplate: {
             id: job.jobTemplate.id,
             jobCode: job.jobTemplate.jobCode,
@@ -107,7 +107,46 @@ export async function processJobSelectionPhase(
   if (hasInput && state.employeeJobs) {
     const selectedIndex = parseInt(input.trim(), 10);
     
-    if (isNaN(selectedIndex) || selectedIndex < 1 || selectedIndex > state.employeeJobs.length) {
+    // Handle option 1: Transfer to representative
+    if (selectedIndex === 1) {
+      console.log('Option 1 selected - Transfer to representative');
+      
+      const transferNumber = state.provider?.transferNumber;
+      
+      if (!transferNumber) {
+        console.error('No transfer number configured for provider');
+        return {
+          newState: {
+            ...state,
+            phase: PHASES.ERROR,
+          },
+          result: {
+            twiml: generateTwiML('Unable to transfer. Please contact your supervisor.', false),
+            action: 'error',
+            shouldDeleteState: true,
+          },
+        };
+      }
+      
+      return {
+        newState: {
+          ...state,
+          phase: PHASES.REPRESENTATIVE_TRANSFER,
+        },
+        result: {
+          twiml: `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Google.en-AU-Wavenet-C">Transferring you to a representative now.</Say>
+  <Dial>${transferNumber}</Dial>
+  <Say voice="Google.en-AU-Wavenet-C">The representative is not available. Please try again later.</Say>
+</Response>`,
+          action: 'transfer_to_representative',
+          shouldDeleteState: true,
+        },
+      };
+    }
+    
+    if (isNaN(selectedIndex) || selectedIndex < 1 || selectedIndex > (state.employeeJobs.length + 1)) {
       // Invalid selection
       const newAttempts = (state.attempts.jobNumber || 0) + 1;
       
@@ -255,6 +294,7 @@ export async function processJobSelectionPhase(
 /**
  * Generate job list message for voice prompt
  * Shows job title and patient's last name only (no job codes)
+ * Option 1 is always "speak to a representative", jobs start from option 2
  */
 function generateJobListMessage(
   jobs: Array<{ jobTemplate: any; patient: any }>,
@@ -267,13 +307,13 @@ function generateJobListMessage(
   if (jobs.length === 1) {
     const job = jobs[0];
     const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
-    return `${prefix}You have one job: ${job.jobTemplate.title} for ${patientLastName}. Press 1 to select this job.`;
+    return `${prefix}Press 1 to speak to a representative, or Press 2 for ${job.jobTemplate.title} for ${patientLastName}.`;
   }
 
-  let message = `${prefix}You have ${jobs.length} jobs. `;
+  let message = `${prefix}Press 1 to speak to a representative. You have ${jobs.length} jobs. `;
   
   jobs.forEach((job, index) => {
-    const number = index + 1;
+    const number = index + 2; // Jobs start from 2
     const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
     message += `Press ${number} for ${job.jobTemplate.title} for ${patientLastName}. `;
   });

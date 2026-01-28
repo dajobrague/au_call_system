@@ -104,12 +104,16 @@ export async function POST(request: NextRequest) {
     
     const websocketUrl = `${wsProtocol}://${host}/stream`;
     const actionUrl = `${protocol}://${host}/api/transfer/after-connect?callSid=${webhookData.CallSid}&from=${encodeURIComponent(webhookData.From)}`;
+    const recordingStatusCallback = `${protocol}://${host}/api/twilio/recording-status`;
     
-    // Generate TwiML with WebSocket stream URL and parameters
-    // IMPORTANT: action attribute tells Twilio where to go when stream ends
+    // Generate TwiML with WebSocket stream URL, parameters, AND call recording
+    // IMPORTANT: 
+    // - action attribute tells Twilio where to go when stream ends
+    // - record="true" enables call recording (use "true" for Connect verb, not "record-from-answer-dual")
+    // - recordingStatusCallback receives notification when recording completes
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Connect action="${actionUrl}">
+  <Connect action="${actionUrl}" record="true" recordingStatusCallback="${recordingStatusCallback}">
     <Stream url="${websocketUrl}">
       <Parameter name="phone" value="${webhookData.From}" />
       <Parameter name="callSid" value="${webhookData.CallSid}" />
@@ -119,10 +123,12 @@ export async function POST(request: NextRequest) {
 
     const latencyMs = Date.now() - startTime;
     
-    logger.info('Returning TwiML for WebSocket stream', {
+    logger.info('Returning TwiML for WebSocket stream with recording', {
       callSid: webhookData.CallSid,
       from: webhookData.From,
       websocketUrl: websocketUrl,
+      recordingStatusCallback: recordingStatusCallback,
+      actionUrl: actionUrl,
       phone: webhookData.From,
       latencyMs
     });
@@ -155,7 +161,7 @@ export async function POST(request: NextRequest) {
     // Fallback TwiML response
     const errorTwiML = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Google.en-AU-Wavenet-A" language="en-AU">Sorry, there was an error processing your request. Please try again later.</Say>
+  <Say voice="Google.en-AU-Wavenet-C" language="en-AU">Sorry, there was an error processing your request. Please try again later.</Say>
   <Hangup/>
 </Response>`;
 

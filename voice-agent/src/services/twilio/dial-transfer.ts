@@ -7,6 +7,7 @@
 const twilio = require('twilio');
 import { twilioConfig } from '../../config/twilio';
 import { logger } from '../../lib/logger';
+import { publishTransferInitiated, publishTransferCompleted } from '../redis/call-event-publisher';
 
 const twilioClient = twilio(twilioConfig.accountSid, twilioConfig.authToken);
 
@@ -15,6 +16,7 @@ export interface DialTransferOptions {
   representativePhone: string;
   callerPhone: string;
   baseUrl?: string;
+  providerId?: string;
 }
 
 export interface DialTransferResult {
@@ -39,7 +41,8 @@ export async function dialTransferToRepresentative(
     callerCallSid,
     representativePhone,
     callerPhone,
-    baseUrl = getBaseUrl()
+    baseUrl = getBaseUrl(),
+    providerId
   } = options;
   
   const startTime = Date.now();
@@ -51,11 +54,27 @@ export async function dialTransferToRepresentative(
       type: 'dial_transfer_update_start'
     });
     
+    // Publish transfer_initiated event to Redis Stream (non-blocking)
+    if (providerId) {
+      publishTransferInitiated(
+        callerCallSid,
+        providerId,
+        representativePhone,
+        'Employee requested to speak with representative'
+      ).catch(err => {
+        logger.error('Failed to publish transfer_initiated event', {
+          callSid: callerCallSid,
+          error: err.message,
+          type: 'redis_stream_error'
+        });
+      });
+    }
+    
     // Build inline TwiML with <Dial> and fallback to queue
     // If rep doesn't answer within 30 seconds, redirect to queue endpoint
     const dialTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Amy">Connecting you to a representative. Please hold.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">Connecting you to a representative. Please hold.</Say>
   <Dial 
     callerId="${callerPhone}" 
     timeout="30" 
@@ -63,7 +82,7 @@ export async function dialTransferToRepresentative(
     action="${baseUrl}/api/queue/transfer-status?callSid=${callerCallSid}&amp;from=${encodeURIComponent(callerPhone)}">
     <Number>${representativePhone}</Number>
   </Dial>
-  <Say voice="Polly.Amy">The representative is not available. You will be placed in the queue.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">The representative is not available. You will be placed in the queue.</Say>
   <Redirect>${baseUrl}/api/queue/enqueue-caller?callSid=${callerCallSid}&amp;from=${encodeURIComponent(callerPhone)}</Redirect>
 </Response>`;
     
@@ -81,6 +100,21 @@ export async function dialTransferToRepresentative(
       duration,
       type: 'dial_transfer_update_success'
     });
+    
+    // Publish transfer_completed event to Redis Stream (non-blocking)
+    if (providerId) {
+      publishTransferCompleted(
+        callerCallSid,
+        providerId,
+        true
+      ).catch(err => {
+        logger.error('Failed to publish transfer_completed event', {
+          callSid: callerCallSid,
+          error: err.message,
+          type: 'redis_stream_error'
+        });
+      });
+    }
     
     return {
       success: true

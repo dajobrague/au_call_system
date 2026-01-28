@@ -35,7 +35,7 @@ export async function generateSpeech(
   options: SpeechGenerationOptions
 ): Promise<SpeechGenerationResult> {
   const {
-    voiceId = 'aGkVQvWUZi16EH8aZJvT',
+    voiceId = 'aEO01A4wXwd1O8GPgGlF',
     apiKey,
     modelId = 'eleven_turbo_v2_5',
     speed = 0.95,

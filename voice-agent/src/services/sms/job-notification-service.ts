@@ -106,6 +106,39 @@ export class JobNotificationService {
   }
 
   /**
+   * Filter employees by patient's staff pool
+   * If no staff pool defined, return empty array (no notifications sent)
+   */
+  private filterByStaffPool(
+    employees: EmployeeContact[], 
+    staffPoolIds: string[]
+  ): EmployeeContact[] {
+    // If no staff pool defined, return empty (no notifications)
+    if (!staffPoolIds || staffPoolIds.length === 0) {
+      logger.warn('No staff pool defined for patient - no notifications will be sent', {
+        totalEmployees: employees.length,
+        type: 'no_staff_pool'
+      });
+      return [];
+    }
+    
+    // Filter to only employees in staff pool
+    const filtered = employees.filter(emp => 
+      staffPoolIds.includes(emp.id)
+    );
+    
+    logger.info('Filtered employees by staff pool', {
+      totalEmployees: employees.length,
+      staffPoolSize: staffPoolIds.length,
+      filteredCount: filtered.length,
+      filteredEmployeeNames: filtered.map(e => e.name),
+      type: 'staff_pool_filter'
+    });
+    
+    return filtered;
+  }
+
+  /**
    * Send job availability SMS to employees using real Twilio SMS
    */
   async notifyEmployeesOfOpenJob(
@@ -404,22 +437,35 @@ export class JobNotificationService {
 
     try {
       // Find all employees for this provider (excluding the original employee)
-      const providerEmployees = await this.findProviderEmployees(
+      const allProviderEmployees = await this.findProviderEmployees(
         resolvedProviderId,
         originalEmployee.id
       );
       
+      // Filter to only staff pool employees
+      const providerEmployees = this.filterByStaffPool(
+        allProviderEmployees,
+        patient.staffPoolIds
+      );
+      
+      // If no staff pool employees, log and return early
       if (providerEmployees.length === 0) {
-        logger.warn('No other employees found for provider', {
+        logger.warn('No staff pool employees available - notifications skipped', {
           providerId: resolvedProviderId,
+          patientId: patient.id,
+          patientName: patient.name,
+          totalProviderEmployees: allProviderEmployees.length,
+          staffPoolSize: patient.staffPoolIds.length,
           originalEmployeeId: originalEmployee.id,
-          type: 'no_employees_for_redistribution'
+          type: 'no_staff_pool_no_notifications'
         });
         
         return {
           success: true,
           employeesNotified: 0,
-          error: 'No other employees available for this provider'
+          error: patient.staffPoolIds.length === 0 
+            ? 'No staff pool defined for this patient'
+            : 'No staff pool employees available for this provider'
         };
       }
       
@@ -482,6 +528,8 @@ export class JobNotificationService {
       const waveData = {
         occurrenceId: jobOccurrence.id,
         providerId: resolvedProviderId, // Use extracted provider ID
+        excludeEmployeeId: originalEmployee.id, // Exclude employee who left job open
+        staffPoolIds: patient.staffPoolIds, // Pass staff pool for filtering in waves 2 & 3
         scheduledAt: jobOccurrence.scheduledAt,
         timeString: timeString,  // Include time for accurate wave processing
         timezone: providerTimezone, // Include timezone for wave processor

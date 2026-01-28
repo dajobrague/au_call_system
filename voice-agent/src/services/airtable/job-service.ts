@@ -54,6 +54,7 @@ function transformPatientRecord(record: PatientRecord): Patient {
     notes: fields['Important Notes'],
     providerId: fields['Provider']?.[0] || '', // First provider ID
     active: fields['Active'] !== false, // Default to true if not specified
+    staffPoolIds: fields['Related Staff Pool'] || [], // Employee IDs for SMS notifications
   };
 }
 

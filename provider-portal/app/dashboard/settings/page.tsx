@@ -120,10 +120,35 @@ export default function SettingsPage() {
   }
   
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Organization Settings</h1>
         <p className="text-gray-600 mt-2">Manage your organization configuration</p>
+      </div>
+      
+      {/* Settings Navigation Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <a
+          href="/dashboard/settings"
+          className="bg-white rounded-lg shadow-sm border-2 border-blue-600 p-6 hover:shadow-md transition-shadow"
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <Clock className="w-6 h-6 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">On-Call Hours</h3>
+          </div>
+          <p className="text-sm text-gray-600">Configure your organization&apos;s on-call window for reports</p>
+        </a>
+        
+        <a
+          href="/dashboard/settings/outbound-calling"
+          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all"
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <Building2 className="w-6 h-6 text-gray-700" />
+            <h3 className="text-lg font-semibold text-gray-900">Outbound Calling</h3>
+          </div>
+          <p className="text-sm text-gray-600">Configure automated phone calls after SMS waves</p>
+        </a>
       </div>
       
       {error && (

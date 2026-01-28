@@ -10,7 +10,7 @@ export function generateSpeechTwiML(
   prompt: string, 
   timeout: number = 10,
   speechTimeout: number = 5,
-  voice: string = 'Google.en-AU-Wavenet-A'
+  voice: string = 'Google.en-AU-Wavenet-C'
 ): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -90,7 +90,7 @@ export function formatReasonForAirtable(reason: string, employeeName: string): s
  */
 export function generateSpeechConfirmationTwiML(
   reason: string,
-  voice: string = 'Google.en-AU-Wavenet-A'
+  voice: string = 'Google.en-AU-Wavenet-C'
 ): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>

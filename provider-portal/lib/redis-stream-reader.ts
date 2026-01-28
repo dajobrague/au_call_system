@@ -18,7 +18,7 @@ export interface CallSession {
   startTime: string;
   endTime?: string;
   duration?: number;
-  fromNumber: string;
+  fromNumber?: string;
   callerName?: string;
   events: CallEvent[];
 }
@@ -111,7 +111,7 @@ export async function readLiveCallLog(
           callSid,
           status: 'in_progress',
           startTime: timestamp,
-          fromNumber: parsedData.fromNumber || 'Unknown',
+          fromNumber: parsedData.fromNumber || '',
           events: [],
         });
       }
@@ -166,10 +166,10 @@ export async function readLiveCallLog(
 function formatEventDescription(eventType: string, data: any): string {
   switch (eventType) {
     case 'call_started':
-      return `Call received from ${data.fromNumber || 'unknown number'}`;
+      return data.fromNumber ? `Call received from ${data.fromNumber}` : 'Call received';
 
     case 'call_authenticated':
-      return `Caller identified as ${data.employeeName || 'unknown'}`;
+      return `Caller identified as ${data.employeeName || 'Staff member'}`;
 
     case 'authentication_failed':
       return `Authentication failed: ${data.reason || 'unknown reason'}`;

@@ -6,6 +6,11 @@
 interface WebSocketWithStream extends WebSocket {
   streamSid?: string;
   currentAudioInterval?: NodeJS.Timeout;
+  callAudioBuffers?: {
+    inbound: Buffer[];
+    outbound: Buffer[];
+  };
+  callSid?: string;
 }
 
 /**
@@ -69,6 +74,12 @@ export async function streamAudioToTwilio(
           streamSid: streamSid,
           media: { payload: b64 }
         }));
+        
+        // CAPTURE OUTBOUND AUDIO FOR CALL RECORDING (bot audio we're sending)
+        if (ws.callAudioBuffers) {
+          ws.callAudioBuffers.outbound.push(Buffer.from(frame));
+        }
+        
         return true;
       } catch (error) {
         console.error('❌ Error sending frame:', error);

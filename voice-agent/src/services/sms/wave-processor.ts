@@ -7,6 +7,7 @@ import { logger } from '../../lib/logger';
 import { airtableClient } from '../airtable/client';
 import { jobNotificationService } from './job-notification-service';
 import { twilioSMSService } from './twilio-sms-service';
+import { scheduleOutboundCallAfterSMS } from '../queue/outbound-call-queue';
 import type { WaveJobData } from '../queue/sms-wave-queue';
 import type { JobNotificationDetails } from './job-notification-service';
 
@@ -55,23 +56,36 @@ export async function processScheduledWave(waveJob: WaveJobData): Promise<void> 
       type: 'wave_job_still_open'
     });
 
-    // Step 2: Get all employees for this provider
-    const employees = await jobNotificationService.findProviderEmployees(providerId);
+    // Step 2: Get all employees for this provider (excluding the one who left job open)
+    const excludeEmployeeId = waveJob.excludeEmployeeId;
+    const allEmployees = await jobNotificationService.findProviderEmployees(providerId, excludeEmployeeId);
+    
+    // Filter to staff pool only
+    const staffPoolIds = waveJob.staffPoolIds || [];
+    const employees = staffPoolIds.length > 0
+      ? allEmployees.filter(emp => staffPoolIds.includes(emp.id))
+      : [];
     
     if (employees.length === 0) {
-      logger.warn('No employees found for provider', {
+      logger.warn('No staff pool employees found for wave', {
         occurrenceId,
         waveNumber,
         providerId,
-        type: 'wave_no_employees'
+        excludeEmployeeId,
+        totalProviderEmployees: allEmployees.length,
+        staffPoolSize: staffPoolIds.length,
+        type: 'wave_no_staff_pool_employees'
       });
       return;
     }
 
-    logger.info(`Found ${employees.length} employees for wave ${waveNumber}`, {
+    logger.info(`Found ${employees.length} staff pool employees for wave ${waveNumber}`, {
       occurrenceId,
       waveNumber,
-      employeeCount: employees.length,
+      excludeEmployeeId,
+      totalProviderEmployees: allEmployees.length,
+      staffPoolEmployeeCount: employees.length,
+      employeeNames: employees.map(e => e.name),
       type: 'wave_employees_found'
     });
 
@@ -160,6 +174,84 @@ export async function processScheduledWave(waveJob: WaveJobData): Promise<void> 
             occurrenceId,
             type: 'unfilled_mark_failed'
           });
+        }
+        
+        // Phase 5: Check if outbound calling is enabled for this provider
+        try {
+          const providerRecord = await airtableClient.getProviderById(providerId);
+          
+          if (!providerRecord) {
+            logger.warn('Provider not found for outbound calling check', {
+              occurrenceId,
+              providerId,
+              type: 'provider_not_found_outbound'
+            });
+            return;
+          }
+          
+          const providerFields = providerRecord.fields;
+          const outboundEnabled = providerFields['Outbound Call Enabled'] || false;
+          
+          if (outboundEnabled) {
+            const waitMinutes = providerFields['Outbound Call Wait Minutes'] || 15;
+            const maxRounds = providerFields['Outbound Call Max Rounds'] || 3;
+            const messageTemplate = providerFields['Outbound Call Message Template'] || '';
+            
+            logger.info('Outbound calling enabled for provider, scheduling calls', {
+              occurrenceId,
+              providerId,
+              waitMinutes,
+              maxRounds,
+              type: 'outbound_calling_scheduling'
+            });
+            
+            // Schedule outbound calls after configured wait time
+            const scheduledJob = await scheduleOutboundCallAfterSMS(
+              occurrenceId,
+              waitMinutes,
+              {
+                occurrenceId,
+                providerId,
+                staffPoolIds,
+                maxRounds,
+                jobDetails: {
+                  patientName: jobDetails.patientFullName,
+                  patientFirstName: formatPrivacyName(jobDetails.patientFullName).split(' ')[0],
+                  patientLastInitial: formatPrivacyName(jobDetails.patientFullName).split(' ')[1]?.replace('.', '') || '',
+                  scheduledDate: scheduledAt,
+                  displayDate: formatDateForSMS(scheduledAt),
+                  startTime: jobDetails.startTime || extract24HourTimeFromDisplay(jobDetails.displayDate),
+                  endTime: jobDetails.endTime,
+                  suburb: jobDetails.suburb,
+                  messageTemplate
+                }
+              }
+            );
+            
+            logger.info('Outbound calls scheduled successfully', {
+              occurrenceId,
+              providerId,
+              staffPoolSize: staffPoolIds.length,
+              scheduledJobId: scheduledJob.id,
+              delayMinutes: waitMinutes,
+              type: 'outbound_calls_scheduled'
+            });
+          } else {
+            logger.info('Outbound calling not enabled for provider', {
+              occurrenceId,
+              providerId,
+              enabled: outboundEnabled,
+              type: 'outbound_calling_not_enabled'
+            });
+          }
+        } catch (outboundError) {
+          logger.error('Error checking/scheduling outbound calls', {
+            occurrenceId,
+            providerId,
+            error: outboundError instanceof Error ? outboundError.message : 'Unknown error',
+            type: 'outbound_calling_error'
+          });
+          // Don't throw - this is a non-critical enhancement
         }
       } else {
         logger.info('Job was assigned before UNFILLED check', {

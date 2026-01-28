@@ -55,7 +55,7 @@ export async function processPinAuthPhase(
         result: {
           twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Google.en-AU-Wavenet-A">I didn't receive your PIN after several attempts. Connecting you with a representative.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">I didn't receive your PIN after several attempts. Connecting you with a representative.</Say>
   <Hangup/>
 </Response>`,
           action: 'pin_auth_max_attempts',
@@ -77,9 +77,9 @@ export async function processPinAuthPhase(
         twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather input="dtmf" timeout="10" finishOnKey="#">
-    <Say voice="Google.en-AU-Wavenet-A">I didn't hear your PIN. Please use your keypad to enter your employee PIN followed by the pound key.</Say>
+    <Say voice="Google.en-AU-Wavenet-C">I didn't hear your PIN. Please use your keypad to enter your employee PIN followed by the pound key.</Say>
   </Gather>
-  <Say voice="Google.en-AU-Wavenet-A">I didn't receive your PIN. Please try again.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">I didn't receive your PIN. Please try again.</Say>
   <Hangup/>
 </Response>`,
         action: 'pin_auth_reprompt',
@@ -186,7 +186,7 @@ export async function processPinAuthPhase(
         result: {
           twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Google.en-AU-Wavenet-A">Invalid PIN format. Connecting you with a representative.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">Invalid PIN format. Connecting you with a representative.</Say>
   <Hangup/>
 </Response>`,
           action: 'pin_auth_invalid_format',
@@ -207,9 +207,9 @@ export async function processPinAuthPhase(
         twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather input="dtmf" timeout="10" finishOnKey="#">
-    <Say voice="Google.en-AU-Wavenet-A">Please use your keypad to enter a valid employee PIN using numbers only, followed by the pound key.</Say>
+    <Say voice="Google.en-AU-Wavenet-C">Please use your keypad to enter a valid employee PIN using numbers only, followed by the pound key.</Say>
   </Gather>
-  <Say voice="Google.en-AU-Wavenet-A">I didn't receive your PIN. Please try again.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">I didn't receive your PIN. Please try again.</Say>
   <Hangup/>
 </Response>`,
         action: 'pin_auth_invalid_reprompt',
@@ -265,7 +265,7 @@ export async function processPinAuthPhase(
             ? generateVoiceAuthSuccess(employeeName)
             : `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Google.en-AU-Wavenet-A">Hi ${employeeName}.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">Hi ${employeeName}.</Say>
   <Hangup/>
 </Response>`,
           action: 'pin_auth_success',
@@ -298,7 +298,7 @@ export async function processPinAuthPhase(
           result: {
             twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Google.en-AU-Wavenet-A">I couldn't find your PIN after several attempts. Connecting you with a representative.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">I couldn't find your PIN after several attempts. Connecting you with a representative.</Say>
   <Hangup/>
 </Response>`,
             action: 'pin_auth_not_found',
@@ -320,9 +320,9 @@ export async function processPinAuthPhase(
           twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather input="dtmf" timeout="10" finishOnKey="#">
-    <Say voice="Google.en-AU-Wavenet-A">I couldn't find that PIN. Please use your keypad to enter your correct employee PIN followed by the pound key.</Say>
+    <Say voice="Google.en-AU-Wavenet-C">I couldn't find that PIN. Please use your keypad to enter your correct employee PIN followed by the pound key.</Say>
   </Gather>
-  <Say voice="Google.en-AU-Wavenet-A">I didn't receive your PIN. Please try again.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">I didn't receive your PIN. Please try again.</Say>
   <Hangup/>
 </Response>`,
           action: 'pin_auth_not_found_reprompt',
@@ -355,7 +355,7 @@ export async function processPinAuthPhase(
       result: {
         twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Google.en-AU-Wavenet-A">Our automated system is not available at this time. We are connecting you with a representative.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">Our automated system is not available at this time. We are connecting you with a representative.</Say>
   <Hangup/>
 </Response>`,
         action: 'system_error',

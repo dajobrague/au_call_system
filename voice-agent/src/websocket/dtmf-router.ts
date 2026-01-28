@@ -13,6 +13,7 @@ import { trackCallEvent } from '../services/airtable/call-log-service';
 import { WebSocketWithExtensions } from './connection-handler';
 import { paginateOccurrences, validateOccurrenceSelection, generateOccurrenceListPrompt } from '../handlers/occurrence-pagination';
 import { jobNotificationService } from '../services/sms/job-notification-service';
+import { airtableClient } from '../services/airtable/client';
 
 export interface DTMFRoutingContext {
   ws: any;
@@ -170,36 +171,76 @@ async function handlePinAuthentication(context: DTMFRoutingContext): Promise<voi
         ws.providerId = providerId;
       }
       
-      // Update state to provider selection
-      const updatedState = {
-        ...callState,
-        phase: 'provider_selection',
-        employee: authResult.employee,
-        provider: authResult.provider,
-        authMethod: 'pin',
-        pinBuffer: undefined, // Clear PIN buffer
-        updatedAt: new Date().toISOString()
-      };
-      
-      await saveState(updatedState);
-      
-      // Generate greeting
-      const { generateSingleProviderGreeting, generateMultiProviderGreeting } = require('../handlers/provider-handler');
+      // Generate greeting using NEW FLOW (occurrence-based, same as phone auth)
+      const { generateOccurrenceBasedGreeting, generateMultiProviderGreeting } = require('../handlers/provider-handler');
       const providerResult = backgroundData.providers;
+      const enrichedOccurrences = backgroundData.enrichedOccurrences || [];
       
       if (providerResult.providers?.length === 1) {
-        const greeting = generateSingleProviderGreeting(authResult.employee, providerResult.providers[0]);
+        // Single provider - use occurrence-based greeting (shows shifts immediately)
+        const provider = providerResult.providers[0];
+        
+        // Update state with FULL provider object from backgroundData (includes transfer number)
+        const updatedState = {
+          ...callState,
+          phase: 'provider_selection',
+          employee: authResult.employee,
+          provider: {
+            id: provider.id,
+            name: provider.name,
+            greeting: provider.greeting,
+            transferNumber: provider.transferNumber  // CRITICAL: Include transfer number
+          },
+          authMethod: 'pin',
+          pinBuffer: undefined, // Clear PIN buffer
+          updatedAt: new Date().toISOString()
+        };
+        
+        const greeting = generateOccurrenceBasedGreeting(
+          authResult.employee,
+          provider,
+          enrichedOccurrences,
+          1  // Start at page 1
+        );
+        
+        if (greeting.shouldPresentJobs) {
+          // Has occurrences - update state to occurrence_selection phase
+          const updatedStateWithOccurrences = {
+            ...updatedState,
+            phase: 'occurrence_selection',
+            enrichedOccurrences: enrichedOccurrences,
+            currentPage: 1
+          };
+          await saveState(updatedStateWithOccurrences);
+        } else {
+          // No occurrences - set phase to handle "press 1 for representative"
+          const noOccurrencesState = {
+            ...updatedState,
+            phase: 'no_occurrences_found',
+            enrichedOccurrences: []
+          };
+          await saveState(noOccurrencesState);
+        }
+        
         await generateAndSpeak(greeting.message);
       } else {
-        const greeting = generateMultiProviderGreeting(authResult.employee, providerResult.providers);
-        const updatedStateWithProviders = {
-          ...updatedState,
+        // Multiple providers - ask user to select
+        const updatedState = {
+          ...callState,
+          phase: 'provider_selection',
+          employee: authResult.employee,
+          provider: null,  // No single provider yet
+          authMethod: 'pin',
+          pinBuffer: undefined, // Clear PIN buffer
           availableProviders: providerResult.providers.map((p: any, index: number) => ({
             ...p,
             selectionNumber: index + 1
-          }))
+          })),
+          updatedAt: new Date().toISOString()
         };
-        await saveState(updatedStateWithProviders);
+        await saveState(updatedState);
+        
+        const greeting = generateMultiProviderGreeting(authResult.employee, providerResult.providers);
         await generateAndSpeak(greeting);
       }
       
@@ -312,7 +353,7 @@ async function handleProviderSelection(context: DTMFRoutingContext): Promise<voi
     },
     employeeJobs: filteredJobs.map((job: any, index: number) => ({
       ...job,
-      index: index + 1
+      index: index + 2 // Start from 2 (1 is reserved for "speak to representative")
     })),
     updatedAt: new Date().toISOString()
   };
@@ -325,9 +366,48 @@ async function handleProviderSelection(context: DTMFRoutingContext): Promise<voi
  * Handle job selection DTMF
  */
 async function handleJobSelection(context: DTMFRoutingContext): Promise<void> {
-  const { callState, digit, generateAndSpeak, saveState } = context;
+  const { callState, digit, generateAndSpeak, saveState, ws } = context;
   
   const selectionNum = parseInt(digit, 10);
+  
+  // Handle option 1: Transfer to representative
+  if (selectionNum === 1) {
+    logger.info('Option 1 selected - transferring to representative', {
+      type: 'transfer_to_representative'
+    });
+    
+    // Track event
+    if (ws.callEvents) {
+      trackCallEvent(ws.callEvents, 'job_selection', 'transfer_to_representative', {});
+    }
+    
+    const transferNumber = callState.provider?.transferNumber;
+    
+    if (!transferNumber) {
+      logger.error('No transfer number configured for provider', {
+        providerId: callState.provider?.id
+      });
+      await generateAndSpeak('Unable to transfer. Please contact your supervisor.');
+      return;
+    }
+    
+    // Update state to representative transfer phase
+    const updatedState = {
+      ...callState,
+      phase: 'representative_transfer',
+      updatedAt: new Date().toISOString()
+    };
+    
+    await saveState(updatedState);
+    
+    // Transfer to representative
+    await generateAndSpeak(`Transferring you to a representative now.`);
+    
+    // Note: The actual Dial happens in the TwiML response, not here in websocket flow
+    // The websocket will handle the transfer through the call flow
+    return;
+  }
+  
   const jobResult = selectJob(callState.employeeJobs || [], selectionNum);
   
   if (!jobResult.success || !jobResult.job) {
@@ -342,7 +422,6 @@ async function handleJobSelection(context: DTMFRoutingContext): Promise<void> {
   });
 
   // Track event
-  const { ws } = context;
   if (ws.callEvents) {
     trackCallEvent(ws.callEvents, 'job_selection', 'job_selected', {
       jobCode: jobResult.job.jobTemplate.jobCode,
@@ -445,6 +524,65 @@ async function handleJobOptions(context: DTMFRoutingContext): Promise<void> {
               displayDate: callState.selectedOccurrence?.displayDateTime || '',
             };
             
+            // Fetch the actual patient record to get the staff pool IDs
+            // Try multiple sources for patient ID
+            let staffPoolIds: string[] = [];
+            let patientId = callState.selectedOccurrence?.patient?.id;
+            
+            // If patient ID not in call state, fetch it from the job occurrence
+            if (!patientId) {
+              const occurrenceRecordId = callState.selectedOccurrence?.occurrenceRecordId;
+              if (occurrenceRecordId) {
+                try {
+                  const occurrenceRecord = await airtableClient.getJobOccurrenceById(occurrenceRecordId);
+                  if (occurrenceRecord && occurrenceRecord.fields['Patient (Link)']?.[0]) {
+                    patientId = occurrenceRecord.fields['Patient (Link)'][0];
+                    logger.info('Fetched patient ID from occurrence', {
+                      occurrenceId: occurrenceRecordId,
+                      patientId,
+                      type: 'patient_id_from_occurrence'
+                    });
+                  }
+                } catch (error) {
+                  logger.error('Error fetching occurrence for patient ID', {
+                    occurrenceId: occurrenceRecordId,
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                    type: 'occurrence_fetch_error'
+                  });
+                }
+              }
+            }
+            
+            if (patientId) {
+              try {
+                const patientRecord = await airtableClient.getPatientById(patientId);
+                if (patientRecord && patientRecord.fields['Related Staff Pool']) {
+                  staffPoolIds = patientRecord.fields['Related Staff Pool'];
+                  logger.info('Fetched staff pool for patient', {
+                    patientId,
+                    staffPoolSize: staffPoolIds.length,
+                    type: 'staff_pool_fetched'
+                  });
+                } else {
+                  logger.warn('No staff pool found for patient', {
+                    patientId,
+                    type: 'no_staff_pool'
+                  });
+                }
+              } catch (error) {
+                logger.error('Error fetching patient staff pool', {
+                  patientId,
+                  error: error instanceof Error ? error.message : 'Unknown error',
+                  type: 'staff_pool_fetch_error'
+                });
+              }
+            } else {
+              logger.error('Could not determine patient ID for staff pool lookup', {
+                occurrenceId: callState.selectedOccurrence?.occurrenceId,
+                type: 'no_patient_id'
+              });
+            }
+            
             const fullPatient = {
               id: callState.selectedOccurrence?.patient?.id || '',
               name: callState.selectedOccurrence?.patient?.fullName || 'Unknown Patient',
@@ -453,6 +591,7 @@ async function handleJobOptions(context: DTMFRoutingContext): Promise<void> {
               dateOfBirth: '',
               providerId: providerId,
               active: true,
+              staffPoolIds: staffPoolIds, // Use fetched staff pool IDs
             };
             
             // Trigger redistribution without waiting (non-blocking)
@@ -543,7 +682,7 @@ async function handleJobOptions(context: DTMFRoutingContext): Promise<void> {
     
   } else {
     // Invalid selection
-    await generateAndSpeak('Invalid selection. Press 1 to leave this shift open, or press 2 to connect with a representative.');
+    await generateAndSpeak('Invalid selection. Press 1 to cancel your shift, or press 2 to connect with a representative.');
   }
   
   // OLD FLOW (commented out - had reschedule option):
@@ -694,7 +833,7 @@ async function handleBackToJobSelection(context: DTMFRoutingContext): Promise<vo
     patient: undefined,
     employeeJobs: filteredJobs.map((job: any, index: number) => ({
       ...job,
-      index: index + 1
+      index: index + 2 // Start from 2 (1 is reserved for "speak to representative")
     })),
     updatedAt: new Date().toISOString()
   };
@@ -702,15 +841,16 @@ async function handleBackToJobSelection(context: DTMFRoutingContext): Promise<vo
   await saveState(updatedState);
   
   // Generate job list message
+  // Option 1 is always "speak to a representative", jobs start from option 2
   let jobListMessage = '';
   if (filteredJobs.length === 1) {
     const job = filteredJobs[0];
     const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
-    jobListMessage = `You have one job: ${job.jobTemplate.title} for ${patientLastName}. Press 1 to select this job.`;
+    jobListMessage = `Press 1 to speak to a representative, or Press 2 for ${job.jobTemplate.title} for ${patientLastName}.`;
   } else {
-    jobListMessage = `You have ${filteredJobs.length} jobs. `;
+    jobListMessage = `Press 1 to speak to a representative. You have ${filteredJobs.length} jobs. `;
     filteredJobs.forEach((job: any, index: number) => {
-      const number = index + 1;
+      const number = index + 2; // Jobs start from 2
       const patientLastName = job.patient?.name ? job.patient.name.split(' ').pop() : 'the patient';
       jobListMessage += `Press ${number} for ${job.jobTemplate.title} for ${patientLastName}. `;
     });
@@ -1112,7 +1252,19 @@ async function handleWorkflowComplete(context: DTMFRoutingContext): Promise<void
     });
     
     await generateAndSpeak("Thank you for calling. Have a great day! Goodbye.");
-    // The call will naturally end
+    
+    // Update state to indicate workflow is complete
+    const finalState = {
+      ...callState,
+      phase: 'done',
+      updatedAt: new Date().toISOString()
+    };
+    await saveState(finalState);
+    
+    // Close WebSocket to end the call
+    if (ws.readyState === 1) {
+      ws.close(1000, 'User requested call end');
+    }
     
   } else {
     await generateAndSpeak('Invalid selection. Press 1 to handle another shift, or press 2 to end this call.');

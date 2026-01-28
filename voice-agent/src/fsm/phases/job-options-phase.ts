@@ -105,7 +105,7 @@ export function processJobOptionsPhase(state: CallState, input: string, hasInput
         result: {
           twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Google.en-AU-Wavenet-A">Please wait while I look up your upcoming appointments.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">Please wait while I look up your upcoming appointments.</Say>
   <Hangup/>
 </Response>`,
           action: 'transition',
@@ -128,7 +128,7 @@ export function processJobOptionsPhase(state: CallState, input: string, hasInput
       // Redirect to queue transfer endpoint which will handle availability check and queueing
       const transferTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Amy">Let me connect you to a representative.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">Let me connect you to a representative.</Say>
   <Redirect method="POST">/api/queue/initiate-transfer?JobTitle=${encodeURIComponent(jobTitle)}&amp;PatientName=${encodeURIComponent(patientName)}</Redirect>
 </Response>`;
       

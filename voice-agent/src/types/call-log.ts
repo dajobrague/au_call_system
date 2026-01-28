@@ -16,6 +16,9 @@ export interface CallLogCreateData {
   employeeId?: string;
   direction: 'Inbound' | 'Outbound';
   startedAt: string;
+  // Outbound calling fields (Phase 1)
+  callPurpose?: 'IVR Session' | 'Outbound Job Offer' | 'Transfer to Representative';
+  attemptRound?: number; // Which round this call was in (1, 2, 3, etc.)
 }
 
 export interface CallLogUpdateData {
@@ -27,6 +30,9 @@ export interface CallLogUpdateData {
   patientId?: string;
   relatedOccurrenceId?: string;
   notes?: string;
+  // Outbound calling fields (Phase 1)
+  callOutcome?: 'Accepted' | 'Declined' | 'No Answer' | 'Busy' | 'Failed' | 'Voicemail';
+  dtmfResponse?: string; // The digit pressed by staff ("1" or "2")
 }
 
 export interface CallLogResult {

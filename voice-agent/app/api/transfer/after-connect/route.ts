@@ -89,13 +89,12 @@ export async function POST(request: NextRequest) {
         type: 'after_connect_transfer_found'
       });
 
-      // Generate TwiML for transfer with Dial
+      // Generate TwiML for transfer with Dial (no recording - keep it simple)
       twiml.say({ voice: 'Polly.Amy' }, 'Connecting you to a representative. Please hold.');
       
       const dial = twiml.dial({
         callerId: callState.pendingTransfer.callerPhone,
         timeout: 30,
-        record: 'record-from-answer',
         action: `${APP_BASE_URL}/api/queue/transfer-status?callSid=${callSid}&from=${encodeURIComponent(from)}`
       });
       

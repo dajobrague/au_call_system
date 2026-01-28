@@ -51,16 +51,19 @@ export const airtableConfig: AirtableConfig = {
 export const AIRTABLE_API_BASE = 'https://api.airtable.com/v0';
 
 // Request timeout (in milliseconds)
-export const REQUEST_TIMEOUT = 5000; // 5 seconds
+// Increased to handle Airtable being under load or rate-limited
+export const REQUEST_TIMEOUT = 8000; // 8 seconds
 
 // Maximum records to fetch in a single request
 export const MAX_RECORDS_PER_REQUEST = 100;
 
 // Retry configuration
+// Airtable rate limit: 5 requests/second per base
+// Conservative retry strategy to avoid hitting rate limits
 export const RETRY_CONFIG = {
-  maxRetries: 3,
-  retryDelay: 1000, // 1 second
-  backoffMultiplier: 2,
+  maxRetries: 2, // Only 2 retries (3 total attempts) to reduce load
+  retryDelay: 2000, // 2 seconds base delay to respect rate limits
+  backoffMultiplier: 2.5, // Longer backoff: 2s, 5s
 } as const;
 
 /**

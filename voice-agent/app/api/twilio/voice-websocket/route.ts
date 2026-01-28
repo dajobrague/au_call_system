@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     // Fallback TwiML
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Amy">An error occurred. Please try again later.</Say>
+  <Say voice="Google.en-AU-Wavenet-C">An error occurred. Please try again later.</Say>
   <Hangup/>
 </Response>`;
     

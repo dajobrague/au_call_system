@@ -18,11 +18,13 @@ import {
   generateNaturalReasonPrompt, 
   generateEmpatheticConfirmation 
 } from '../../services/voice/reason-processor';
+import { publishShiftOpened, publishStaffNotified } from '../../services/redis/call-event-publisher';
 import { jobNotificationService } from '../../services/sms/job-notification-service';
 import { 
   summarizeConversation, 
   detectEmotionalDistress 
 } from '../../services/voice/conversation-summarizer';
+import { airtableClient } from '../../services/airtable/client';
 import type { CallState, ProcessingResult, InputSource } from '../types';
 
 /**
@@ -302,6 +304,43 @@ export async function processConfirmLeaveOpenPhase(state: CallState, input: stri
               displayDate: state.selectedOccurrence.displayDate,
             };
             
+            // Fetch the actual patient record to get the staff pool IDs
+            // Try multiple sources for patient ID
+            let staffPoolIds: string[] = [];
+            let patientId = state.patient?.id;
+            
+            // If patient ID not in state, fetch it from the job occurrence
+            if (!patientId) {
+              const occurrenceId = state.selectedOccurrence?.id;
+              if (occurrenceId) {
+                try {
+                  const occurrenceRecord = await airtableClient.getJobOccurrenceById(occurrenceId);
+                  if (occurrenceRecord && occurrenceRecord.fields['Patient (Link)']?.[0]) {
+                    patientId = occurrenceRecord.fields['Patient (Link)'][0];
+                    console.log(`Fetched patient ID from occurrence ${occurrenceId}: ${patientId}`);
+                  }
+                } catch (error) {
+                  console.error(`Error fetching occurrence for patient ID: ${error}`);
+                }
+              }
+            }
+            
+            if (patientId) {
+              try {
+                const patientRecord = await airtableClient.getPatientById(patientId);
+                if (patientRecord && patientRecord.fields['Related Staff Pool']) {
+                  staffPoolIds = patientRecord.fields['Related Staff Pool'];
+                  console.log(`Fetched staff pool for patient ${patientId}: ${staffPoolIds.length} employees`);
+                } else {
+                  console.log(`No staff pool found for patient ${patientId}`);
+                }
+              } catch (error) {
+                console.error(`Error fetching patient staff pool: ${error}`);
+              }
+            } else {
+              console.error(`Could not determine patient ID for staff pool lookup`);
+            }
+            
             const fullPatient = {
               id: state.patient?.id || '',
               name: state.patient?.name || 'Unknown Patient',
@@ -310,6 +349,7 @@ export async function processConfirmLeaveOpenPhase(state: CallState, input: stri
               dateOfBirth: '',
               providerId: state.provider?.id || '',
               active: true,
+              staffPoolIds: staffPoolIds, // Use fetched staff pool IDs
             };
             
             // Start instant redistribution (don't wait for completion)
@@ -322,6 +362,30 @@ export async function processConfirmLeaveOpenPhase(state: CallState, input: stri
             );
             
             console.log(`Instant redistribution result: ${redistributionResult.employeesNotified} employees notified`);
+            
+            // Publish shift_opened event to Redis Stream (non-blocking)
+            if (state.provider?.id && state.sid && state.selectedOccurrence) {
+              publishShiftOpened(
+                state.sid,
+                state.provider.id,
+                state.selectedOccurrence.id,
+                state.patient?.name
+              ).catch(err => {
+                console.error('Failed to publish shift_opened event:', err.message);
+              });
+              
+              // Publish staff_notified event
+              if (redistributionResult.employeesNotified > 0) {
+                publishStaffNotified(
+                  state.sid,
+                  state.provider.id,
+                  redistributionResult.employeesNotified,
+                  state.selectedOccurrence.id
+                ).catch(err => {
+                  console.error('Failed to publish staff_notified event:', err.message);
+                });
+              }
+            }
             
           } catch (redistributionError) {
             // Log error but don't fail the main flow

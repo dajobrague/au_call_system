@@ -22,7 +22,7 @@ interface CallSession {
   startTime: string;
   endTime?: string;
   duration?: number;
-  fromNumber: string;
+  fromNumber?: string;
   callerName?: string;
   events: CallEvent[];
 }
@@ -259,9 +259,11 @@ export default function TodayLiveCallLogPage() {
                     <div className="mb-3">
                       <p className="text-sm text-gray-600">
                         <span className="font-medium">
-                          {call.callerName ? `👤 ${call.callerName}` : '📞'} 
+                          {call.callerName ? `👤 ${call.callerName}` : '📞 Caller'} 
                         </span>
-                        <span className="ml-2 text-gray-500">{call.fromNumber}</span>
+                        {call.fromNumber && (
+                          <span className="ml-2 text-gray-500">{call.fromNumber}</span>
+                        )}
                       </p>
                     </div>
 

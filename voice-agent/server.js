@@ -80,6 +80,10 @@ app.prepare().then(() => {
   const { twilioConfig } = require('./src/config/twilio');
   const { initializeDisclaimerCache, playDisclaimerFromCache } = require('./src/audio/disclaimer-cache');
   const twilioClient = require('twilio');
+  const { 
+    publishCallStarted, 
+    publishCallAuthenticated 
+  } = require('./src/services/redis/call-event-publisher');
 
   const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || '';
   const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'aEO01A4wXwd1O8GPgGlF';
@@ -133,6 +137,15 @@ app.prepare().then(() => {
 
         ws.callEvents = [];
         ws.callStartTime = new Date();
+
+        // Publish call_started event to Redis Stream (non-blocking)
+        publishCallStarted(
+          ws.callSid,
+          'pending', // Provider ID will be determined during authentication
+          callerPhone
+        ).catch(err => {
+          console.error('Failed to publish call_started event:', err.message);
+        });
 
         // Recording is now handled by TwiML (record="record-from-answer-dual" in <Connect>)
         // No need to start recording via API - Twilio starts it automatically
@@ -232,6 +245,19 @@ app.prepare().then(() => {
 
         if (callLogResult.success && callLogResult.recordId) {
           ws.callLogRecordId = callLogResult.recordId;
+
+          // Publish call_authenticated event to Redis Stream (non-blocking)
+          if (providerId) {
+            ws.providerId = providerId; // Store for call_ended event
+            publishCallAuthenticated(
+              ws.callSid,
+              providerId,
+              authResult.employee.name,
+              callerPhone
+            ).catch(err => {
+              console.error('Failed to publish call_authenticated event:', err.message);
+            });
+          }
         }
 
         // Generate greeting
@@ -251,7 +277,7 @@ app.prepare().then(() => {
             const updatedState = {
               ...callState,
               phase: 'occurrence_selection',
-              provider: provider ? { id: provider.id, name: provider.name, greeting: provider.greeting } : null,
+              provider: provider ? { id: provider.id, name: provider.name, greeting: provider.greeting, transferNumber: provider.transferNumber } : null,
               enrichedOccurrences: enrichedOccurrences,
               currentPage: 1
             };
@@ -260,7 +286,7 @@ app.prepare().then(() => {
             const updatedState = {
               ...callState,
               phase: 'no_occurrences_found',
-              provider: provider ? { id: provider.id, name: provider.name, greeting: provider.greeting } : null,
+              provider: provider ? { id: provider.id, name: provider.name, greeting: provider.greeting, transferNumber: provider.transferNumber } : null,
               enrichedOccurrences: enrichedOccurrences,
               updatedAt: new Date().toISOString()
             };
@@ -345,6 +371,26 @@ app.prepare().then(() => {
     console.error('   SMS waves will not be processed!');
   }
 
+  // Initialize Outbound Call Worker (Phase 2)
+  try {
+    const { initializeOutboundCallWorker } = require('./src/workers/outbound-call-worker');
+    initializeOutboundCallWorker();
+    console.log('✅ Outbound Call Worker initialized');
+  } catch (workerError) {
+    console.error('⚠️  Outbound Call Worker initialization failed:', workerError.message);
+    console.error('   Outbound calls will not be processed!');
+  }
+
+  // Initialize Report Scheduler
+  try {
+    const { initializeReportScheduler } = require('./src/services/cron/report-scheduler');
+    initializeReportScheduler();
+    console.log('✅ Report Scheduler initialized (midnight AEST)');
+  } catch (schedulerError) {
+    console.error('⚠️  Report Scheduler initialization failed:', schedulerError.message);
+    console.error('   Daily reports will not be generated automatically!');
+  }
+
   // ============================================================
   // Twilio Voice Endpoints (needed for WebSocket)
   // ============================================================
@@ -364,12 +410,19 @@ app.prepare().then(() => {
       
       const websocketUrl = `${wsProtocol}://${host}/stream`;
       const actionUrl = `${protocol}://${host}/api/transfer/after-connect?callSid=${req.body.CallSid}&from=${encodeURIComponent(req.body.From)}`;
+      const recordingStatusCallback = `${protocol}://${host}/api/twilio/recording-status`;
       
       const VoiceResponse = twilio.twiml.VoiceResponse;
       const response = new VoiceResponse();
       
-      const connect = response.connect({ action: actionUrl });
+      // Enable call recording with callback
+      const connect = response.connect({ 
+        action: actionUrl,
+        record: true,
+        recordingStatusCallback: recordingStatusCallback
+      });
       const stream = connect.stream({ url: websocketUrl });
+      // Note: track attribute needs to be set differently - will fix after confirming syntax
       stream.parameter({ name: 'phone', value: req.body.From });
       stream.parameter({ name: 'parentCallSid', value: req.body.CallSid });
       
@@ -377,6 +430,15 @@ app.prepare().then(() => {
       response.hangup();
 
       res.type('text/xml').send(response.toString());
+      
+      logger.info('TwiML generated with recording (server.js)', {
+        callSid: req.body.CallSid,
+        from: req.body.From,
+        websocketUrl: websocketUrl,
+        recordingStatusCallback: recordingStatusCallback,
+        actionUrl: actionUrl,
+        type: 'twiml_with_recording'
+      });
       
       if (req.body.CallSid) {
         try {
@@ -418,22 +480,39 @@ app.prepare().then(() => {
         const protocol = 'https';
         const APP_BASE_URL = `${protocol}://${host}`;
         
+        const representativePhone = callState.pendingTransfer.representativePhone;
+        const callerPhone = callState.pendingTransfer.callerPhone;
+        
+        logger.info('Pending transfer found - generating simple Dial TwiML', {
+          callSid,
+          representativePhone,
+          type: 'after_connect_transfer_found'
+        });
+        
+        // Generate TwiML for simple direct transfer (no recording, no conference)
         twiml.say({ voice: 'Polly.Amy' }, 'Connecting you to a representative. Please hold.');
         
         const dial = twiml.dial({
-          callerId: callState.pendingTransfer.callerPhone,
+          callerId: callerPhone,
           timeout: 30,
-          record: 'record-from-answer',
           action: `${APP_BASE_URL}/api/queue/transfer-status?callSid=${callSid}&from=${encodeURIComponent(from)}`
         });
         
-        dial.number(callState.pendingTransfer.representativePhone);
+        // Simple direct dial to representative - no conference, no recording
+        dial.number(representativePhone);
+        
+        // Clear the pending transfer flag
+        callState.pendingTransfer = undefined;
+        await saveCallState(callState);
+        
+        logger.info('Simple Dial TwiML generated for transfer (no recording)', {
+          callSid,
+          representativePhone,
+          type: 'after_connect_dial_twiml'
+        });
         
         twiml.say({ voice: 'Polly.Amy' }, 'The representative is not available. You will be placed in the queue.');
         twiml.redirect(`${APP_BASE_URL}/api/queue/enqueue-caller?callSid=${callSid}&from=${encodeURIComponent(from)}`);
-        
-        callState.pendingTransfer = undefined;
-        await saveCallState(callState);
       } else {
         twiml.say({ voice: 'Polly.Amy' }, 'Thank you for calling. Goodbye.');
         twiml.hangup();
@@ -449,6 +528,8 @@ app.prepare().then(() => {
       return res.type('text/xml').send(twiml.toString());
     }
   });
+
+  // Conference recording endpoint removed - transfer recordings disabled for reliability
 
   // Health check
   server.get('/health', (req, res) => {
@@ -496,6 +577,24 @@ app.prepare().then(() => {
       console.log('✅ SMS Wave Worker shut down');
     } catch (error) {
       console.error('⚠️  Error shutting down SMS Wave Worker:', error.message);
+    }
+    
+    // Shutdown Outbound Call Worker (Phase 2)
+    try {
+      const { shutdownOutboundCallWorker } = require('./src/workers/outbound-call-worker');
+      await shutdownOutboundCallWorker();
+      console.log('✅ Outbound Call Worker shut down');
+    } catch (error) {
+      console.error('⚠️  Error shutting down Outbound Call Worker:', error.message);
+    }
+    
+    // Shutdown Report Scheduler
+    try {
+      const { shutdownReportScheduler } = require('./src/services/cron/report-scheduler');
+      shutdownReportScheduler();
+      console.log('✅ Report Scheduler shut down');
+    } catch (error) {
+      console.error('⚠️  Error shutting down Report Scheduler:', error.message);
     }
     
     // Close WebSocket server

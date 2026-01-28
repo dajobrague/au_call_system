@@ -122,7 +122,6 @@ try {
         const dial = twiml.dial({
           callerId: callState.pendingTransfer.callerPhone,
           timeout: 30,
-          record: 'record-from-answer',
           action: `${APP_BASE_URL}/api/queue/transfer-status?callSid=${callSid}&from=${encodeURIComponent(from)}`
         });
         
@@ -134,7 +133,7 @@ try {
         callState.pendingTransfer = undefined;
         await saveCallState(callState);
         
-        logger.info('Dial TwiML generated', { callSid });
+        logger.info('Simple Dial TwiML generated (no recording)', { callSid });
       } else {
         twiml.say({ voice: 'Polly.Amy' }, 'Thank you for calling. Goodbye.');
         twiml.hangup();
@@ -161,6 +160,16 @@ try {
     console.error('   SMS waves will not be processed!');
   }
 
+  // Initialize Outbound Call Worker (Phase 2)
+  try {
+    const { initializeOutboundCallWorker } = require('./src/workers/outbound-call-worker');
+    initializeOutboundCallWorker();
+    console.log('✅ Outbound Call Worker initialized');
+  } catch (workerError) {
+    console.error('⚠️  Outbound Call Worker initialization failed:', workerError.message);
+    console.error('   Outbound calls will not be processed!');
+  }
+
   server.listen(PORT, () => {
     console.log('✅ WebSocket Server Started Successfully!');
     console.log(`📡 Listening on port ${PORT}`);
@@ -185,6 +194,15 @@ try {
       console.error('⚠️  Error shutting down SMS Wave Worker:', error.message);
     }
     
+    // Shutdown Outbound Call Worker (Phase 2)
+    try {
+      const { shutdownOutboundCallWorker } = require('./src/workers/outbound-call-worker');
+      await shutdownOutboundCallWorker();
+      console.log('✅ Outbound Call Worker shut down');
+    } catch (error) {
+      console.error('⚠️  Error shutting down Outbound Call Worker:', error.message);
+    }
+    
     server.close(() => {
       console.log('✅ Server closed successfully');
       process.exit(0);
@@ -201,6 +219,15 @@ try {
       console.log('✅ SMS Wave Worker shut down');
     } catch (error) {
       console.error('⚠️  Error shutting down SMS Wave Worker:', error.message);
+    }
+    
+    // Shutdown Outbound Call Worker (Phase 2)
+    try {
+      const { shutdownOutboundCallWorker } = require('./src/workers/outbound-call-worker');
+      await shutdownOutboundCallWorker();
+      console.log('✅ Outbound Call Worker shut down');
+    } catch (error) {
+      console.error('⚠️  Error shutting down Outbound Call Worker:', error.message);
     }
     
     server.close(() => {
