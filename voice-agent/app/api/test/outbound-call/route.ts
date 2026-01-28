@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getJobOccurrenceById } from '../../../../src/services/airtable/job-service';
-import { getEmployeeById } from '../../../../src/services/airtable/employee-service';
+import { airtableClient } from '../../../../src/services/airtable/client';
+import { twilioConfig } from '../../../../src/config/twilio';
 import { generateOutboundCallAudio } from '../../../../src/services/calling/audio-pregenerator';
 import { generateTwiMLUrl } from '../../../../src/services/calling/twiml-generator';
 import { createCallLog } from '../../../../src/services/airtable/call-log-service';
-import { twilioClient, twilioConfig } from '../../../../src/config/telephony';
+import { logger } from '../../../../src/lib/logger';
+const twilio = require('twilio');
 
 export const runtime = 'nodejs';
+
+const twilioClient = twilio(twilioConfig.accountSid, twilioConfig.authToken);
 
 /**
  * Test API Endpoint - Trigger Outbound Call
@@ -16,156 +19,167 @@ export const runtime = 'nodejs';
  * Body:
  * {
  *   "phoneNumber": "+522281957913",
- *   "occurrenceId": "recXXXXXXXXX",  // Any open job
- *   "employeeId": "recYYYYYYYYY"      // Optional: any employee (for name)
+ *   "occurrenceId": "recXXXXXXXXX"  // Any open job
  * }
  * 
- * This endpoint:
- * 1. Fetches job details from Airtable
- * 2. Generates personalized audio
- * 3. Makes a test call to the specified number
- * 4. Creates a call log
- * 
- * Safe to use in production - only makes ONE call, doesn't affect queues
+ * Makes ONE test call - safe to use in production
  */
 export async function POST(request: NextRequest) {
-  console.log('[Test Outbound Call] API endpoint called');
+  logger.info('Test outbound call endpoint called', { type: 'test_outbound_start' });
   
   try {
     const body = await request.json();
-    const { phoneNumber, occurrenceId, employeeId } = body;
+    const { phoneNumber, occurrenceId } = body;
     
     // Validation
     if (!phoneNumber) {
       return NextResponse.json(
-        { error: 'phoneNumber is required' },
+        { error: 'phoneNumber is required (E.164 format, e.g., +522281957913)' },
         { status: 400 }
       );
     }
     
     if (!occurrenceId) {
       return NextResponse.json(
-        { error: 'occurrenceId is required (any open job ID)' },
+        { error: 'occurrenceId is required (any job ID from Airtable)' },
         { status: 400 }
       );
     }
     
-    console.log('[Test Outbound Call] Request:', {
+    logger.info('Test call request', {
       phoneNumber,
       occurrenceId,
-      employeeId: employeeId || 'none (will use generic)'
+      type: 'test_outbound_request'
     });
     
     // Fetch job details
-    console.log('[Test Outbound Call] Fetching job details...');
-    const job = await getJobOccurrenceById(occurrenceId);
+    const job = await airtableClient.getJobOccurrenceById(occurrenceId);
     
     if (!job) {
       return NextResponse.json(
-        { error: 'Job not found' },
+        { error: 'Job not found', occurrenceId },
         { status: 404 }
       );
     }
     
-    console.log('[Test Outbound Call] Job found:', {
-      status: job.status,
-      patientName: job.patientName,
-      date: job.scheduledDate
+    logger.info('Job found', {
+      occurrenceId,
+      status: job.fields['Status'],
+      type: 'test_outbound_job_found'
     });
     
-    // Get employee name (or use generic)
-    let employeeName = 'there';
-    let employeeFirstName = 'there';
+    // Prepare job details
+    const patientName = job.fields['Patient TXT'] || 'the patient';
+    const scheduledDate = job.fields['Scheduled At'] || 'today';
+    const displayDate = job.fields['Display Date'] || scheduledDate;
+    const startTime = job.fields['Time'] || 'soon';
+    const suburb = 'your area'; // Not in JobOccurrenceFields
+    const providerId = job.fields['Provider']?.[0] || '';
     
-    if (employeeId) {
-      console.log('[Test Outbound Call] Fetching employee details...');
-      const employee = await getEmployeeById(employeeId);
-      if (employee) {
-        employeeName = `${employee.firstName} ${employee.lastName}`;
-        employeeFirstName = employee.firstName;
-        console.log('[Test Outbound Call] Employee found:', employeeName);
-      }
-    }
-    
-    // Prepare job details for audio generation
-    const jobDetails = {
-      patientName: job.patientName || 'the patient',
-      patientFirstName: job.patientFirstName || 'the patient',
-      patientLastInitial: job.patientLastName?.charAt(0) || '',
-      scheduledDate: job.scheduledDate,
-      displayDate: job.displayDate || job.scheduledDate,
-      startTime: job.startTime,
-      endTime: job.endTime,
-      suburb: job.suburb,
-      messageTemplate: `Hi {employeeName}, we have an urgent shift for {patientName} on {date} at {time}. It's in {suburb}. Press 1 to accept this shift, or press 2 to decline.`
-    };
-    
-    console.log('[Test Outbound Call] Generating audio...');
+    // Use template variables (will be substituted later)
+    const messageTemplate = `Hi {employeeName}, we have an urgent shift for {patientName} on {date} at {time}. Press 1 to accept this shift, or press 2 to decline.`;
     
     // Generate audio
+    const callId = `TEST-${Date.now()}`;
+    
+    logger.info('Generating audio', { callId, type: 'test_outbound_audio_gen' });
+    
     const audioResult = await generateOutboundCallAudio(
-      employeeName,
-      employeeFirstName,
-      jobDetails
+      messageTemplate,
+      {
+        employeeName: 'there',
+        patientName,
+        date: displayDate,
+        time: startTime,
+        startTime,
+        suburb
+      },
+      callId
     );
     
-    console.log('[Test Outbound Call] Audio generated:', {
-      callId: audioResult.callId,
+    if (!audioResult.success || !audioResult.audioUrl) {
+      logger.error('Audio generation failed', {
+        callId,
+        error: audioResult.error,
+        type: 'test_outbound_audio_failed'
+      });
+      
+      return NextResponse.json(
+        { error: 'Audio generation failed', details: audioResult.error },
+        { status: 500 }
+      );
+    }
+    
+    logger.info('Audio generated', {
+      callId,
       audioUrl: audioResult.audioUrl,
-      estimatedDuration: audioResult.estimatedDuration
+      type: 'test_outbound_audio_success'
     });
     
     // Create call log
-    console.log('[Test Outbound Call] Creating call log...');
     const callLogResult = await createCallLog({
-      callSid: `TEST-${Date.now()}`, // Will be updated with real SID
-      providerId: job.providerId,
-      employeeId: employeeId,
+      callSid: 'pending',
+      providerId,
       direction: 'Outbound',
       startedAt: new Date().toISOString(),
       callPurpose: 'Outbound Job Offer',
       attemptRound: 1
     });
     
-    const callLogRecordId = callLogResult.id;
-    console.log('[Test Outbound Call] Call log created:', callLogRecordId);
+    const callLogRecordId = callLogResult.recordId || '';
     
     // Generate TwiML URL
-    const twimlUrl = generateTwiMLUrl(
-      audioResult.callId,
-      occurrenceId,
-      employeeId || 'TEST_EMPLOYEE',
-      1 // Round 1
-    );
-    
-    console.log('[Test Outbound Call] TwiML URL:', twimlUrl);
+    const twimlUrl = generateTwiMLUrl(callId, occurrenceId, 'TEST_EMPLOYEE', 1);
     
     // Get base URL for callbacks
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                    process.env.RAILWAY_PUBLIC_DOMAIN 
-                      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-                      : 'http://localhost:3000';
+    const { getBaseUrl } = await import('../../../../src/config/base-url');
+    const baseUrl = getBaseUrl();
     
-    // Make the call!
-    console.log('[Test Outbound Call] Initiating Twilio call...');
-    console.log('[Test Outbound Call] From:', twilioConfig.phoneNumber);
-    console.log('[Test Outbound Call] To:', phoneNumber);
+    logger.info('Initiating Twilio call', {
+      callId,
+      phoneNumber,
+      from: twilioConfig.phoneNumber,
+      twimlUrl,
+      type: 'test_outbound_twilio_start'
+    });
     
+    // Make the call
     const call = await twilioClient.calls.create({
       to: phoneNumber,
       from: twilioConfig.phoneNumber,
       url: twimlUrl,
-      statusCallback: `${baseUrl}/api/outbound/status?callId=${audioResult.callId}&occurrenceId=${occurrenceId}&employeeId=${employeeId || 'TEST'}&round=1`,
+      method: 'POST',
+      statusCallback: `${baseUrl}/api/outbound/status?callId=${callId}&occurrenceId=${occurrenceId}&employeeId=TEST&round=1`,
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
       statusCallbackMethod: 'POST',
       timeout: 30,
-      record: false, // Don't record test calls
       machineDetection: 'Enable'
     });
     
-    console.log('[Test Outbound Call] ✅ Call initiated!');
-    console.log('[Test Outbound Call] Call SID:', call.sid);
-    console.log('[Test Outbound Call] Status:', call.status);
+    logger.info('Call initiated', {
+      callId,
+      callSid: call.sid,
+      status: call.status,
+      type: 'test_outbound_success'
+    });
+    
+    // Update call log with real CallSid
+    if (callLogRecordId) {
+      try {
+        await airtableClient.updateRecord(
+          'tbl9BBKoeV45juYaj', // Call Logs table
+          callLogRecordId,
+          { 'CallSid': call.sid }
+        );
+      } catch (error) {
+        logger.warn('Failed to update call log with CallSid', {
+          callId,
+          callSid: call.sid,
+          error: error instanceof Error ? error.message : 'Unknown',
+          type: 'test_outbound_log_update_warning'
+        });
+      }
+    }
     
     return NextResponse.json({
       success: true,
@@ -173,78 +187,56 @@ export async function POST(request: NextRequest) {
       data: {
         callSid: call.sid,
         callStatus: call.status,
-        phoneNumber: phoneNumber,
-        occurrenceId: occurrenceId,
-        employeeName: employeeName,
+        phoneNumber,
+        occurrenceId,
         jobDetails: {
-          patientName: job.patientName,
-          date: job.displayDate || job.scheduledDate,
-          time: job.startTime,
-          suburb: job.suburb
+          patientName,
+          date: displayDate,
+          time: startTime
         },
         callLogId: callLogRecordId,
-        twimlUrl: twimlUrl,
-        audioUrl: audioResult.audioUrl,
-        estimatedDuration: `${audioResult.estimatedDuration}s`,
         instructions: {
           next: 'Answer the phone when it rings',
           accept: 'Press 1 to accept the shift',
           decline: 'Press 2 to decline the shift',
-          monitoring: {
-            callLogs: 'Check Airtable Call Logs table',
-            serverLogs: 'Check Railway logs for details',
-            twilioConsole: 'Check Twilio console for call status'
-          }
+          monitoring: 'Check Railway logs and Airtable Call Logs table'
         }
       }
     });
     
   } catch (error) {
-    console.error('[Test Outbound Call] ❌ Error:', error);
+    logger.error('Test call failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      type: 'test_outbound_error'
+    });
     
     return NextResponse.json(
       {
         error: 'Failed to initiate test call',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        details: error instanceof Error ? error.stack : undefined
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
   }
 }
 
-// Also support GET to show documentation
+// GET to show documentation
 export async function GET() {
   return NextResponse.json({
     endpoint: 'POST /api/test/outbound-call',
     description: 'Test endpoint to trigger a single outbound call',
     usage: {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       body: {
-        phoneNumber: 'string (required) - Phone number in E.164 format (e.g., +522281957913)',
-        occurrenceId: 'string (required) - Any job occurrence ID from Airtable',
-        employeeId: 'string (optional) - Employee ID for personalization, or omit for generic greeting'
+        phoneNumber: 'string (required) - E.164 format (e.g., +522281957913)',
+        occurrenceId: 'string (required) - Any job ID from Airtable'
       },
       example: {
         phoneNumber: '+522281957913',
-        occurrenceId: 'recABCDEFGHIJK',
-        employeeId: 'recXYZ123456789'
+        occurrenceId: 'recABCDEFGHIJK'
       }
     },
-    safety: {
-      production: 'Safe to use in production',
-      impact: 'Only makes ONE call, does not affect job queues or assignment',
-      cost: 'Each call costs ~$0.01-0.02 USD via Twilio'
-    },
-    testing: {
-      step1: 'Deploy code to Railway',
-      step2: 'Get any open job ID from Airtable Job Occurrences table',
-      step3: 'Make POST request to this endpoint with your phone number',
-      step4: 'Answer phone and press 1 or 2',
-      step5: 'Check Airtable Call Logs for results'
-    }
+    safety: 'Safe to use in production - only makes ONE call'
   });
 }
