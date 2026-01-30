@@ -148,12 +148,10 @@ export async function POST(request: NextRequest) {
       to: phoneNumber,
       from: twilioConfig.phoneNumber,
       url: twimlUrl,
-      method: 'POST',
       statusCallback: `${baseUrl}/api/outbound/status?callId=${callId}&occurrenceId=${occurrenceId}&employeeId=TEST&round=1`,
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
       statusCallbackMethod: 'POST',
-      timeout: 30,
-      machineDetection: 'Enable'
+      timeout: 30
     });
     
     logger.info('Call initiated', {

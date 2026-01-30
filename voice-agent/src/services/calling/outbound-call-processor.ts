@@ -172,14 +172,10 @@ export async function processOutboundCall(jobData: OutboundCallJobData): Promise
       to: employeePhone,
       from: twilioConfig.phoneNumber,
       url: twimlUrl,
-      method: 'POST',
       statusCallback: `${baseUrl}/api/outbound/status?callId=${callId}&occurrenceId=${occurrenceId}&employeeId=${staffId}&round=${currentRound}`,
       statusCallbackEvent: ['answered', 'completed'],
       statusCallbackMethod: 'POST',
-      timeout: 30, // Ring for 30 seconds
-      // Store metadata for tracking
-      machineDetection: 'Enable', // Detect voicemail
-      machineDetectionTimeout: 5000, // 5 seconds
+      timeout: 30 // Ring for 30 seconds
     });
     
     logger.info('Twilio call initiated', {
