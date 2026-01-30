@@ -25,14 +25,14 @@ const mkdir = promisify(fs.mkdir);
  * Twilio requires proper WAV format for telephony
  */
 function createWavHeader(dataLength: number): Buffer {
-  const header = Buffer.alloc(44);
+  const header = Buffer.alloc(58);  // Larger header for µ-law format
   
   // RIFF header
   header.write('RIFF', 0);
-  header.writeUInt32LE(36 + dataLength, 4);  // File size - 8
+  header.writeUInt32LE(50 + dataLength, 4);  // File size - 8
   header.write('WAVE', 8);
   
-  // fmt chunk
+  // fmt chunk (20 bytes total: 8 + 18 - larger for non-PCM)
   header.write('fmt ', 12);
   header.writeUInt32LE(18, 16);              // fmt chunk size (18 for µ-law)
   header.writeUInt16LE(7, 20);               // Audio format (7 = µ-law)
