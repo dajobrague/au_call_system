@@ -49,6 +49,10 @@ export async function routeDTMFInput(context: DTMFRoutingContext): Promise<void>
   });
   
   switch (callState.phase) {
+    case 'outbound_job_offer':
+      await handleOutboundJobOffer(context);
+      break;
+    
     case 'pin_auth':
       await handlePinAuthentication(context);
       break;
@@ -87,6 +91,114 @@ export async function routeDTMFInput(context: DTMFRoutingContext): Promise<void>
         digit,
         type: 'dtmf_unhandled_phase'
       });
+  }
+}
+
+/**
+ * Handle outbound job offer DTMF (1 = accept, 2 = decline)
+ */
+async function handleOutboundJobOffer(context: DTMFRoutingContext): Promise<void> {
+  const { callState, digit, ws } = context;
+  
+  logger.info('Outbound job offer DTMF received', {
+    callSid: callState.sid,
+    digit,
+    occurrenceId: callState.occurrenceId,
+    employeeId: callState.employee?.id,
+    type: 'outbound_dtmf_received'
+  });
+  
+  if (digit === '1') {
+    // Accept the job
+    logger.info('Employee accepted outbound job offer', {
+      callSid: callState.sid,
+      occurrenceId: callState.occurrenceId,
+      employeeId: callState.employee?.id,
+      type: 'outbound_job_accepted'
+    });
+    
+    try {
+      // Import call outcome handler
+      const { handleJobAcceptance } = await import('../services/calling/call-outcome-handler');
+      
+      // Handle acceptance
+      const result = await handleJobAcceptance(
+        callState.occurrenceId,
+        callState.employee?.id || '',
+        callState.sid
+      );
+      
+      if (result.success) {
+        // Generate confirmation message
+        const patientName = callState.jobDetails?.patientName || 'the patient';
+        const displayDate = callState.jobDetails?.displayDate || 'the scheduled date';
+        const startTime = callState.jobDetails?.startTime || 'the scheduled time';
+        
+        await context.generateAndSpeak(
+          `Great! You've accepted the shift for ${patientName} on ${displayDate} at ${startTime}. ` +
+          `You'll receive a confirmation text message shortly. Thank you! Goodbye.`
+        );
+        
+        // Close WebSocket to end call
+        if (ws.readyState === 1) {
+          setTimeout(() => ws.close(1000, 'Job accepted'), 2000);
+        }
+      } else {
+        await context.generateAndSpeak(
+          `I'm sorry, there was an error assigning the job. It may have already been filled. Goodbye.`
+        );
+      }
+      
+    } catch (error) {
+      logger.error('Error handling outbound job acceptance', {
+        callSid: callState.sid,
+        error: error instanceof Error ? error.message : 'Unknown',
+        type: 'outbound_accept_error'
+      });
+      await context.generateAndSpeak('Sorry, there was a system error. Goodbye.');
+    }
+    
+  } else if (digit === '2') {
+    // Decline the job
+    logger.info('Employee declined outbound job offer', {
+      callSid: callState.sid,
+      occurrenceId: callState.occurrenceId,
+      employeeId: callState.employee?.id,
+      type: 'outbound_job_declined'
+    });
+    
+    try {
+      // Import call outcome handler
+      const { handleJobDecline } = await import('../services/calling/call-outcome-handler');
+      
+      // Handle decline
+      await handleJobDecline(
+        callState.occurrenceId,
+        callState.employee?.id || '',
+        callState.sid
+      );
+      
+      await context.generateAndSpeak(
+        `Okay, I've recorded that you declined this shift. We'll contact another team member. Thank you! Goodbye.`
+      );
+      
+      // Close WebSocket to end call
+      if (ws.readyState === 1) {
+        setTimeout(() => ws.close(1000, 'Job declined'), 2000);
+      }
+      
+    } catch (error) {
+      logger.error('Error handling outbound job decline', {
+        callSid: callState.sid,
+        error: error instanceof Error ? error.message : 'Unknown',
+        type: 'outbound_decline_error'
+      });
+      await context.generateAndSpeak('Thank you. Goodbye.');
+    }
+    
+  } else {
+    // Invalid input
+    await context.generateAndSpeak('Invalid input. Please press 1 to accept the shift, or press 2 to decline.');
   }
 }
 

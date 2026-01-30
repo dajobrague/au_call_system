@@ -37,6 +37,120 @@ const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || '';
 const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'aEO01A4wXwd1O8GPgGlF';
 
 /**
+ * Handle outbound call WebSocket connection
+ * For outbound calls, we skip authentication and immediately play job offer
+ */
+async function handleOutboundCall(ws: WebSocketWithExtensions, customParams: any): Promise<void> {
+  const { callId, occurrenceId, employeeId, round } = customParams;
+  
+  logger.info('Handling outbound call via WebSocket', {
+    callSid: ws.callSid,
+    callId,
+    occurrenceId,
+    employeeId,
+    round,
+    type: 'outbound_call_websocket_start'
+  });
+  
+  // Initialize call logging
+  ws.callEvents = [];
+  ws.callStartTime = new Date();
+  
+  try {
+    // Fetch job details from Airtable
+    const { airtableClient } = await import('../services/airtable/client');
+    const job = await airtableClient.getJobOccurrenceById(occurrenceId);
+    
+    if (!job) {
+      logger.error('Job not found for outbound call', {
+        occurrenceId,
+        type: 'outbound_job_not_found'
+      });
+      await generateAndSpeakOutbound(ws, 'Sorry, there was an error loading the job details. Goodbye.');
+      return;
+    }
+    
+    // Get employee details
+    const employee = await airtableClient.getEmployeeById(employeeId);
+    const employeeName = employee?.fields['Display Name']?.split(' ')[0] || 'there';
+    
+    // Get job details
+    const patientName = job.fields['Patient TXT'] || 'the patient';
+    const displayDate = job.fields['Display Date'] || job.fields['Scheduled At'] || 'today';
+    const startTime = job.fields['Time'] || 'soon';
+    const providerId = job.fields['Provider']?.[0] || '';
+    
+    logger.info('Outbound call details loaded', {
+      occurrenceId,
+      employeeId,
+      employeeName,
+      patientName,
+      type: 'outbound_details_loaded'
+    });
+    
+    // Create call state for outbound
+    const callState = {
+      sid: ws.callSid!,
+      parentCallSid: ws.parentCallSid!,
+      from: 'outbound',
+      phase: 'outbound_job_offer',
+      employee: { id: employeeId, name: employeeName },
+      occurrenceId,
+      jobDetails: {
+        patientName,
+        displayDate,
+        startTime,
+        providerId
+      },
+      round: parseInt(round, 10),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    await saveCallState(ws, callState);
+    ws.employeeId = employeeId;
+    ws.providerId = providerId;
+    
+    // Generate and play job offer message
+    const message = `Hi ${employeeName}, we have an urgent shift for ${patientName} on ${displayDate} at ${startTime}. Press 1 to accept this shift, or press 2 to decline.`;
+    
+    await generateAndSpeakOutbound(ws, message);
+    
+    logger.info('Outbound job offer message sent', {
+      callSid: ws.callSid,
+      occurrenceId,
+      employeeId,
+      type: 'outbound_message_sent'
+    });
+    
+  } catch (error) {
+    logger.error('Error handling outbound call', {
+      callSid: ws.callSid,
+      occurrenceId,
+      error: error instanceof Error ? error.message : 'Unknown',
+      type: 'outbound_call_error'
+    });
+    await generateAndSpeakOutbound(ws, 'Sorry, there was a system error. Goodbye.');
+  }
+}
+
+/**
+ * Generate speech and stream to Twilio for outbound calls
+ */
+async function generateAndSpeakOutbound(ws: WebSocketWithExtensions, text: string): Promise<void> {
+  if (!ws.streamSid) return;
+  
+  const result = await generateSpeech(text, {
+    apiKey: ELEVENLABS_API_KEY,
+    voiceId: ELEVENLABS_VOICE_ID,
+  });
+  
+  if (result.success && result.frames) {
+    await streamAudioToTwilio(ws as any, result.frames, ws.streamSid);
+  }
+}
+
+/**
  * Create and configure WebSocket server
  * @param port - Port to listen on
  * @param expressApp - Optional Express app with HTTP routes (if not provided, creates a new one)
@@ -138,6 +252,10 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
 
         // Extract phone from Twilio's customParameters (set via <Parameter> in TwiML)
         let callerPhone = (message.start.customParameters as any)?.phone || message.start.customParameters?.from || from;
+        
+        // Check if this is an outbound call
+        const callType = (message.start.customParameters as any)?.callType;
+        const isOutboundCall = callType === 'outbound';
 
         // DEEP DEBUG: Log parameter extraction
         logger.info('🔍 DEEP DEBUG: Start message received', {
@@ -146,6 +264,8 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
           customParameters: message.start.customParameters,
           extractedPhone: callerPhone,
           fallbackFrom: from,
+          callType,
+          isOutboundCall,
           type: 'start_message_debug'
         });
 
@@ -154,8 +274,15 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
           parentCallSid: ws.parentCallSid,
           streamSid: ws.streamSid,
           from: callerPhone,
+          callType: isOutboundCall ? 'outbound' : 'inbound',
           type: 'call_start'
         });
+        
+        // Handle outbound calls differently (skip authentication)
+        if (isOutboundCall) {
+          await handleOutboundCall(ws, message.start.customParameters as any);
+          return;
+        }
 
         // Publish call_started event to Redis Stream (non-blocking)
         publishCallStarted(
