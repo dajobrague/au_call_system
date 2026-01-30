@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json();
-    const { phoneNumber, occurrenceId } = body;
+    const { phoneNumber, occurrenceId, employeeId } = body;
     
     // Validation
     if (!phoneNumber) {
@@ -45,9 +45,13 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Use provided employeeId or default to TEST_EMPLOYEE
+    const staffId = employeeId || 'TEST_EMPLOYEE';
+    
     logger.info('Test call request', {
       phoneNumber,
       occurrenceId,
+      employeeId: staffId,
       type: 'test_outbound_request'
     });
     
@@ -98,7 +102,7 @@ export async function POST(request: NextRequest) {
     const callLogRecordId = callLogResult.recordId || '';
     
     // Generate TwiML URL
-    const twimlUrl = generateTwiMLUrl(callId, occurrenceId, 'TEST_EMPLOYEE', 1);
+    const twimlUrl = generateTwiMLUrl(callId, occurrenceId, staffId, 1);
     
     // Get base URL for callbacks
     const { getBaseUrl } = await import('../../../../src/config/base-url');
