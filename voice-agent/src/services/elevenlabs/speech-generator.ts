@@ -78,7 +78,7 @@ export async function generateSpeech(
     const requestOptions = {
       hostname: 'api.elevenlabs.io',
       port: 443,
-      path: `/v1/text-to-speech/${voiceId}/stream?output_format=mp3_22050_32`,
+      path: `/v1/text-to-speech/${voiceId}/stream?output_format=ulaw_8000`,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -123,13 +123,21 @@ export async function generateSpeech(
       res.on('end', () => {
         const fullAudio = Buffer.concat(audioChunks);
         
-        console.log(`✅ Speech generated - ${fullAudio.length} bytes (MP3 22kHz format)`);
+        // Slice into 20ms frames (160 bytes each at 8kHz µ-law)
+        const frames: Uint8Array[] = [];
+        const FRAME_SIZE = 160; // 20ms at 8kHz
         
-        // Return raw MP3 buffer for outbound calls
-        // 22kHz is optimal for phone call quality and Twilio compatibility
+        for (let i = 0; i < fullAudio.length; i += FRAME_SIZE) {
+          const frame = fullAudio.slice(i, Math.min(i + FRAME_SIZE, fullAudio.length));
+          frames.push(new Uint8Array(frame));
+        }
+        
+        console.log(`✅ Speech generated - ${frames.length} frames (${fullAudio.length} bytes)`);
+        console.log(`⏱️ Average frame size: ${(fullAudio.length / frames.length).toFixed(1)} bytes`);
+        
         resolve({
           success: true,
-          audioBuffer: fullAudio,
+          frames,
           bytesProcessed: fullAudio.length
         });
       });
