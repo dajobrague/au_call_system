@@ -114,7 +114,7 @@ export async function generateOutboundCallAudio(
       useSpeakerBoost: ELEVENLABS_SETTINGS.USE_SPEAKER_BOOST,
     });
     
-    if (!speechResult.success || !speechResult.frames) {
+    if (!speechResult.success || !speechResult.audioBuffer) {
       logger.error('ElevenLabs audio generation failed', {
         callId,
         error: speechResult.error,
@@ -129,7 +129,7 @@ export async function generateOutboundCallAudio(
     
     // Step 4: Save audio to temporary storage
     // For Phase 3, we'll save locally. Phase 4 can add S3/cloud storage if needed
-    const audioPath = await saveAudioToTemp(callId, speechResult.frames);
+    const audioPath = await saveAudioToTemp(callId, speechResult.audioBuffer);
     
     // Step 5: Generate public URL
     // For Railway deployment, we need to serve this via HTTP endpoint
@@ -143,10 +143,10 @@ export async function generateOutboundCallAudio(
       audioPath,
       audioUrl,
       messageLength: finalMessage.length,
-      framesGenerated: speechResult.frames.length,
       bytesProcessed: speechResult.bytesProcessed,
       generationTimeMs: duration,
       estimatedDurationSeconds: estimatedDuration,
+      format: 'mp3',
       type: 'audio_gen_success'
     });
     
@@ -203,27 +203,17 @@ function substituteVariables(template: string, variables: TemplateVariables): st
 }
 
 /**
- * Save audio frames to temporary storage
+ * Save audio buffer to temporary storage
  * Returns the file path
  */
-async function saveAudioToTemp(callId: string, frames: Uint8Array[]): Promise<string> {
+async function saveAudioToTemp(callId: string, audioBuffer: Buffer): Promise<string> {
   try {
     // Ensure temp directory exists
     const tempDir = '/tmp/outbound-audio';
     await mkdir(tempDir, { recursive: true });
     
-    // Combine all frames into single buffer
-    const totalLength = frames.reduce((sum, frame) => sum + frame.length, 0);
-    const audioBuffer = Buffer.alloc(totalLength);
-    
-    let offset = 0;
-    for (const frame of frames) {
-      audioBuffer.set(frame, offset);
-      offset += frame.length;
-    }
-    
-    // Save to file with .ulaw extension (µ-law format)
-    const fileName = `outbound-call-${callId}.ulaw`;
+    // Save to file with .mp3 extension
+    const fileName = `outbound-call-${callId}.mp3`;
     const filePath = path.join(tempDir, fileName);
     
     await writeFile(filePath, audioBuffer);
@@ -232,6 +222,7 @@ async function saveAudioToTemp(callId: string, frames: Uint8Array[]): Promise<st
       callId,
       filePath,
       sizeBytes: audioBuffer.length,
+      format: 'mp3',
       type: 'audio_saved'
     });
     
@@ -326,5 +317,5 @@ export async function cleanupOldAudioFiles(maxAgeHours: number = 1): Promise<voi
  * Get audio file path for serving
  */
 export function getAudioFilePath(callId: string): string {
-  return path.join('/tmp/outbound-audio', `outbound-call-${callId}.ulaw`);
+  return path.join('/tmp/outbound-audio', `outbound-call-${callId}.mp3`);
 }

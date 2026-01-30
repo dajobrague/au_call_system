@@ -21,7 +21,8 @@ export interface SpeechGenerationOptions {
 
 export interface SpeechGenerationResult {
   success: boolean;
-  frames?: Uint8Array[];
+  frames?: Uint8Array[];      // For WebSocket streaming (µ-law frames)
+  audioBuffer?: Buffer;        // For outbound calls (MP3 buffer)
   error?: string;
   bytesProcessed?: number;
 }
@@ -77,7 +78,7 @@ export async function generateSpeech(
     const requestOptions = {
       hostname: 'api.elevenlabs.io',
       port: 443,
-      path: `/v1/text-to-speech/${voiceId}/stream?output_format=ulaw_8000`,
+      path: `/v1/text-to-speech/${voiceId}/stream?output_format=mp3_44100_128`,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -121,15 +122,14 @@ export async function generateSpeech(
       
       res.on('end', () => {
         const fullAudio = Buffer.concat(audioChunks);
-        const ulawArray = new Uint8Array(fullAudio);
-        const frames = sliceInto20msFrames(ulawArray);
         
-        console.log(`✅ Speech generated - ${frames.length} frames (${fullAudio.length} bytes)`);
-        console.log(`⏱️ Average frame size: ${(fullAudio.length / frames.length).toFixed(1)} bytes`);
+        console.log(`✅ Speech generated - ${fullAudio.length} bytes (MP3 format)`);
         
+        // For MP3 format, return raw buffer without frame slicing
+        // Frame slicing is only needed for µ-law streaming
         resolve({
           success: true,
-          frames,
+          audioBuffer: fullAudio,
           bytesProcessed: fullAudio.length
         });
       });

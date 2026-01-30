@@ -12,10 +12,10 @@ export const runtime = 'nodejs';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { callId: string } }
+  { params }: { params: Promise<{ callId: string }> }
 ) {
   try {
-    const callId = params.callId;
+    const { callId } = await params;
     
     logger.info('Serving outbound call audio', {
       callId,
@@ -50,15 +50,16 @@ export async function GET(
     return new NextResponse(audioBuffer, {
       status: 200,
       headers: {
-        'Content-Type': 'audio/basic', // µ-law format
+        'Content-Type': 'audio/mpeg', // MP3 format for Twilio
         'Content-Length': audioBuffer.length.toString(),
         'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
       }
     });
     
   } catch (error) {
+    const { callId } = await params;
     logger.error('Audio serving error', {
-      callId: params.callId,
+      callId,
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
       type: 'outbound_audio_error'
