@@ -93,6 +93,78 @@ app.prepare().then(() => {
     console.error('Failed to initialize disclaimer cache:', error.message);
   });
 
+  // Handle outbound calls (job offers to staff)
+  async function handleOutboundCallWs(ws, customParams, generateAndSpeak) {
+    const { callId, occurrenceId, employeeId, round } = customParams || {};
+    
+    console.log('🚨🚨🚨 HANDLE OUTBOUND CALL ENTERED 🚨🚨🚨');
+    console.log('📋 Params:', { callId, occurrenceId, employeeId, round });
+    
+    ws.callEvents = [];
+    ws.callStartTime = new Date();
+    
+    try {
+      // Fetch job details from Airtable
+      const { airtableClient } = require('./src/services/airtable/client');
+      const job = await airtableClient.getJobOccurrenceById(occurrenceId);
+      
+      if (!job) {
+        console.error('❌ Job not found for outbound call:', occurrenceId);
+        await generateAndSpeak('Sorry, there was an error loading the job details. Goodbye.');
+        return;
+      }
+      
+      // Get employee details (optional - might not exist for test calls)
+      let employeeName = 'there';
+      try {
+        if (employeeId && employeeId !== 'TEST_EMPLOYEE') {
+          const employee = await airtableClient.getEmployeeById(employeeId);
+          employeeName = employee?.fields['Display Name']?.split(' ')[0] || 'there';
+        }
+      } catch (e) {
+        console.log('⚠️ Could not fetch employee, using default name');
+      }
+      
+      // Get job details
+      const patientName = job.fields['Patient TXT'] || 'the patient';
+      const displayDate = job.fields['Display Date'] || job.fields['Scheduled At'] || 'today';
+      const startTime = job.fields['Time'] || 'soon';
+      const providerId = job.fields['Provider']?.[0] || '';
+      
+      console.log('📋 Job details:', { patientName, displayDate, startTime, employeeName });
+      
+      // Create call state for outbound
+      const callState = {
+        sid: ws.callSid,
+        parentCallSid: ws.parentCallSid,
+        from: 'outbound',
+        phase: 'outbound_job_offer',
+        employee: { id: employeeId, name: employeeName },
+        occurrenceId,
+        jobDetails: { patientName, displayDate, startTime, providerId },
+        round: parseInt(round, 10) || 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      await saveWsCallState(ws, callState);
+      ws.employeeId = employeeId;
+      ws.providerId = providerId;
+      
+      // Generate and play job offer message
+      const message = `Hi ${employeeName}, we have an urgent shift for ${patientName} on ${displayDate} at ${startTime}. Press 1 to accept this shift, or press 2 to decline.`;
+      
+      console.log('🎤 Playing message:', message);
+      await generateAndSpeak(message);
+      
+      console.log('✅ Outbound job offer message sent successfully');
+      
+    } catch (error) {
+      console.error('❌ Error handling outbound call:', error);
+      await generateAndSpeak('Sorry, there was a system error. Goodbye.');
+    }
+  }
+
   wss.on('connection', (ws, req) => {
     console.log('🔌 New WebSocket connection from:', req.socket.remoteAddress);
     
@@ -132,8 +204,22 @@ app.prepare().then(() => {
                            ws.callSid;
 
         let callerPhone = message.start.customParameters?.phone || message.start.customParameters?.from || from;
+        
+        // Check if this is an outbound call
+        const callType = message.start.customParameters?.callType;
+        const isOutboundCall = callType === 'outbound';
 
-        console.log('📞 Call started:', ws.callSid, '(Total:', wss.clients.size + ')');
+        console.log('📞 Call started:', ws.callSid, '| Type:', isOutboundCall ? 'OUTBOUND' : 'INBOUND', '| Total:', wss.clients.size);
+        console.log('📋 Custom params:', JSON.stringify(message.start.customParameters));
+        
+        // Handle outbound calls differently (skip authentication)
+        if (isOutboundCall) {
+          console.log('🚨 OUTBOUND CALL DETECTED - Routing to outbound handler');
+          await handleOutboundCallWs(ws, message.start.customParameters, generateAndSpeak);
+          return;
+        }
+        
+        console.log('📥 INBOUND CALL - Continuing with normal auth flow');
 
         ws.callEvents = [];
         ws.callStartTime = new Date();
