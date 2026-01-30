@@ -21,6 +21,36 @@ const writeFile = promisify(fs.writeFile);
 const mkdir = promisify(fs.mkdir);
 
 /**
+ * Create WAV header for µ-law encoded audio at 8kHz
+ * Twilio requires proper WAV format for telephony
+ */
+function createWavHeader(dataLength: number): Buffer {
+  const header = Buffer.alloc(44);
+  
+  // RIFF header
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + dataLength, 4);  // File size - 8
+  header.write('WAVE', 8);
+  
+  // fmt chunk
+  header.write('fmt ', 12);
+  header.writeUInt32LE(18, 16);              // fmt chunk size (18 for µ-law)
+  header.writeUInt16LE(7, 20);               // Audio format (7 = µ-law)
+  header.writeUInt16LE(1, 22);               // Number of channels (1 = mono)
+  header.writeUInt32LE(8000, 24);            // Sample rate (8kHz)
+  header.writeUInt32LE(8000, 28);            // Byte rate (8kHz * 1 channel * 1 byte)
+  header.writeUInt16LE(1, 32);               // Block align (1 byte)
+  header.writeUInt16LE(8, 34);               // Bits per sample (8-bit)
+  header.writeUInt16LE(0, 36);               // Extra params size
+  
+  // data chunk
+  header.write('data', 38);
+  header.writeUInt32LE(dataLength, 42);      // Data size
+  
+  return header;
+}
+
+/**
  * Template variable values for substitution
  */
 export interface TemplateVariables {
@@ -146,7 +176,7 @@ export async function generateOutboundCallAudio(
       bytesProcessed: speechResult.bytesProcessed,
       generationTimeMs: duration,
       estimatedDurationSeconds: estimatedDuration,
-      format: 'mp3',
+      format: 'wav-ulaw-8khz',
       type: 'audio_gen_success'
     });
     
@@ -203,26 +233,30 @@ function substituteVariables(template: string, variables: TemplateVariables): st
 }
 
 /**
- * Save audio buffer to temporary storage
+ * Save audio buffer to temporary storage as WAV file with µ-law encoding
  * Returns the file path
  */
-async function saveAudioToTemp(callId: string, audioBuffer: Buffer): Promise<string> {
+async function saveAudioToTemp(callId: string, ulawBuffer: Buffer): Promise<string> {
   try {
     // Ensure temp directory exists
     const tempDir = '/tmp/outbound-audio';
     await mkdir(tempDir, { recursive: true });
     
-    // Save to file with .mp3 extension
-    const fileName = `outbound-call-${callId}.mp3`;
+    // Create WAV header for µ-law 8kHz mono
+    const wavHeader = createWavHeader(ulawBuffer.length);
+    const wavFile = Buffer.concat([wavHeader, ulawBuffer]);
+    
+    // Save to file with .wav extension
+    const fileName = `outbound-call-${callId}.wav`;
     const filePath = path.join(tempDir, fileName);
     
-    await writeFile(filePath, audioBuffer);
+    await writeFile(filePath, wavFile);
     
     logger.info('Audio saved to temp storage', {
       callId,
       filePath,
-      sizeBytes: audioBuffer.length,
-      format: 'mp3',
+      sizeBytes: wavFile.length,
+      format: 'wav-ulaw-8khz',
       type: 'audio_saved'
     });
     
@@ -317,5 +351,5 @@ export async function cleanupOldAudioFiles(maxAgeHours: number = 1): Promise<voi
  * Get audio file path for serving
  */
 export function getAudioFilePath(callId: string): string {
-  return path.join('/tmp/outbound-audio', `outbound-call-${callId}.mp3`);
+  return path.join('/tmp/outbound-audio', `outbound-call-${callId}.wav`);
 }

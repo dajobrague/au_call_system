@@ -50,7 +50,7 @@ export async function GET(
     return new NextResponse(audioBuffer, {
       status: 200,
       headers: {
-        'Content-Type': 'audio/mpeg', // MP3 format for Twilio
+        'Content-Type': 'audio/wav', // WAV with µ-law encoding for Twilio telephony
         'Content-Length': audioBuffer.length.toString(),
         'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
       }

@@ -78,7 +78,7 @@ export async function generateSpeech(
     const requestOptions = {
       hostname: 'api.elevenlabs.io',
       port: 443,
-      path: `/v1/text-to-speech/${voiceId}/stream?output_format=mp3_44100_128`,
+      path: `/v1/text-to-speech/${voiceId}/stream?output_format=ulaw_8000`,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -123,10 +123,10 @@ export async function generateSpeech(
       res.on('end', () => {
         const fullAudio = Buffer.concat(audioChunks);
         
-        console.log(`✅ Speech generated - ${fullAudio.length} bytes (MP3 format)`);
+        console.log(`✅ Speech generated - ${fullAudio.length} bytes (µ-law 8kHz format)`);
         
-        // For MP3 format, return raw buffer without frame slicing
-        // Frame slicing is only needed for µ-law streaming
+        // Return raw µ-law buffer for outbound calls
+        // This is Twilio's native format for telephony
         resolve({
           success: true,
           audioBuffer: fullAudio,
