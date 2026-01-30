@@ -168,23 +168,21 @@ async function handleOutboundJobOffer(context: DTMFRoutingContext): Promise<void
     });
     
     try {
-      // Import call outcome handler
-      const { handleJobDecline } = await import('../services/calling/call-outcome-handler');
-      
-      // Handle decline
-      await handleJobDecline(
-        callState.occurrenceId,
-        callState.employee?.id || '',
-        callState.sid
-      );
+      // Log the decline (for test calls, we just acknowledge)
+      // Full queue-based decline handling happens via outbound-call-worker
+      logger.info('Recording job decline', {
+        occurrenceId: callState.occurrenceId,
+        employeeId: callState.employee?.id,
+        type: 'decline_recorded'
+      });
       
       await context.generateAndSpeak(
         `Okay, I've recorded that you declined this shift. We'll contact another team member. Thank you! Goodbye.`
       );
       
-      // Close WebSocket to end call
+      // Close WebSocket to end call after message plays
       if (ws.readyState === 1) {
-        setTimeout(() => ws.close(1000, 'Job declined'), 2000);
+        setTimeout(() => ws.close(1000, 'Job declined'), 3000);
       }
       
     } catch (error) {
