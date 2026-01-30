@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { airtableClient } from '../../../../src/services/airtable/client';
 import { twilioConfig } from '../../../../src/config/twilio';
-import { generateOutboundCallAudio } from '../../../../src/services/calling/audio-pregenerator';
 import { generateTwiMLUrl } from '../../../../src/services/calling/twiml-generator';
 import { createCallLog } from '../../../../src/services/airtable/call-log-service';
 import { logger } from '../../../../src/lib/logger';
@@ -73,47 +72,17 @@ export async function POST(request: NextRequest) {
     const scheduledDate = job.fields['Scheduled At'] || 'today';
     const displayDate = job.fields['Display Date'] || scheduledDate;
     const startTime = job.fields['Time'] || 'soon';
-    const suburb = 'your area'; // Not in JobOccurrenceFields
     const providerId = job.fields['Provider']?.[0] || '';
     
-    // Use template variables (will be substituted later)
-    const messageTemplate = `Hi {employeeName}, we have an urgent shift for {patientName} on {date} at {time}. Press 1 to accept this shift, or press 2 to decline.`;
-    
-    // Generate audio
+    // Generate unique call ID
     const callId = `TEST-${Date.now()}`;
     
-    logger.info('Generating audio', { callId, type: 'test_outbound_audio_gen' });
-    
-    const audioResult = await generateOutboundCallAudio(
-      messageTemplate,
-      {
-        employeeName: 'there',
-        patientName,
-        date: displayDate,
-        time: startTime,
-        startTime,
-        suburb
-      },
-      callId
-    );
-    
-    if (!audioResult.success || !audioResult.audioUrl) {
-      logger.error('Audio generation failed', {
-        callId,
-        error: audioResult.error,
-        type: 'test_outbound_audio_failed'
-      });
-      
-      return NextResponse.json(
-        { error: 'Audio generation failed', details: audioResult.error },
-        { status: 500 }
-      );
-    }
-    
-    logger.info('Audio generated', {
-      callId,
-      audioUrl: audioResult.audioUrl,
-      type: 'test_outbound_audio_success'
+    logger.info('Preparing outbound call (audio will be generated via WebSocket)', { 
+      callId, 
+      patientName,
+      displayDate,
+      startTime,
+      type: 'test_outbound_preparing' 
     });
     
     // Create call log
