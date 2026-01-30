@@ -72,9 +72,12 @@ export async function handleWebSocketMessage(
         break;
         
       case 'start':
-        logger.info('WebSocket stream started', {
+        logger.info('🚨 WebSocket START event received', {
           callSid: message.start?.callSid,
           streamSid: message.start?.streamSid,
+          customParameters: JSON.stringify(message.start?.customParameters),
+          hasCallType: !!(message.start?.customParameters as any)?.callType,
+          callType: (message.start?.customParameters as any)?.callType,
           type: 'ws_stream_start'
         });
         await handlers.onStart(message, ws);

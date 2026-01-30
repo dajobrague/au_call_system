@@ -41,7 +41,14 @@ const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'aEO01A4wXwd1O8GP
  * For outbound calls, we skip authentication and immediately play job offer
  */
 async function handleOutboundCall(ws: WebSocketWithExtensions, customParams: any): Promise<void> {
-  const { callId, occurrenceId, employeeId, round } = customParams;
+  logger.info('🚨🚨🚨 HANDLE OUTBOUND CALL ENTERED 🚨🚨🚨', {
+    callSid: ws.callSid,
+    streamSid: ws.streamSid,
+    rawParams: JSON.stringify(customParams),
+    type: 'outbound_handler_entry'
+  });
+  
+  const { callId, occurrenceId, employeeId, round } = customParams || {};
   
   logger.info('Handling outbound call via WebSocket', {
     callSid: ws.callSid,
@@ -257,6 +264,17 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
         const callType = (message.start.customParameters as any)?.callType;
         const isOutboundCall = callType === 'outbound';
 
+        // CRITICAL DEBUG: Log ALL custom parameters to see what Twilio sends
+        logger.info('🚨 CRITICAL DEBUG: Start message customParameters', {
+          callSid: ws.callSid,
+          streamSid: ws.streamSid,
+          rawCustomParameters: JSON.stringify(message.start.customParameters),
+          callType,
+          isOutboundCall,
+          allParamKeys: message.start.customParameters ? Object.keys(message.start.customParameters) : [],
+          type: 'outbound_param_debug'
+        });
+
         // DEEP DEBUG: Log parameter extraction
         logger.info('🔍 DEEP DEBUG: Start message received', {
           callSid: ws.callSid,
@@ -280,8 +298,20 @@ export function createWebSocketServer(port: number = 3001, expressApp?: express.
         
         // Handle outbound calls differently (skip authentication)
         if (isOutboundCall) {
+          logger.info('🚨 ROUTING TO OUTBOUND CALL HANDLER', {
+            callSid: ws.callSid,
+            callType,
+            type: 'outbound_routing'
+          });
           await handleOutboundCall(ws, message.start.customParameters as any);
           return;
+        } else {
+          logger.info('🚨 ROUTING TO INBOUND CALL HANDLER', {
+            callSid: ws.callSid,
+            callType,
+            isOutboundCall,
+            type: 'inbound_routing'
+          });
         }
 
         // Publish call_started event to Redis Stream (non-blocking)
