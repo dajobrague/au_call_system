@@ -32,6 +32,7 @@ export interface EmployeeFields {
   'Notes'?: string;
   'Job Templates'?: string[]; // Array of job template record IDs
   'Active'?: boolean;
+  'Outbound Call?'?: boolean; // Whether employee should receive outbound calls (default: true)
 }
 
 export type EmployeeRecord = AirtableRecord<EmployeeFields>;
@@ -141,6 +142,7 @@ export interface Employee {
   jobTemplateIds: string[];
   notes?: string;
   active: boolean;
+  outboundCallEnabled: boolean; // Whether employee should receive outbound calls (default: true)
 }
 
 // Processed provider data for our application

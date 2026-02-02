@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     }
     
     const body = await request.json();
-    const { displayName, phone, pin, email, role, notes, active } = body;
+    const { displayName, phone, pin, email, role, notes, active, outboundCall } = body;
     
     if (!displayName || !phone || !pin) {
       return NextResponse.json(
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
       'Role': role || '',
       'Notes': notes || '',
       'Active': active !== undefined ? active : true,
+      'Outbound Call?': outboundCall !== undefined ? outboundCall : true, // Default to enabled
     });
     
     return NextResponse.json({
@@ -89,7 +90,7 @@ export async function PATCH(request: Request) {
     }
     
     const body = await request.json();
-    const { recordId, displayName, phone, pin, email, role, notes, active } = body;
+    const { recordId, displayName, phone, pin, email, role, notes, active, outboundCall } = body;
     
     if (!recordId) {
       return NextResponse.json(
@@ -106,6 +107,7 @@ export async function PATCH(request: Request) {
     if (role !== undefined) fields['Role'] = role;
     if (notes !== undefined) fields['Notes'] = notes;
     if (active !== undefined) fields['Active'] = active;
+    if (outboundCall !== undefined) fields['Outbound Call?'] = outboundCall;
     
     const updatedEmployee = await updateEmployee(recordId, fields);
     

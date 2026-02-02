@@ -72,6 +72,21 @@ export async function processOutboundCall(jobData: OutboundCallJobData): Promise
     
     const employeePhone = employee.fields['Phone'];
     const employeeName = employee.fields['Display Name'] || 'there';
+    const outboundCallEnabled = employee.fields['Outbound Call?'] !== false; // Default to true if not set
+    
+    // Check if employee has outbound calls enabled
+    if (!outboundCallEnabled) {
+      logger.info('Employee has outbound calls disabled, skipping', {
+        occurrenceId,
+        staffId,
+        employeeName,
+        type: 'outbound_call_disabled_for_employee'
+      });
+      
+      // Schedule next call (skip this employee)
+      await scheduleNextCallAttempt(jobData);
+      return;
+    }
     
     if (!employeePhone) {
       logger.error('Employee has no phone number', {

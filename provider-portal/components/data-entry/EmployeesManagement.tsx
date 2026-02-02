@@ -19,6 +19,7 @@ interface Employee {
     'Role'?: string;
     'Notes'?: string;
     'Active'?: boolean;
+    'Outbound Call?'?: boolean;
   };
 }
 
@@ -30,6 +31,7 @@ interface EmployeeFormData {
   role: string;
   notes: string;
   active: boolean;
+  outboundCall: boolean;
 }
 
 export default function EmployeesManagement() {
@@ -47,6 +49,7 @@ export default function EmployeesManagement() {
     role: '',
     notes: '',
     active: true,
+    outboundCall: true, // Default to enabled
   });
   const [saving, setSaving] = useState(false);
   const [showAddDropdown, setShowAddDropdown] = useState(false);
@@ -95,6 +98,7 @@ export default function EmployeesManagement() {
       role: '',
       notes: '',
       active: true,
+      outboundCall: true, // Default to enabled for new employees
     });
     setShowModal(true);
     setError('');
@@ -111,6 +115,7 @@ export default function EmployeesManagement() {
       role: employee.fields['Role'] || '',
       notes: employee.fields['Notes'] || '',
       active: employee.fields['Active'] !== false,
+      outboundCall: employee.fields['Outbound Call?'] !== false, // Default to true if not set
     });
     setShowModal(true);
     setError('');
@@ -169,6 +174,7 @@ export default function EmployeesManagement() {
         role: formData.role,
         notes: formData.notes,
         active: formData.active,
+        outboundCall: formData.outboundCall,
       };
       
       if (isEditing) {
@@ -453,17 +459,32 @@ export default function EmployeesManagement() {
                   />
                 </div>
                 
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="active"
-                    checked={formData.active}
-                    onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="active" className="ml-2 block text-sm text-gray-700">
-                    Active
-                  </label>
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="active"
+                      checked={formData.active}
+                      onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="active" className="ml-2 block text-sm text-gray-700">
+                      Active
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="outboundCall"
+                      checked={formData.outboundCall}
+                      onChange={(e) => setFormData({ ...formData, outboundCall: e.target.checked })}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="outboundCall" className="ml-2 block text-sm text-gray-700">
+                      Enable Outbound Calls
+                    </label>
+                  </div>
                 </div>
               </div>
               
