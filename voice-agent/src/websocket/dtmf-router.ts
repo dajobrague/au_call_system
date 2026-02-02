@@ -117,49 +117,49 @@ async function handleOutboundJobOffer(context: DTMFRoutingContext): Promise<void
       type: 'outbound_job_accepted'
     });
     
-    try {
-      // Import call outcome handler
-      const { handleJobAcceptance } = await import('../services/calling/call-outcome-handler');
-      
-      // Handle acceptance
-      const result = await handleJobAcceptance(
-        callState.occurrenceId,
-        callState.employee?.id || '',
-        callState.sid
-      );
-      
-      if (result.success) {
-        // Generate confirmation message
-        const patientName = callState.jobDetails?.patientName || 'the patient';
-        const displayDate = callState.jobDetails?.displayDate || 'the scheduled date';
-        const startTime = callState.jobDetails?.startTime || 'the scheduled time';
-        
-        await context.generateAndSpeak(
-          `Great! You've accepted the shift for ${patientName} on ${displayDate} at ${startTime}. ` +
-          `You'll receive a confirmation text message shortly. Thank you! Goodbye.`
+    // Play confirmation IMMEDIATELY (don't wait for Airtable)
+    const patientName = callState.jobDetails?.patientName || 'the patient';
+    const displayDate = callState.jobDetails?.displayDate || 'the scheduled date';
+    const startTime = callState.jobDetails?.startTime || 'the scheduled time';
+    
+    await context.generateAndSpeak(
+      `Great! You've accepted the shift for ${patientName} on ${displayDate} at ${startTime}. ` +
+      `You'll receive a confirmation text message shortly. Thank you! Goodbye.`
+    );
+    
+    // Process job assignment in background (non-blocking)
+    (async () => {
+      try {
+        const { handleJobAcceptance } = await import('../services/calling/call-outcome-handler');
+        const result = await handleJobAcceptance(
+          callState.occurrenceId,
+          callState.employee?.id || '',
+          callState.sid
         );
         
-        // Close WebSocket to end call
-        if (ws.readyState === 1) {
-          setTimeout(() => ws.close(1000, 'Job accepted'), 2000);
+        if (!result.success) {
+          logger.warn('Job acceptance failed in background', {
+            callSid: callState.sid,
+            error: result.error,
+            type: 'background_acceptance_failed'
+          });
         }
-      } else {
-        await context.generateAndSpeak(
-          `I'm sorry, there was an error assigning the job. It may have already been filled. Goodbye.`
-        );
+      } catch (error) {
+        logger.error('Background job acceptance error', {
+          callSid: callState.sid,
+          error: error instanceof Error ? error.message : 'Unknown',
+          type: 'background_acceptance_error'
+        });
       }
-      
-    } catch (error) {
-      logger.error('Error handling outbound job acceptance', {
-        callSid: callState.sid,
-        error: error instanceof Error ? error.message : 'Unknown',
-        type: 'outbound_accept_error'
-      });
-      await context.generateAndSpeak('Sorry, there was a system error. Goodbye.');
+    })();
+    
+    // Close WebSocket to end call after message plays
+    if (ws.readyState === 1) {
+      setTimeout(() => ws.close(1000, 'Job accepted'), 4000);
     }
     
   } else if (digit === '2') {
-    // Decline the job
+    // Decline the job - play response IMMEDIATELY
     logger.info('Employee declined outbound job offer', {
       callSid: callState.sid,
       occurrenceId: callState.occurrenceId,
@@ -167,31 +167,21 @@ async function handleOutboundJobOffer(context: DTMFRoutingContext): Promise<void
       type: 'outbound_job_declined'
     });
     
-    try {
-      // Log the decline (for test calls, we just acknowledge)
-      // Full queue-based decline handling happens via outbound-call-worker
-      logger.info('Recording job decline', {
-        occurrenceId: callState.occurrenceId,
-        employeeId: callState.employee?.id,
-        type: 'decline_recorded'
-      });
-      
-      await context.generateAndSpeak(
-        `Okay, I've recorded that you declined this shift. We'll contact another team member. Thank you! Goodbye.`
-      );
-      
-      // Close WebSocket to end call after message plays
-      if (ws.readyState === 1) {
-        setTimeout(() => ws.close(1000, 'Job declined'), 3000);
-      }
-      
-    } catch (error) {
-      logger.error('Error handling outbound job decline', {
-        callSid: callState.sid,
-        error: error instanceof Error ? error.message : 'Unknown',
-        type: 'outbound_decline_error'
-      });
-      await context.generateAndSpeak('Thank you. Goodbye.');
+    // Play decline acknowledgment immediately
+    await context.generateAndSpeak(
+      `Okay, I've recorded that you declined this shift. We'll contact another team member. Thank you! Goodbye.`
+    );
+    
+    // Log decline in background (non-blocking)
+    logger.info('Recording job decline', {
+      occurrenceId: callState.occurrenceId,
+      employeeId: callState.employee?.id,
+      type: 'decline_recorded'
+    });
+    
+    // Close WebSocket to end call after message plays
+    if (ws.readyState === 1) {
+      setTimeout(() => ws.close(1000, 'Job declined'), 4000);
     }
     
   } else {
