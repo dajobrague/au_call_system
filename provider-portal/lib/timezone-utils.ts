@@ -39,21 +39,55 @@ export function parseAirtableDate(dateString: string): Date {
 
 /**
  * Convert Airtable date string to YYYY-MM-DD format (date only, no time)
- * Airtable format: "DD/MM/YYYY, HH:MM:SS"
+ * Handles multiple formats:
+ * - Airtable format: "DD/MM/YYYY, HH:MM:SS"
+ * - ISO format: "2026-01-29T03:22:27.560Z"
+ * - Simple format: "YYYY-MM-DD"
  * Returns: "YYYY-MM-DD"
  */
 export function airtableDateToYYYYMMDD(dateString: string): string {
   if (!dateString) return '';
   
   try {
-    const [datePart] = dateString.split(',').map(s => s.trim());
-    const [day, month, year] = datePart.split('/');
+    // Check if it's already in YYYY-MM-DD format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
     
-    // Ensure padding
-    const paddedMonth = month.padStart(2, '0');
-    const paddedDay = day.padStart(2, '0');
+    // Check if it's ISO format (e.g., "2026-01-29T03:22:27.560Z")
+    if (dateString.includes('T') && (dateString.includes('Z') || dateString.includes('+') || dateString.includes('-'))) {
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+    }
     
-    return `${year}-${paddedMonth}-${paddedDay}`;
+    // Handle Airtable format: "DD/MM/YYYY, HH:MM:SS"
+    if (dateString.includes('/')) {
+      const [datePart] = dateString.split(',').map(s => s.trim());
+      const [day, month, year] = datePart.split('/');
+      
+      if (day && month && year) {
+        const paddedMonth = month.padStart(2, '0');
+        const paddedDay = day.padStart(2, '0');
+        return `${year}-${paddedMonth}-${paddedDay}`;
+      }
+    }
+    
+    // Fallback: try to parse as a Date object
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+    
+    console.warn('Unknown date format:', dateString);
+    return '';
   } catch (error) {
     console.error('Failed to convert Airtable date to YYYY-MM-DD:', dateString, error);
     return '';

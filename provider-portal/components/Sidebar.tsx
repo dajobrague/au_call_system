@@ -13,7 +13,8 @@ import {
   Calendar,
   Settings,
   FileText,
-  Upload
+  Upload,
+  Headphones
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -31,6 +32,7 @@ const navItems: NavItem[] = [
   { name: 'Patients', path: '/dashboard/patients', icon: Hospital },
   { name: 'Occurrences', path: '/dashboard/occurrences', icon: Calendar },
   { name: 'Reports', path: '/dashboard/reports', icon: FileText },
+  { name: 'Operator', path: '/dashboard/operator', icon: Headphones },
   { name: 'Imports', path: '/dashboard/imports', icon: Upload },
   { name: 'Settings', path: '/dashboard/settings', icon: Settings },
 ];

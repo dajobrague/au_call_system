@@ -50,6 +50,9 @@ export default function ReportsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const reportsPerPage = 5;
   
+  // Track which report is currently loading a fresh URL
+  const [loadingReportId, setLoadingReportId] = useState<string | null>(null);
+  
   // Use custom hook for call logs and statistics
   const { statistics, loading: statsLoading, error: statsError } = useReportData(dateRange);
   
@@ -144,14 +147,119 @@ export default function ReportsPage() {
     }
   };
   
-  const handleDownload = (pdfUrl: string, reportName: string) => {
-    const link = document.createElement('a');
-    link.href = pdfUrl;
-    link.target = '_blank';
-    link.download = `${reportName}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  /**
+   * Check if a string is an S3 key (not a full URL)
+   * S3 keys don't start with http/https
+   */
+  const isS3Key = (urlOrKey: string): boolean => {
+    return !urlOrKey.startsWith('http');
+  };
+  
+  /**
+   * Get a fresh presigned URL for an S3 key or existing URL
+   * This solves the 7-day expiration problem by generating URLs on-demand
+   */
+  const getFreshPresignedUrl = async (urlOrKey: string): Promise<string | null> => {
+    try {
+      const response = await fetch('/api/provider/reports/presigned-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: urlOrKey,
+          expiresIn: 3600, // 1 hour - enough for viewing/downloading
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.url) {
+        return data.url;
+      }
+      
+      console.error('Failed to get presigned URL:', data.error);
+      return null;
+    } catch (error) {
+      console.error('Error fetching presigned URL:', error);
+      return null;
+    }
+  };
+  
+  /**
+   * Handle viewing a report - generates fresh URL if needed
+   */
+  const handleViewReport = async (report: Report) => {
+    const pdfValue = report.fields.PDF;
+    
+    if (!pdfValue) {
+      setReportsError('No PDF available for this report');
+      return;
+    }
+    
+    // If it's a full URL (old format), try to use it directly first
+    // But we'll generate a fresh one to avoid expired URL issues
+    setLoadingReportId(report.id);
+    
+    try {
+      const freshUrl = await getFreshPresignedUrl(pdfValue);
+      
+      if (freshUrl) {
+        window.open(freshUrl, '_blank');
+      } else {
+        // Fallback: try the stored URL (might work if not expired)
+        if (!isS3Key(pdfValue)) {
+          window.open(pdfValue, '_blank');
+        } else {
+          setReportsError('Unable to generate download URL. Please try again.');
+        }
+      }
+    } finally {
+      setLoadingReportId(null);
+    }
+  };
+  
+  /**
+   * Handle downloading a report - generates fresh URL if needed
+   */
+  const handleDownload = async (report: Report) => {
+    const pdfValue = report.fields.PDF;
+    
+    if (!pdfValue) {
+      setReportsError('No PDF available for this report');
+      return;
+    }
+    
+    setLoadingReportId(report.id);
+    
+    try {
+      const freshUrl = await getFreshPresignedUrl(pdfValue);
+      
+      if (freshUrl) {
+        const link = document.createElement('a');
+        link.href = freshUrl;
+        link.target = '_blank';
+        link.download = `${report.fields.Name}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // Fallback: try the stored URL
+        if (!isS3Key(pdfValue)) {
+          const link = document.createElement('a');
+          link.href = pdfValue;
+          link.target = '_blank';
+          link.download = `${report.fields.Name}.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else {
+          setReportsError('Unable to generate download URL. Please try again.');
+        }
+      }
+    } finally {
+      setLoadingReportId(null);
+    }
   };
   
   
@@ -272,7 +380,7 @@ export default function ReportsPage() {
                 >
                   {/* Report Info */}
                   <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                         <Calendar className="w-5 h-5 text-blue-600" />
                       </div>
@@ -290,7 +398,7 @@ export default function ReportsPage() {
                   </div>
                   
                   {/* View Button */}
-                  <div className="flex items-center gap-2 text-sm text-blue-600 group-hover:text-blue-700 font-medium flex-shrink-0">
+                  <div className="flex items-center gap-2 text-sm text-blue-600 group-hover:text-blue-700 font-medium shrink-0">
                     <span>View Report</span>
                     <Eye className="w-4 h-4" />
                   </div>
@@ -377,7 +485,7 @@ export default function ReportsPage() {
                     <div className="flex items-center justify-between gap-4">
                       {/* Report Info */}
                       <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="flex-shrink-0">
+                        <div className="shrink-0">
                           <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                             <FileText className="w-5 h-5 text-blue-600" />
                           </div>
@@ -394,21 +502,29 @@ export default function ReportsPage() {
                       </div>
                       
                       {/* Actions */}
-                      <div className="flex gap-2 flex-shrink-0">
-                        <a
-                          href={report.fields.PDF}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
-                        >
-                          <FileText className="w-4 h-4" />
-                          View
-                        </a>
+                      <div className="flex gap-2 shrink-0">
                         <button
-                          onClick={() => handleDownload(report.fields.PDF, report.fields.Name)}
-                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                          onClick={() => handleViewReport(report)}
+                          disabled={loadingReportId === report.id}
+                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-wait"
                         >
-                          <Download className="w-4 h-4" />
+                          {loadingReportId === report.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <FileText className="w-4 h-4" />
+                          )}
+                          View
+                        </button>
+                        <button
+                          onClick={() => handleDownload(report)}
+                          disabled={loadingReportId === report.id}
+                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                        >
+                          {loadingReportId === report.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Download className="w-4 h-4" />
+                          )}
                           Download
                         </button>
                       </div>

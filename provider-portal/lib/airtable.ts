@@ -674,6 +674,7 @@ export async function createEmployee(
     'Role'?: string;
     'Notes'?: string;
     'Active'?: boolean;
+    'Outbound Call?'?: boolean;
   }
 ): Promise<AirtableRecord> {
   return createAirtableRecord('Employees', fields);
@@ -692,6 +693,7 @@ export async function updateEmployee(
     'Role': string;
     'Notes': string;
     'Active': boolean;
+    'Outbound Call?': boolean;
   }>
 ): Promise<AirtableRecord> {
   return updateAirtableRecord('Employees', recordId, fields);
@@ -1163,5 +1165,78 @@ export async function createUser(
   }
 ): Promise<AirtableRecord> {
   return createAirtableRecord(USER_TABLE_ID, fields);
+}
+
+/**
+ * Get unfilled shifts (UNFILLED_AFTER_CALLS) for a provider
+ * Returns job occurrences that were not picked up after all outbound call retries
+ */
+export async function getUnfilledShiftsByProvider(providerId: string): Promise<AirtableRecord[]> {
+  // Filter by provider AND status = UNFILLED_AFTER_CALLS
+  const filterFormula = `AND(
+    {Status} = 'UNFILLED_AFTER_CALLS',
+    OR(
+      FIND('${providerId}', ARRAYJOIN({recordId (from Provider) (from Job Template)})),
+      FIND('${providerId}', ARRAYJOIN({recordId (from Provider) (from Assigned Employee)})),
+      FIND('${providerId}', ARRAYJOIN({recordId (from Provider) (from Patient (Link))}))
+    )
+  )`;
+
+  const response = await makeAirtableRequest('Job Occurrences', {
+    filterByFormula: filterFormula,
+    maxRecords: 100,
+    fields: [
+      'Occurrence ID',
+      'Patient TXT',
+      'Employee TXT',
+      'Scheduled At',
+      'Time',
+      'Time Window End',
+      'Status',
+      'Reschedule Reason',
+      'Patient (Link)',
+      'Assigned Employee',
+      'Job Template',
+    ],
+    sort: [{ field: 'Scheduled At', direction: 'desc' }],
+  });
+
+  return response.records;
+}
+
+/**
+ * Get outbound call logs for a specific occurrence
+ * Used to show call attempt history on unfilled shifts
+ */
+export async function getCallLogsByOccurrence(
+  providerId: string,
+  occurrenceId: string
+): Promise<AirtableRecord[]> {
+  // We need to find call logs linked to this occurrence
+  // Call Logs have a 'Related Occurrence' field (linked record)
+  const filterFormula = `AND(
+    FIND('${providerId}', ARRAYJOIN({recordId (from Provider)})),
+    {Direction} = 'Outbound',
+    FIND('${occurrenceId}', ARRAYJOIN({Related Occurrence}))
+  )`;
+
+  const response = await makeAirtableRequest('Call Logs', {
+    filterByFormula: filterFormula,
+    maxRecords: 50,
+    fields: [
+      'CallSid',
+      'Employee',
+      'Direction',
+      'Started At',
+      'Ended At',
+      'Seconds',
+      'Call Outcome',
+      'DTMF Response',
+      'Attempt Round',
+      'Notes',
+    ],
+  });
+
+  return response.records;
 }
 

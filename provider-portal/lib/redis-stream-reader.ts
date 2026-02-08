@@ -190,6 +190,27 @@ function formatEventDescription(eventType: string, data: any): string {
     case 'transfer_completed':
       return data.success ? 'Transfer completed successfully' : 'Transfer failed';
 
+    case 'transfer_answered':
+      return 'Transfer connected - representative answered';
+
+    case 'transfer_failed':
+      return `Transfer failed - ${data.outcome || 'representative unavailable'}`;
+
+    case 'outbound_call_started':
+      return `Outbound call to ${data.employeeName || 'staff'} (Round ${data.round || '?'})`;
+
+    case 'outbound_call_accepted':
+      return `Shift accepted by ${data.employeeName || 'staff'}`;
+
+    case 'outbound_call_declined':
+      return `Shift declined by ${data.employeeName || 'staff'}`;
+
+    case 'outbound_call_no_answer':
+      return `No answer from ${data.employeeName || 'staff'} (Round ${data.round || '?'})`;
+
+    case 'outbound_all_rounds_exhausted':
+      return `All rounds exhausted for ${data.patientName || 'shift'} (${data.totalAttempts || 0} attempts)`;
+
     case 'call_ended':
       const duration = data.duration ? ` (${formatDuration(data.duration)})` : '';
       return `Call ended${duration}`;
