@@ -118,6 +118,9 @@ function formatDuration(seconds: number): string {
   return `${secs}s`;
 }
 
+// How long (ms) to keep completed/failed transfers visible before removing them
+const TRANSFER_CLEANUP_DELAY_MS = 60_000; // 60 seconds
+
 export function useOperatorSSE(): UseOperatorSSEReturn {
   const [activeCalls, setActiveCalls] = useState<CallSession[]>([]);
   const [activeTransfers, setActiveTransfers] = useState<ActiveTransfer[]>([]);
@@ -127,7 +130,27 @@ export function useOperatorSSE(): UseOperatorSSEReturn {
 
   const callMapRef = useRef<Map<string, CallSession>>(new Map());
   const transferMapRef = useRef<Map<string, ActiveTransfer>>(new Map());
+  const transferCleanupTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Schedule a transfer to be removed from the map after the cleanup delay
+  const scheduleTransferCleanup = useCallback((callSid: string) => {
+    // Clear any existing timer for this callSid
+    const existing = transferCleanupTimers.current.get(callSid);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(() => {
+      transferMapRef.current.delete(callSid);
+      transferCleanupTimers.current.delete(callSid);
+      // Update state to reflect removal
+      const remaining = Array.from(transferMapRef.current.values()).sort(
+        (a, b) => new Date(b.initiatedAt).getTime() - new Date(a.initiatedAt).getTime()
+      );
+      setActiveTransfers([...remaining]);
+    }, TRANSFER_CLEANUP_DELAY_MS);
+
+    transferCleanupTimers.current.set(callSid, timer);
+  }, []);
 
   const processEvent = useCallback((event: SSECallEvent) => {
     const { callSid, eventType, data, timestamp } = event;
@@ -209,6 +232,8 @@ export function useOperatorSSE(): UseOperatorSSEReturn {
         transfer.status = 'answered';
         transfer.answeredAt = timestamp;
       }
+      // Auto-remove from panel after delay
+      scheduleTransferCleanup(callSid);
     } else if (eventType === 'transfer_failed') {
       const transfer = transferMap.get(callSid);
       if (transfer) {
@@ -216,6 +241,8 @@ export function useOperatorSSE(): UseOperatorSSEReturn {
         transfer.failedAt = timestamp;
         transfer.failureReason = data.outcome as string;
       }
+      // Auto-remove from panel after delay
+      scheduleTransferCleanup(callSid);
     }
 
     // Update state
@@ -234,7 +261,7 @@ export function useOperatorSSE(): UseOperatorSSEReturn {
       const updated = [event, ...prev];
       return updated.slice(0, 100);
     });
-  }, []);
+  }, [scheduleTransferCleanup]);
 
   useEffect(() => {
     const eventSource = new EventSource('/api/provider/operator-stream');
@@ -268,6 +295,9 @@ export function useOperatorSSE(): UseOperatorSSEReturn {
     return () => {
       eventSource.close();
       eventSourceRef.current = null;
+      // Clear all transfer cleanup timers
+      transferCleanupTimers.current.forEach(timer => clearTimeout(timer));
+      transferCleanupTimers.current.clear();
     };
   }, [processEvent]);
 
