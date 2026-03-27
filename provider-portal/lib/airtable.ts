@@ -322,11 +322,14 @@ export async function getOccurrencesByProvider(providerId: string): Promise<Airt
       'Patient TXT',
       'Employee TXT',
       'Scheduled At',
+      'Shift End Date',
       'Time',
       'Time Window End',
       'Status',
       'Patient (Link)',
       'Assigned Employee',
+      'Original Employee',
+      'Original Employee TXT',
       'Job Template'
     ],
     sort: [{ field: 'Scheduled At', direction: 'desc' }]
@@ -742,11 +745,13 @@ export async function createOccurrence(
     patientRecordId: string;
     employeeRecordId: string;
     scheduledAt: string;
+    shiftEndDate?: string;
     time: string;
     timeWindowEnd: string;
   }
 ): Promise<AirtableRecord> {
-  const occurrenceFields = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const occurrenceFields: Record<string, any> = {
     'Patient (Link)': [fields.patientRecordId],
     'Assigned Employee': [fields.employeeRecordId],
     'Scheduled At': fields.scheduledAt,
@@ -754,6 +759,9 @@ export async function createOccurrence(
     'Time Window End': fields.timeWindowEnd,
     'Status': 'Scheduled'
   };
+  if (fields.shiftEndDate) {
+    occurrenceFields['Shift End Date'] = fields.shiftEndDate;
+  }
   
   return createAirtableRecord('Job Occurrences', occurrenceFields);
 }
@@ -767,6 +775,7 @@ export async function updateOccurrence(
     patientRecordId?: string;
     employeeRecordId?: string;
     scheduledAt?: string;
+    shiftEndDate?: string;
     time?: string;
     timeWindowEnd?: string;
     status?: string;
@@ -783,6 +792,9 @@ export async function updateOccurrence(
   }
   if (fields.scheduledAt) {
     updateFields['Scheduled At'] = fields.scheduledAt;
+  }
+  if (fields.shiftEndDate) {
+    updateFields['Shift End Date'] = fields.shiftEndDate;
   }
   if (fields.time) {
     updateFields['Time'] = fields.time;

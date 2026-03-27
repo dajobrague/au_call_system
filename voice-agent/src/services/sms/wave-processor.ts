@@ -197,11 +197,19 @@ export async function processScheduledWave(waveJob: WaveJobData): Promise<void> 
             const maxRounds = providerFields['Outbound Call Max Rounds'] || 3;
             const messageTemplate = providerFields['Outbound Call Message Template'] || '';
             
+            // Filter out the employee who cancelled (if applicable) so they don't get called
+            const outboundStaffPoolIds = waveJob.excludeEmployeeId
+              ? staffPoolIds.filter(id => id !== waveJob.excludeEmployeeId)
+              : staffPoolIds;
+            
             logger.info('Outbound calling enabled for provider, scheduling calls', {
               occurrenceId,
               providerId,
               waitMinutes,
               maxRounds,
+              excludeEmployeeId: waveJob.excludeEmployeeId || null,
+              originalStaffPoolSize: staffPoolIds.length,
+              outboundStaffPoolSize: outboundStaffPoolIds.length,
               type: 'outbound_calling_scheduling'
             });
             
@@ -212,7 +220,7 @@ export async function processScheduledWave(waveJob: WaveJobData): Promise<void> 
               {
                 occurrenceId,
                 providerId,
-                staffPoolIds,
+                staffPoolIds: outboundStaffPoolIds,
                 maxRounds,
                 jobDetails: {
                   patientName: jobDetails.patientFullName,
@@ -231,7 +239,7 @@ export async function processScheduledWave(waveJob: WaveJobData): Promise<void> 
             logger.info('Outbound calls scheduled successfully', {
               occurrenceId,
               providerId,
-              staffPoolSize: staffPoolIds.length,
+              staffPoolSize: outboundStaffPoolIds.length,
               scheduledJobId: scheduledJob.id,
               delayMinutes: waitMinutes,
               type: 'outbound_calls_scheduled'

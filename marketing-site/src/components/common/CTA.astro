@@ -1,0 +1,27 @@
+---
+/**
+ * Placeholder CTA block — content and link destination will be
+ * provided when marketing sections are added.
+ */
+interface Props {
+  class?: string;
+  label?: string;
+  href?: string;
+}
+
+const {
+  class: className,
+  label = "Get Started",
+  href = "#",
+} = Astro.props;
+---
+
+<a
+  href={href}
+  class:list={[
+    "inline-flex h-11 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+    className,
+  ]}
+>
+  {label}
+</a>

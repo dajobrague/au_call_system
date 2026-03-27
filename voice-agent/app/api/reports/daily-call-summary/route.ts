@@ -15,8 +15,7 @@ import {
 } from '@/services/airtable/report-service';
 import { generateProviderReportHTML } from '@/services/reports/pdf-template';
 import { generatePdf } from '@/services/reports/pdf-generator';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { airtableClient } from '@/services/airtable/client';
 import { format } from 'date-fns';
 import { env } from '@/config/env';
@@ -81,12 +80,13 @@ async function generateProviderReport(
 
 /**
  * Upload PDF to S3
+ * Returns the S3 key (not presigned URL) - provider-portal will generate fresh URLs on-demand
  */
 async function uploadReportToS3(
   pdfBuffer: Buffer,
   provider: ProviderCallSummary,
   reportDate: string
-): Promise<{ success: boolean; url?: string; error?: string }> {
+): Promise<{ success: boolean; s3Key?: string; error?: string }> {
   try {
     // Generate S3 key: reports/{YYYY}/{MM}/{provider-name}-{YYYY-MM-DD}.pdf
     const date = new Date(reportDate);
@@ -120,6 +120,7 @@ async function uploadReportToS3(
       Body: pdfBuffer,
       ContentType: 'application/pdf',
       ServerSideEncryption: 'AES256', // SSE-S3
+      StorageClass: 'STANDARD_IA', // Cost-efficient for infrequent access
       Metadata: {
         'provider-id': provider.providerId,
         'provider-name': provider.providerName,
@@ -131,27 +132,19 @@ async function uploadReportToS3(
 
     await s3Client.send(command);
 
-    // Generate presigned URL (valid for 7 days = 604800 seconds)
-    // This allows access to the file even though the bucket is private
-    const getCommand = new GetObjectCommand({
-      Bucket: env.AWS_S3_BUCKET,
-      Key: key
-    });
-    
-    const presignedUrl = await getSignedUrl(s3Client, getCommand, { 
-      expiresIn: 604800 // 7 days
-    });
+    // NOTE: We now return the S3 key instead of a presigned URL
+    // The provider-portal will generate fresh presigned URLs on-demand
+    // This eliminates the 7-day expiration issue
 
     logger.info('PDF uploaded to S3 successfully', {
       provider: provider.providerName,
       key,
-      presignedUrl: presignedUrl.substring(0, 100) + '...',
       type: 's3_upload_pdf_success'
     });
 
     return {
       success: true,
-      url: presignedUrl
+      s3Key: key
     };
 
   } catch (error) {
@@ -169,25 +162,27 @@ async function uploadReportToS3(
 }
 
 /**
- * Store report in Airtable Reports table with S3 URL
+ * Store report in Airtable Reports table with S3 key
+ * NOTE: We now store the S3 key instead of presigned URL
+ * This allows the provider-portal to generate fresh URLs on-demand
  */
 async function storeReportInAirtable(
   provider: ProviderCallSummary,
   reportDate: string,
-  s3Url: string
+  s3Key: string
 ): Promise<{ success: boolean; recordId?: string; error?: string }> {
   try {
-    logger.info('Creating Airtable record with S3 URL', {
+    logger.info('Creating Airtable record with S3 key', {
       provider: provider.providerName,
       date: reportDate,
-      s3Url,
-      type: 'airtable_create_with_url'
+      s3Key,
+      type: 'airtable_create_with_s3_key'
     });
 
     const fields: any = {
       'Provider': [provider.providerId],
       'Date': reportDate,
-      'PDF': s3Url  // URL field - store as plain string
+      'PDF': s3Key  // Store S3 key - provider-portal generates presigned URLs on-demand
     };
 
     const record = await airtableClient.createRecord(REPORTS_TABLE_ID, fields);
@@ -195,6 +190,7 @@ async function storeReportInAirtable(
     logger.info('Airtable record created successfully', {
       provider: provider.providerName,
       recordId: record.id,
+      s3Key,
       type: 'airtable_record_created'
     });
 
@@ -351,7 +347,7 @@ export async function POST(request: NextRequest) {
         dateStr
       );
 
-      if (!uploadResult.success || !uploadResult.url) {
+      if (!uploadResult.success || !uploadResult.s3Key) {
         reports.push({
           providerId: provider.providerId,
           providerName: provider.providerName,
@@ -366,15 +362,16 @@ export async function POST(request: NextRequest) {
 
       logger.info('S3 upload successful', {
         provider: provider.providerName,
-        s3Url: uploadResult.url,
+        s3Key: uploadResult.s3Key,
         type: 's3_upload_success'
       });
 
-      // Store report record in Airtable with S3 URL
+      // Store report record in Airtable with S3 key (not presigned URL)
+      // Provider-portal will generate fresh presigned URLs on-demand
       const airtableResult = await storeReportInAirtable(
         provider,
         dateStr,
-        uploadResult.url
+        uploadResult.s3Key
       );
 
       logger.info('Airtable store result', {
@@ -388,7 +385,7 @@ export async function POST(request: NextRequest) {
       reports.push({
         providerId: provider.providerId,
         providerName: provider.providerName,
-        pdfUrl: uploadResult.url,
+        pdfUrl: uploadResult.s3Key, // Return S3 key - frontend will request fresh URL
         callCount: provider.callCount,
         totalDuration: provider.totalDuration,
         success: airtableResult.success,
@@ -399,7 +396,7 @@ export async function POST(request: NextRequest) {
       logger.info('Provider report completed', {
         provider: provider.providerName,
         success: airtableResult.success,
-        s3Url: uploadResult.url,
+        s3Key: uploadResult.s3Key,
         airtableRecordId: airtableResult.recordId,
         type: 'provider_report_completed'
       });

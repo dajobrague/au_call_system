@@ -33,6 +33,7 @@ function transformEmployeeRecord(record: EmployeeRecord): Employee {
     jobTemplateIds: fields['Job Templates'] || [],
     notes: fields['Notes'],
     active: fields['Active'] !== false, // Default to true if not specified
+    outboundCallEnabled: fields['Outbound Call?'] !== false, // Default to true if not specified
   };
 }
 

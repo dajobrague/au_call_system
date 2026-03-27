@@ -1,0 +1,178 @@
+---
+import Container from "@/components/layout/Container.astro";
+import Logo from "./Logo.astro";
+import { buttonVariants } from "@/components/ui/button";
+
+const navLinks = [
+  { label: "Home", href: "/" },
+  { label: "How It Works", href: "/how-it-works" },
+  { label: "Features", href: "/features" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "Security", href: "/security" },
+];
+---
+
+<header
+  class="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl backdrop-saturate-150 transition-[background-color,border-color] duration-200 supports-[backdrop-filter]:bg-background/60"
+>
+  <Container>
+    <div class="flex h-16 items-center justify-between gap-4">
+      <Logo />
+
+      <nav class="hidden items-center gap-0.5 md:flex" aria-label="Main navigation">
+        {navLinks.map((link) => (
+          <a
+            href={link.href}
+            class="nav-link relative rounded-md px-3 py-2 text-[13px] font-medium text-foreground/70 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            {link.label}
+          </a>
+        ))}
+        <a
+          href="/contact"
+          class:list={[buttonVariants({ size: "default" }), "ml-3 shadow-sm"]}
+        >
+          Book a Demo
+          <svg class="ml-1.5 h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"></path>
+            <path d="m12 5 7 7-7 7"></path>
+          </svg>
+        </a>
+      </nav>
+
+      <button
+        id="mobile-nav-toggle"
+        type="button"
+        class="inline-flex h-10 w-10 items-center justify-center rounded-md text-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+        aria-expanded="false"
+        aria-controls="mobile-nav-menu"
+        aria-label="Toggle navigation menu"
+      >
+        <svg
+          class="hamburger-icon h-5 w-5"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+        <svg
+          class="close-icon hidden h-5 w-5"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  </Container>
+
+  {/* Mobile backdrop overlay */}
+  <div
+    id="mobile-nav-backdrop"
+    class="fixed inset-0 top-16 z-40 hidden bg-foreground/20 backdrop-blur-sm md:hidden"
+    aria-hidden="true"
+  ></div>
+
+  {/* Mobile menu panel */}
+  <div
+    id="mobile-nav-menu"
+    class="fixed left-0 right-0 top-16 z-50 hidden border-b border-border/50 bg-background shadow-lg md:hidden"
+  >
+    <Container>
+      <nav class="flex flex-col gap-0.5 py-3" aria-label="Mobile navigation">
+        {navLinks.map((link) => (
+          <a
+            href={link.href}
+            class="mobile-nav-link rounded-lg px-4 py-3 text-[15px] font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground active:bg-muted"
+          >
+            {link.label}
+          </a>
+        ))}
+        <div class="px-4 pb-1 pt-3">
+          <a
+            href="/contact"
+            class:list={[buttonVariants({ size: "lg" }), "w-full justify-center shadow-sm"]}
+          >
+            Book a Demo
+            <svg class="ml-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"></path>
+              <path d="m12 5 7 7-7 7"></path>
+            </svg>
+          </a>
+        </div>
+      </nav>
+    </Container>
+  </div>
+</header>
+
+<style>
+  #mobile-nav-toggle[aria-expanded="true"] .hamburger-icon {
+    display: none;
+  }
+  #mobile-nav-toggle[aria-expanded="true"] .close-icon {
+    display: block;
+  }
+
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    width: 0;
+    height: 1.5px;
+    background-color: hsl(var(--foreground));
+    border-radius: 1px;
+    transition: width 0.2s ease, left 0.2s ease;
+  }
+  .nav-link:hover::after {
+    width: 60%;
+    left: 20%;
+  }
+</style>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    const btn = document.getElementById("mobile-nav-toggle");
+    const menu = document.getElementById("mobile-nav-menu");
+    const backdrop = document.getElementById("mobile-nav-backdrop");
+    if (!btn || !menu || !backdrop) return;
+
+    function close() {
+      btn!.setAttribute("aria-expanded", "false");
+      menu!.classList.add("hidden");
+      backdrop!.classList.add("hidden");
+      document.body.style.overflow = "";
+    }
+
+    function open() {
+      btn!.setAttribute("aria-expanded", "true");
+      menu!.classList.remove("hidden");
+      backdrop!.classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+    }
+
+    btn.addEventListener("click", () => {
+      const expanded = btn.getAttribute("aria-expanded") === "true";
+      expanded ? close() : open();
+    });
+
+    backdrop.addEventListener("click", close);
+
+    menu.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", close);
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && btn.getAttribute("aria-expanded") === "true") {
+        close();
+        btn.focus();
+      }
+    });
+  });
+</script>

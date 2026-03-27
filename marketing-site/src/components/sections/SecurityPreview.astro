@@ -1,0 +1,65 @@
+---
+import Section from "@/components/layout/Section.astro";
+import Container from "@/components/layout/Container.astro";
+
+const pillars = [
+  { title: "Australian-hosted records", desc: "Records stored on Australian infrastructure to meet local hosting and data sovereignty requirements.", icon: "map-pin" },
+  { title: "Role-based access", desc: "Assign Admin, Manager, or Viewer roles to control who can access settings, activity, and records.", icon: "lock" },
+  { title: "Full audit trail", desc: "Every action is logged with timestamps and user identity for complete operational traceability.", icon: "search" },
+  { title: "Encrypted communications", desc: "All connections secured via TLS, including API endpoints, dashboard access, and voice data.", icon: "sliders" },
+];
+---
+
+<Section padding="lg">
+  <Container>
+    <div class="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
+      <div>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+          Security
+        </p>
+        <h2 class="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          Built to support secure, accountable after-hours operations
+        </h2>
+        <p class="mt-4 text-base leading-relaxed text-muted-foreground">
+          On Call After Hours is designed for providers that need operational visibility, controlled access, clear reporting, and Australian-hosted records.
+        </p>
+        <div class="mt-6">
+          <a href="/security" class="text-sm font-medium text-primary underline-offset-4 hover:underline">
+            View security details &rarr;
+          </a>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {pillars.map((p) => (
+          <div class="rounded-xl border border-border/60 bg-card p-5 shadow-sm transition-shadow duration-200 hover:shadow-md">
+            <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+              {p.icon === "map-pin" && (
+                <svg class="h-[18px] w-[18px] text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle>
+                </svg>
+              )}
+              {p.icon === "lock" && (
+                <svg class="h-[18px] w-[18px] text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              )}
+              {p.icon === "search" && (
+                <svg class="h-[18px] w-[18px] text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path>
+                </svg>
+              )}
+              {p.icon === "sliders" && (
+                <svg class="h-[18px] w-[18px] text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="4" x2="4" y1="21" y2="14"></line><line x1="4" x2="4" y1="10" y2="3"></line><line x1="12" x2="12" y1="21" y2="12"></line><line x1="12" x2="12" y1="8" y2="3"></line><line x1="20" x2="20" y1="21" y2="16"></line><line x1="20" x2="20" y1="12" y2="3"></line><line x1="2" x2="6" y1="14" y2="14"></line><line x1="10" x2="14" y1="8" y2="8"></line><line x1="18" x2="22" y1="16" y2="16"></line>
+                </svg>
+              )}
+            </div>
+            <h3 class="mt-3 text-sm font-semibold text-foreground">{p.title}</h3>
+            <p class="mt-1 text-xs leading-relaxed text-muted-foreground">{p.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </Container>
+</Section>

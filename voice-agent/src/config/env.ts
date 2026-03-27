@@ -22,6 +22,7 @@ function getTwilioCredentials() {
     return {
       accountSid: process.env.PROD_TWILIO_ACCOUNT_SID || process.env.TWILIO_ACCOUNT_SID || '',
       authToken: process.env.PROD_TWILIO_AUTH_TOKEN || process.env.TWILIO_AUTH_TOKEN || '',
+      au1AuthToken: process.env.PROD_TWILIO_AU1_AUTH_TOKEN || process.env.TWILIO_AU1_AUTH_TOKEN || '',
       phoneNumber: process.env.PROD_TWILIO_PHONE_NUMBER || process.env.TWILIO_PHONE_NUMBER || '',
       messagingSid: process.env.PROD_TWILIO_MESSAGING_SID || process.env.TWILIO_MESSAGING_SID || '',
     };
@@ -30,6 +31,7 @@ function getTwilioCredentials() {
     return {
       accountSid: process.env.TWILIO_ACCOUNT_SID || '',
       authToken: process.env.TWILIO_AUTH_TOKEN || '',
+      au1AuthToken: process.env.TWILIO_AU1_AUTH_TOKEN || '',
       phoneNumber: process.env.TWILIO_PHONE_NUMBER || '',
       messagingSid: process.env.TWILIO_MESSAGING_SID || '',
     };
@@ -42,6 +44,7 @@ export const env = {
   // Twilio credentials (environment-aware)
   TWILIO_ACCOUNT_SID: twilioCredentials.accountSid,
   TWILIO_AUTH_TOKEN: twilioCredentials.authToken,
+  TWILIO_AU1_AUTH_TOKEN: twilioCredentials.au1AuthToken,
   TWILIO_PHONE_NUMBER: twilioCredentials.phoneNumber,
   TWILIO_MESSAGING_SID: twilioCredentials.messagingSid,
   

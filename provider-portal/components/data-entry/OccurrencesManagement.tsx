@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useImperativeHandle, forwardRef, useRef, useEffect } from 'react';
+import { useState, useMemo, useImperativeHandle, forwardRef, useRef, useEffect } from 'react';
 import { Plus, X, Loader2, Calendar, Clock, User, UserCircle, ChevronDown, Upload, CalendarPlus } from 'lucide-react';
 import { generateTimeSlots, formatTimeSlot } from '@/lib/time-slots';
 import ImportWizard from '../import/ImportWizard';
@@ -18,6 +18,7 @@ interface Employee {
 interface Patient {
   id: string;
   name: string;
+  relatedStaffPool: string[];
 }
 
 export interface Occurrence {
@@ -27,6 +28,7 @@ export interface Occurrence {
   employeeName: string;
   employeeRecordId: string;
   scheduledAt: string;
+  shiftEndDate?: string;
   time: string;
   timeWindowEnd?: string;
   status: string;
@@ -63,6 +65,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
   const [patientRecordId, setPatientRecordId] = useState('');
   const [employeeRecordId, setEmployeeRecordId] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
+  const [shiftEndDate, setShiftEndDate] = useState('');
   const [time, setTime] = useState('09:00');
   const [timeWindowEnd, setTimeWindowEnd] = useState('10:00');
   
@@ -70,6 +73,25 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
   
   // Get today's date in YYYY-MM-DD format for min date restriction
   const today = new Date().toISOString().split('T')[0];
+
+  // Filter employees by the selected patient's Related Staff Pool
+  const selectedPatient = patients.find(p => p.id === patientRecordId);
+  const filteredEmployees = useMemo(() => {
+    if (!selectedPatient || selectedPatient.relatedStaffPool.length === 0) {
+      return employees;
+    }
+    return employees.filter(emp => selectedPatient.relatedStaffPool.includes(emp.id));
+  }, [employees, selectedPatient]);
+
+  // Reset employee selection when patient changes and current employee isn't in the filtered list
+  useEffect(() => {
+    if (patientRecordId && employeeRecordId) {
+      const isEmployeeInPool = filteredEmployees.some(emp => emp.id === employeeRecordId);
+      if (!isEmployeeInPool) {
+        setEmployeeRecordId('');
+      }
+    }
+  }, [patientRecordId, filteredEmployees, employeeRecordId]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -86,6 +108,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
     setPatientRecordId('');
     setEmployeeRecordId('');
     setScheduledAt('');
+    setShiftEndDate('');
     setTime('09:00');
     setTimeWindowEnd('10:00');
     setError('');
@@ -98,14 +121,16 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
       setPatientRecordId(occurrence.patientRecordId);
       setEmployeeRecordId(occurrence.employeeRecordId);
       setScheduledAt(occurrence.scheduledAt);
+      setShiftEndDate(occurrence.shiftEndDate || occurrence.scheduledAt);
       setTime(occurrence.time);
       setTimeWindowEnd(occurrence.timeWindowEnd || '10:00');
     } else {
       resetForm();
-      // Set default date to tomorrow
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      setScheduledAt(tomorrow.toISOString().split('T')[0]);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      setScheduledAt(tomorrowStr);
+      setShiftEndDate(tomorrowStr);
     }
     setShowModal(true);
   };
@@ -126,14 +151,19 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
     e.preventDefault();
     setError('');
     
-    if (!patientRecordId || !employeeRecordId || !scheduledAt || !time || !timeWindowEnd) {
+    if (!patientRecordId || !employeeRecordId || !scheduledAt || !shiftEndDate || !time || !timeWindowEnd) {
       setError('All fields are required');
       return;
     }
     
-    // Validate that end time is after start time
-    if (time >= timeWindowEnd) {
-      setError('Time Window End must be after Time Window Start');
+    if (shiftEndDate < scheduledAt) {
+      setError('Shift End Date cannot be before Shift Start Date');
+      return;
+    }
+    
+    // Validate that end time is after start time (only when on the same date)
+    if (scheduledAt === shiftEndDate && time >= timeWindowEnd) {
+      setError('Shift End Time must be after Shift Start Time when on the same date');
       return;
     }
     
@@ -144,6 +174,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
         patientRecordId,
         employeeRecordId,
         scheduledAt,
+        shiftEndDate,
         time,
         timeWindowEnd
       };
@@ -333,40 +364,73 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   required
                 >
-                  <option value="">Select an employee...</option>
-                  {employees.map((employee) => (
+                  <option value="">
+                    {patientRecordId ? 'Select an employee...' : 'Select a patient first...'}
+                  </option>
+                  {filteredEmployees.map((employee) => (
                     <option key={employee.id} value={employee.id}>
                       {employee.name}
                     </option>
                   ))}
                 </select>
+                {patientRecordId && filteredEmployees.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    No employees are assigned to this patient&apos;s staff pool.
+                  </p>
+                )}
               </div>
               
-              {/* Date Selection */}
-              <div>
-                <label htmlFor="scheduledAt" className="block text-sm font-medium text-gray-700 mb-2">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Scheduled Date *
-                  </div>
-                </label>
-                <input
-                  type="date"
-                  id="scheduledAt"
-                  value={scheduledAt}
-                  onChange={(e) => setScheduledAt(e.target.value)}
-                  min={today}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 [color-scheme:light]"
-                  required
-                />
+              {/* Shift Start Date */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="scheduledAt" className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Shift Start Date *
+                    </div>
+                  </label>
+                  <input
+                    type="date"
+                    id="scheduledAt"
+                    value={scheduledAt}
+                    onChange={(e) => {
+                      setScheduledAt(e.target.value);
+                      if (!shiftEndDate || e.target.value > shiftEndDate) {
+                        setShiftEndDate(e.target.value);
+                      }
+                    }}
+                    min={today}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 scheme-light"
+                    required
+                  />
+                </div>
+
+                {/* Shift End Date */}
+                <div>
+                  <label htmlFor="shiftEndDate" className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Shift End Date *
+                    </div>
+                  </label>
+                  <input
+                    type="date"
+                    id="shiftEndDate"
+                    value={shiftEndDate}
+                    onChange={(e) => setShiftEndDate(e.target.value)}
+                    min={scheduledAt || today}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 scheme-light"
+                    required
+                  />
+                </div>
               </div>
               
-              {/* Time Window Start */}
+              {/* Shift Start Time */}
               <div>
                 <label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-2">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
-                    Time Window Start *
+                    Shift Start Time *
                   </div>
                 </label>
                 <select
@@ -384,12 +448,12 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                 </select>
               </div>
               
-              {/* Time Window End */}
+              {/* Shift End Time */}
               <div>
                 <label htmlFor="timeWindowEnd" className="block text-sm font-medium text-gray-700 mb-2">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
-                    Time Window End *
+                    Shift End Time *
                   </div>
                 </label>
                 <select

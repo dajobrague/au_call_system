@@ -1,0 +1,194 @@
+---
+import Section from "@/components/layout/Section.astro";
+import Container from "@/components/layout/Container.astro";
+
+const pillars = [
+  {
+    title: "Reliability & Trust",
+    desc: "Consistent after-hours coverage your organisation can depend on.",
+    icon: "shield-check",
+  },
+  {
+    title: "Client-Centered Support",
+    desc: "Empathetic communication that builds confidence and loyalty.",
+    icon: "heart-handshake",
+  },
+  {
+    title: "Quality & Compliance",
+    desc: "NDIS-aware processes designed to reduce risk and support compliance.",
+    icon: "clipboard-check",
+  },
+  {
+    title: "Compassionate Communication",
+    desc: "Clear, calm handling during sensitive or stressful situations.",
+    icon: "messages-square",
+  },
+];
+
+const checklist = [
+  "24/7 Availability",
+  "Built on Reliability and Trust",
+  "Tailored to NDIS Providers",
+  "Professional Call Management",
+];
+---
+
+<Section id="why-us" padding="lg" variant="tinted">
+  <Container>
+
+    {/* ─── 1. Header ─── */}
+    <div class="mb-10 max-w-2xl">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+        Why partner with us
+      </p>
+      <h2 class="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        Partner with On Call After Hours for unmatched after-hours support
+      </h2>
+    </div>
+
+    {/* ─── 2. Content row: Body text + Pillars ─── */}
+    <div class="grid grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-16">
+
+      {/* LEFT — Body text + callout */}
+      <div class="space-y-5">
+        <p class="text-base leading-relaxed text-muted-foreground">
+          We don't just handle after-hours calls — we redefine them. By integrating into your operations, we act as an extension of your team so clients feel cared for and supported at all times.
+        </p>
+        <p class="text-base leading-relaxed text-muted-foreground">
+          From urgent staffing resolutions to compliant clinical guidance, we provide peace of mind for NDIS providers. With cutting-edge systems and a personalised approach, we help you stand out while maintaining a high standard of care.
+        </p>
+        <div class="flex items-center gap-3 border-l-2 border-primary/40 py-2 pl-4">
+          <svg class="h-4 w-4 shrink-0 text-primary/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <path d="m9 12 2 2 4-4"></path>
+          </svg>
+          <span class="text-sm font-medium italic text-foreground/80">
+            An extension of your team — not a call centre.
+          </span>
+        </div>
+      </div>
+
+      {/* RIGHT — Pillars ribbon */}
+      <div class="relative pl-8 lg:pl-10">
+        <div
+          class="absolute bottom-2 left-[15px] top-2 w-px bg-border/60 lg:left-[19px]"
+          aria-hidden="true"
+        ></div>
+        <div class="space-y-0">
+          {pillars.map((p) => (
+            <div class="why-us-row group relative flex gap-4 py-4 transition-colors duration-150">
+              <div class="relative z-10 -ml-8 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-4 ring-transparent transition-all duration-150 group-hover:ring-primary/[0.04] lg:-ml-10">
+                {p.icon === "shield-check" && (
+                  <svg class="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    <path d="m9 12 2 2 4-4"></path>
+                  </svg>
+                )}
+                {p.icon === "heart-handshake" && (
+                  <svg class="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+                    <path d="M12 5 9.04 7.96a2.17 2.17 0 0 0 0 3.08v0c.82.82 2.13.85 3 .07l2.07-1.9a2.82 2.82 0 0 1 3.79 0l2.96 2.66"></path>
+                    <path d="m18 15-2-2"></path>
+                    <path d="m15 18-2-2"></path>
+                  </svg>
+                )}
+                {p.icon === "clipboard-check" && (
+                  <svg class="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    <path d="m9 14 2 2 4-4"></path>
+                  </svg>
+                )}
+                {p.icon === "messages-square" && (
+                  <svg class="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2v5Z"></path>
+                    <path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"></path>
+                  </svg>
+                )}
+              </div>
+              <div class="pt-0.5">
+                <h3 class="text-sm font-semibold text-foreground">{p.title}</h3>
+                <p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">{p.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {/* ─── 3. Image band ─── */}
+    <div class="relative mt-10 overflow-hidden rounded-xl border border-border/60 shadow-sm">
+      <div class="aspect-[21/9] sm:aspect-[21/8]">
+        <img
+          src="/images/why-us/extension.png"
+          alt="After-hours support team coordinating calls"
+          class="why-us-img h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+        />
+        <div class="why-us-img-fallback hidden h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/60">
+          <div class="flex flex-col items-center gap-2 text-center">
+            <svg class="h-10 w-10 text-muted-foreground/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span class="text-xs font-medium text-muted-foreground/50">extension.png</span>
+          </div>
+        </div>
+      </div>
+      <div class="pointer-events-none absolute inset-0 bg-primary/[0.04]" aria-hidden="true"></div>
+      <div class="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
+        <div class="rounded-md bg-card/90 px-3 py-1.5 shadow-sm backdrop-blur-sm">
+          <p class="text-xs font-semibold text-foreground/90">An extension of your team</p>
+          <p class="text-[10px] leading-snug text-muted-foreground">After-hours support, done professionally</p>
+        </div>
+      </div>
+    </div>
+
+    {/* ─── 4. Checklist strip ─── */}
+    <div class="mt-10 border-t border-border/40 pt-8">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+        Why choose On Call After Hours
+      </p>
+      <div class="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3">
+        {checklist.map((item) => (
+          <div class="flex items-center gap-2">
+            <svg class="h-4 w-4 shrink-0 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5"></path>
+            </svg>
+            <span class="text-sm font-medium text-foreground/80">{item}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+  </Container>
+</Section>
+
+<script>
+  document.querySelectorAll('.why-us-img').forEach((img) => {
+    img.addEventListener('error', () => {
+      (img as HTMLElement).style.display = 'none';
+      const fallback = img.nextElementSibling;
+      if (fallback?.classList.contains('why-us-img-fallback')) {
+        fallback.classList.remove('hidden');
+        fallback.classList.add('flex');
+      }
+    });
+  });
+</script>
+
+<style>
+  .why-us-row {
+    border-radius: 0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+  }
+  .why-us-row:hover {
+    background: hsl(var(--primary) / 0.02);
+  }
+</style>

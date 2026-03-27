@@ -1,0 +1,62 @@
+---
+import Container from "@/components/layout/Container.astro";
+import Logo from "./Logo.astro";
+
+const productLinks = [
+  { label: "How It Works", href: "/how-it-works" },
+  { label: "Features", href: "/features" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "Security", href: "/security" },
+];
+
+const companyLinks = [
+  { label: "Book a Demo", href: "/contact" },
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms of Use", href: "/terms" },
+];
+---
+
+<footer class="border-t border-border bg-muted/30">
+  <Container>
+    <div class="grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+      <div class="sm:col-span-2 lg:col-span-2">
+        <Logo />
+        <p class="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          On Call After Hours helps care providers manage after-hours issues with more control, visibility, and less manual work.
+        </p>
+      </div>
+
+      <div>
+        <h4 class="text-xs font-semibold uppercase tracking-wider text-foreground/80">Product</h4>
+        <ul class="mt-3 space-y-2.5">
+          {productLinks.map((link) => (
+            <li>
+              <a href={link.href} class="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-xs font-semibold uppercase tracking-wider text-foreground/80">Company</h4>
+        <ul class="mt-3 space-y-2.5">
+          {companyLinks.map((link) => (
+            <li>
+              <a href={link.href} class="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+
+    <div class="border-t border-border/60 py-6">
+      <p class="text-center text-xs text-muted-foreground">
+        &copy; {new Date().getFullYear()} On Call After Hours. All rights reserved.
+      </p>
+    </div>
+  </Container>
+</footer>

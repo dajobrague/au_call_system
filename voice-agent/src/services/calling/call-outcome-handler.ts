@@ -10,8 +10,23 @@ import { airtableClient } from '../airtable/client';
 import { updateCallLog } from '../airtable/call-log-service';
 import { scheduleNextCallAttempt, cancelOutboundCalls } from '../queue/outbound-call-queue';
 import { twilioSMSService } from '../sms/twilio-sms-service';
+import { getBaseUrl } from '../../config/base-url';
+import {
+  publishOutboundCallAccepted,
+  publishOutboundCallDeclined,
+  publishOutboundCallNoAnswer,
+  publishOutboundAllRoundsExhausted,
+} from '../redis/call-event-publisher';
 import type { OutboundCallJobData } from '../queue/outbound-call-queue';
 import type { JobOccurrenceFields } from '../airtable/types';
+
+/**
+ * Extract first name from full name string
+ */
+function extractFirstName(fullName: string): string {
+  if (!fullName) return '';
+  return fullName.split(' ')[0];
+}
 
 /**
  * Handle job acceptance (staff pressed 1)
@@ -20,7 +35,8 @@ export async function handleJobAcceptance(
   occurrenceId: string,
   employeeId: string,
   callSid: string,
-  callLogRecordId?: string
+  callLogRecordId?: string,
+  providerId?: string
 ): Promise<{ success: boolean; error?: string }> {
   const startTime = Date.now();
   
@@ -95,6 +111,23 @@ export async function handleJobAcceptance(
       type: 'job_assigned'
     });
     
+    // Publish outbound_call_accepted event to Redis Stream (non-blocking)
+    const resolvedProviderId = providerId || (employee.fields['recordId (from Provider)'] as string[])?.[0];
+    if (resolvedProviderId) {
+      const patientName = jobOccurrence.fields['Patient TXT'] as string || '';
+      publishOutboundCallAccepted(callSid, resolvedProviderId, {
+        employeeName,
+        employeeId,
+        patientName,
+        occurrenceId,
+      }).catch(err => {
+        logger.warn('Failed to publish outbound_call_accepted event', {
+          callSid, error: err instanceof Error ? err.message : 'Unknown error',
+          type: 'redis_stream_warning'
+        });
+      });
+    }
+    
     // Step 4: Cancel all remaining outbound calls
     try {
       const cancelResult = await cancelOutboundCalls(occurrenceId);
@@ -132,11 +165,16 @@ export async function handleJobAcceptance(
       }
     }
     
-    // Step 6: Send confirmation SMS
+    // Step 6: Send confirmation SMS with job details link
     if (employeePhone) {
       try {
         const jobDetails = jobOccurrence.fields;
-        const confirmationMessage = `JOB ASSIGNED: You accepted ${jobDetails['Occurrence ID']} via phone call. Scheduled for ${jobDetails['Scheduled At']} at ${jobDetails['Time']}. Check the system for full details.`;
+        const patientFirstName = extractFirstName(jobDetails['Patient TXT'] || '');
+        const baseUrl = getBaseUrl();
+        const jobDetailsUrl = `${baseUrl}/job/${occurrenceId}?emp=${employeeId}`;
+        
+        // Build a clear, informative confirmation message with link
+        const confirmationMessage = `JOB CONFIRMED: You accepted the shift${patientFirstName ? ` for ${patientFirstName}` : ''} on ${jobDetails['Scheduled At']} at ${jobDetails['Time']}.\n\nView details & directions:\n${jobDetailsUrl}`;
         
         await twilioSMSService.sendSMS(
           employeePhone,
@@ -144,9 +182,10 @@ export async function handleJobAcceptance(
           { employeeId, occurrenceId }
         );
         
-        logger.info('Confirmation SMS sent', {
+        logger.info('Confirmation SMS sent with job details link', {
           occurrenceId,
           employeeId,
+          jobDetailsUrl,
           type: 'confirmation_sms_sent'
         });
       } catch (error) {
@@ -227,6 +266,22 @@ export async function handleJobDecline(
       }
     }
     
+    // Publish outbound_call_declined event to Redis Stream (non-blocking)
+    if (jobData.providerId) {
+      const employee = await airtableClient.getEmployeeById(employeeId);
+      const employeeName = employee?.fields['Display Name'] as string || 'Unknown';
+      publishOutboundCallDeclined(callSid, jobData.providerId, {
+        employeeName,
+        employeeId,
+        occurrenceId,
+      }).catch(err => {
+        logger.warn('Failed to publish outbound_call_declined event', {
+          callSid, error: err instanceof Error ? err.message : 'Unknown error',
+          type: 'redis_stream_warning'
+        });
+      });
+    }
+    
     // Step 2: Schedule next call attempt
     const nextJob = await scheduleNextCallAttempt(jobData);
     
@@ -247,7 +302,7 @@ export async function handleJobDecline(
       });
       
       // Mark job as UNFILLED_AFTER_CALLS
-      await markJobAsUnfilled(occurrenceId, jobData);
+      await markJobAsUnfilled(occurrenceId, jobData, callSid);
       
       return { success: true, nextCallScheduled: false };
     }
@@ -307,6 +362,23 @@ export async function handleNoAnswer(
       }
     }
     
+    // Publish outbound_call_no_answer event to Redis Stream (non-blocking)
+    if (jobData.providerId) {
+      const employee = await airtableClient.getEmployeeById(employeeId);
+      const employeeName = employee?.fields['Display Name'] as string || 'Unknown';
+      publishOutboundCallNoAnswer(callSid, jobData.providerId, {
+        employeeName,
+        employeeId,
+        occurrenceId,
+        round: jobData.currentRound,
+      }).catch(err => {
+        logger.warn('Failed to publish outbound_call_no_answer event', {
+          callSid, error: err instanceof Error ? err.message : 'Unknown error',
+          type: 'redis_stream_warning'
+        });
+      });
+    }
+    
     // Step 2: Schedule next call attempt
     const nextJob = await scheduleNextCallAttempt(jobData);
     
@@ -327,7 +399,7 @@ export async function handleNoAnswer(
       });
       
       // Mark job as UNFILLED_AFTER_CALLS
-      await markJobAsUnfilled(occurrenceId, jobData);
+      await markJobAsUnfilled(occurrenceId, jobData, callSid);
       
       return { success: true, nextCallScheduled: false };
     }
@@ -353,7 +425,8 @@ export async function handleNoAnswer(
  */
 async function markJobAsUnfilled(
   occurrenceId: string,
-  jobData: OutboundCallJobData
+  jobData: OutboundCallJobData,
+  callSid?: string
 ): Promise<void> {
   try {
     const totalAttempts = Object.values(jobData.callAttemptsByStaff).reduce((sum, count) => sum + count, 0);
@@ -382,6 +455,26 @@ async function markJobAsUnfilled(
         uniqueStaffCalled,
         type: 'unfilled_after_calls_marked'
       });
+      
+      // Publish outbound_all_rounds_exhausted event to Redis Stream (non-blocking)
+      if (jobData.providerId) {
+        publishOutboundAllRoundsExhausted(
+          callSid || `unfilled-${occurrenceId}`,
+          jobData.providerId,
+          {
+            occurrenceId,
+            patientName: jobData.jobDetails?.patientName || '',
+            totalAttempts,
+            uniqueStaffCalled,
+            maxRounds: jobData.maxRounds,
+          }
+        ).catch(err => {
+          logger.warn('Failed to publish outbound_all_rounds_exhausted event', {
+            occurrenceId, error: err instanceof Error ? err.message : 'Unknown error',
+            type: 'redis_stream_warning'
+          });
+        });
+      }
     } else {
       logger.error('Failed to mark job as UNFILLED_AFTER_CALLS', {
         occurrenceId,

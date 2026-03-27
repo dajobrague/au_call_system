@@ -59,6 +59,13 @@ export type CallEventType =
   | 'staff_notified'
   | 'transfer_initiated'
   | 'transfer_completed'
+  | 'transfer_answered'
+  | 'transfer_failed'
+  | 'outbound_call_started'
+  | 'outbound_call_accepted'
+  | 'outbound_call_declined'
+  | 'outbound_call_no_answer'
+  | 'outbound_all_rounds_exhausted'
   | 'call_ended';
 
 /**
@@ -267,6 +274,153 @@ export async function publishCallEnded(
     providerId,
     timestamp: new Date().toISOString(),
     data: { duration },
+  });
+}
+
+/**
+ * Publish transfer_answered event (representative picked up)
+ */
+export async function publishTransferAnswered(
+  callSid: string,
+  providerId: string,
+  callerPhone: string,
+  duration?: number
+): Promise<boolean> {
+  return publishCallEvent({
+    eventType: 'transfer_answered',
+    callSid,
+    providerId,
+    timestamp: new Date().toISOString(),
+    data: { callerPhone, duration },
+  });
+}
+
+/**
+ * Publish transfer_failed event (representative didn't answer)
+ */
+export async function publishTransferFailed(
+  callSid: string,
+  providerId: string,
+  callerPhone: string,
+  outcome: string
+): Promise<boolean> {
+  return publishCallEvent({
+    eventType: 'transfer_failed',
+    callSid,
+    providerId,
+    timestamp: new Date().toISOString(),
+    data: { callerPhone, outcome },
+  });
+}
+
+/**
+ * Publish outbound_call_started event
+ */
+export async function publishOutboundCallStarted(
+  callSid: string,
+  providerId: string,
+  data: {
+    employeeName: string;
+    employeeId: string;
+    patientName: string;
+    occurrenceId: string;
+    round: number;
+  }
+): Promise<boolean> {
+  return publishCallEvent({
+    eventType: 'outbound_call_started',
+    callSid,
+    providerId,
+    timestamp: new Date().toISOString(),
+    data,
+  });
+}
+
+/**
+ * Publish outbound_call_accepted event (staff pressed 1)
+ */
+export async function publishOutboundCallAccepted(
+  callSid: string,
+  providerId: string,
+  data: {
+    employeeName: string;
+    employeeId: string;
+    patientName: string;
+    occurrenceId: string;
+  }
+): Promise<boolean> {
+  return publishCallEvent({
+    eventType: 'outbound_call_accepted',
+    callSid,
+    providerId,
+    timestamp: new Date().toISOString(),
+    data,
+  });
+}
+
+/**
+ * Publish outbound_call_declined event (staff pressed 2)
+ */
+export async function publishOutboundCallDeclined(
+  callSid: string,
+  providerId: string,
+  data: {
+    employeeName: string;
+    employeeId: string;
+    occurrenceId: string;
+  }
+): Promise<boolean> {
+  return publishCallEvent({
+    eventType: 'outbound_call_declined',
+    callSid,
+    providerId,
+    timestamp: new Date().toISOString(),
+    data,
+  });
+}
+
+/**
+ * Publish outbound_call_no_answer event
+ */
+export async function publishOutboundCallNoAnswer(
+  callSid: string,
+  providerId: string,
+  data: {
+    employeeName: string;
+    employeeId: string;
+    occurrenceId: string;
+    round: number;
+  }
+): Promise<boolean> {
+  return publishCallEvent({
+    eventType: 'outbound_call_no_answer',
+    callSid,
+    providerId,
+    timestamp: new Date().toISOString(),
+    data,
+  });
+}
+
+/**
+ * Publish outbound_all_rounds_exhausted event
+ */
+export async function publishOutboundAllRoundsExhausted(
+  callSid: string,
+  providerId: string,
+  data: {
+    occurrenceId: string;
+    patientName: string;
+    totalAttempts: number;
+    uniqueStaffCalled: number;
+    maxRounds: number;
+  }
+): Promise<boolean> {
+  return publishCallEvent({
+    eventType: 'outbound_all_rounds_exhausted',
+    callSid,
+    providerId,
+    timestamp: new Date().toISOString(),
+    data,
   });
 }
 

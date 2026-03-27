@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callQueueService } from '@/services/queue/call-queue-service';
 import { HOLD_MUSIC_CONFIG } from '@/config/hold-music';
 import { logger } from '@/lib/logger';
+import { publishTransferAnswered, publishTransferFailed } from '@/services/redis/call-event-publisher';
+import { loadCallState } from '@/fsm/state/state-manager';
 const twilio = require('twilio');
 
 const VoiceResponse = twilio.twiml.VoiceResponse;
@@ -22,14 +24,33 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const callSid = formData.get('CallSid') as string;
     const dialCallStatus = formData.get('DialCallStatus') as string;
+    const dialCallDuration = formData.get('DialCallDuration') as string;
     const from = formData.get('From') as string;
+    
+    // Get the caller phone from URL params (set when TwiML was generated)
+    const url = new URL(request.url);
+    const callerPhone = url.searchParams.get('from') || from || '';
     
     logger.info('Transfer status received', {
       callSid,
       dialCallStatus,
       from,
+      callerPhone,
       type: 'transfer_status'
     });
+    
+    // Load call state to get providerId for event publishing
+    let providerId: string | undefined;
+    try {
+      const callState = await loadCallState(callSid);
+      providerId = callState?.provider?.id || callState?.employee?.providerId;
+    } catch (err) {
+      logger.warn('Could not load call state for transfer event publishing', {
+        callSid,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        type: 'transfer_status_state_warning'
+      });
+    }
     
     const twiml = new VoiceResponse();
     
@@ -41,6 +62,20 @@ export async function POST(request: NextRequest) {
         type: 'transfer_success'
       });
       
+      // Publish transfer_answered event to Redis (non-blocking)
+      if (providerId) {
+        publishTransferAnswered(
+          callSid,
+          providerId,
+          callerPhone,
+          dialCallDuration ? parseInt(dialCallDuration, 10) : undefined
+        ).catch(err => {
+          logger.error('Failed to publish transfer_answered event', {
+            callSid, error: err.message, type: 'redis_stream_error'
+          });
+        });
+      }
+      
       twiml.hangup();
       
     } else if (dialCallStatus === 'busy' || dialCallStatus === 'no-answer' || dialCallStatus === 'failed') {
@@ -50,6 +85,20 @@ export async function POST(request: NextRequest) {
         dialCallStatus,
         type: 'transfer_failed_enqueue'
       });
+      
+      // Publish transfer_failed event to Redis (non-blocking)
+      if (providerId) {
+        publishTransferFailed(
+          callSid,
+          providerId,
+          callerPhone,
+          dialCallStatus
+        ).catch(err => {
+          logger.error('Failed to publish transfer_failed event', {
+            callSid, error: err.message, type: 'redis_stream_error'
+          });
+        });
+      }
       
       // Enqueue the call
       const queueResult = await callQueueService.enqueueCall(

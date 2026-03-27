@@ -33,6 +33,7 @@ export interface CallState {
     jobTemplateIds: string[];
     notes?: string;
     active: boolean;
+    outboundCallEnabled: boolean; // Whether employee should receive outbound calls
   };
   provider?: {                    // Provider data for greetings
     id: string;

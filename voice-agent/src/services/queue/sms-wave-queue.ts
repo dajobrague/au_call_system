@@ -254,6 +254,16 @@ export async function cleanOldJobs(): Promise<void> {
 }
 
 // Queue event handlers for monitoring
+// CRITICAL: 'error' handler must be registered at module level to prevent
+// unhandled error events from crashing the process before the worker registers its own handler
+smsWaveQueue.on('error', (error) => {
+  logger.error('SMS Wave Queue error', {
+    error: error.message,
+    stack: error.stack,
+    type: 'sms_wave_queue_error'
+  });
+});
+
 smsWaveQueue.on('completed', (job) => {
   logger.info('Wave job completed', {
     jobId: job.id,

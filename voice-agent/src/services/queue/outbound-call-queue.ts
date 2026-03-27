@@ -74,9 +74,12 @@ export async function scheduleOutboundCallAfterSMS(
       callAttemptsByStaff: {},
     };
 
+    const initialJobId = `outbound-${occurrenceId}-r1-s0`;
+    await removeStaleJob(initialJobId);
+
     const job = await outboundCallQueue.add(initialJobData, {
       delay: delayMs,
-      jobId: `outbound-${occurrenceId}-r1-s0`, // Round 1, Staff 0
+      jobId: initialJobId, // Round 1, Staff 0
       priority: 10, // High priority
     });
 
@@ -102,6 +105,33 @@ export async function scheduleOutboundCallAfterSMS(
 }
 
 /**
+ * Remove a stale job by ID if it exists (completed/failed jobs block re-creation in Bull)
+ */
+async function removeStaleJob(jobId: string): Promise<void> {
+  try {
+    const existing = await outboundCallQueue.getJob(jobId);
+    if (existing) {
+      const state = await existing.getState();
+      if (state === 'completed' || state === 'failed') {
+        await existing.remove();
+        logger.info('Removed stale job before re-scheduling', {
+          jobId,
+          previousState: state,
+          type: 'outbound_stale_job_removed'
+        });
+      }
+    }
+  } catch (err) {
+    // Non-fatal -- if cleanup fails, add() will return the old job (no-op)
+    logger.warn('Stale job cleanup failed (non-fatal)', {
+      jobId,
+      error: err instanceof Error ? err.message : 'Unknown',
+      type: 'outbound_stale_cleanup_warn'
+    });
+  }
+}
+
+/**
  * Schedule next call attempt (next staff member or next round)
  * Called after a call is declined or not answered
  */
@@ -120,9 +150,12 @@ export async function scheduleNextCallAttempt(
         currentStaffIndex: nextIndex,
       };
 
+      const nextJobId = `outbound-${jobData.occurrenceId}-r${jobData.currentRound}-s${nextIndex}`;
+      await removeStaleJob(nextJobId);
+
       const job = await outboundCallQueue.add(nextJobData, {
         delay: delayMs,
-        jobId: `outbound-${jobData.occurrenceId}-r${jobData.currentRound}-s${nextIndex}`,
+        jobId: nextJobId,
         priority: 10,
       });
 
@@ -148,9 +181,12 @@ export async function scheduleNextCallAttempt(
         currentStaffIndex: 0,
       };
 
+      const nextJobId = `outbound-${jobData.occurrenceId}-r${nextRound}-s0`;
+      await removeStaleJob(nextJobId);
+
       const job = await outboundCallQueue.add(nextJobData, {
         delay: 60000, // 1 minute delay between rounds
-        jobId: `outbound-${jobData.occurrenceId}-r${nextRound}-s0`,
+        jobId: nextJobId,
         priority: 8, // Slightly lower priority for later rounds
       });
 
@@ -294,6 +330,16 @@ export async function cleanOldOutboundCallJobs(): Promise<void> {
 }
 
 // Queue event handlers for monitoring
+// CRITICAL: 'error' handler must be registered at module level to prevent
+// unhandled error events from crashing the process before the worker registers its own handler
+outboundCallQueue.on('error', (error) => {
+  logger.error('Outbound Call Queue error', {
+    error: error.message,
+    stack: error.stack,
+    type: 'outbound_queue_error'
+  });
+});
+
 outboundCallQueue.on('completed', (job) => {
   logger.info('Outbound call job completed', {
     jobId: job.id,

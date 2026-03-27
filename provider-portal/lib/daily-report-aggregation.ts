@@ -59,6 +59,7 @@ export interface ShiftCancellation {
   shiftTime: string;
   reason: string;
   replacementTriggered: boolean;
+  pickedUpBy: string;
   staffContacted: number;
   contactedAt: string;
   responses: StaffResponse[];
@@ -119,8 +120,11 @@ export interface OccurrenceRawData {
     'Occurrence ID': string;
     'Status': string;
     'Scheduled At': string;
+    'Shift End Date'?: string;
     'Time': string;
     'Assigned Employee'?: string[];
+    'Original Employee'?: string[];
+    'Original Employee TXT'?: string;
     'Patient (Lookup)'?: string[]; // For template-based occurrences
     'Patient (Link)'?: string[];   // For non-template occurrences
     'Reschedule Reason'?: string;
@@ -425,14 +429,21 @@ function buildShiftCancellations(
   
   return cancellations.map((occ, index) => {
     const patientName = occ.fields['Patient TXT'] || 'Unknown Patient';
-    const employeeName = occ.fields['Employee TXT'] || 'Staff Member';
     const employeePhone = getEmployeePhone(occ.fields['Assigned Employee'], employees);
     
     const shiftTime = formatShiftTime(occ.fields['Scheduled At'], occ.fields.Time);
     const staffContacted = occ.fields['SMS Staff Contacted'] || 0;
     const contactedAt = occ.fields['SMS Wave 1 Sent At'] || 'Not sent';
     
-    // Determine final outcome based on status
+    // If Original Employee exists, they are the one who called in sick;
+    // the current Assigned Employee (Employee TXT) is the replacement.
+    const originalEmployeeName = occ.fields['Original Employee TXT'];
+    const currentEmployeeName = occ.fields['Employee TXT'] || 'Staff Member';
+    const cancelledBy = originalEmployeeName || currentEmployeeName;
+    const pickedUpBy = originalEmployeeName && originalEmployeeName !== currentEmployeeName
+      ? currentEmployeeName
+      : '';
+    
     let finalOutcome = 'Pending';
     if (occ.fields.Status === 'Scheduled' || occ.fields.Status === 'Completed') {
       finalOutcome = 'Filled';
@@ -442,12 +453,13 @@ function buildShiftCancellations(
     
     return {
       cancellationId: `C${index + 1}`,
-      cancelledBy: employeeName,
+      cancelledBy,
       phoneNumber: employeePhone,
       participant: patientName,
       shiftTime,
       reason: occ.fields['Reschedule Reason'] || 'No reason provided',
       replacementTriggered: staffContacted > 0,
+      pickedUpBy,
       staffContacted,
       contactedAt,
       responses: buildStaffResponses(staffContacted),

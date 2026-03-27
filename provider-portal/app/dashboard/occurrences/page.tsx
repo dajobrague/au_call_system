@@ -15,12 +15,15 @@ interface OccurrenceRecord {
     'Patient TXT'?: string;
     'Employee TXT'?: string;
     'Scheduled At'?: string;
+    'Shift End Date'?: string;
     'Time'?: string;
     'Time Window End'?: string;
     'Status'?: string;
     'Patient (Link)'?: string[];
     'Patient (Lookup)'?: string[];
     'Assigned Employee'?: string[];
+    'Original Employee'?: string[];
+    'Original Employee TXT'?: string;
   };
 }
 
@@ -32,6 +35,7 @@ interface Employee {
 interface Patient {
   id: string;
   name: string;
+  relatedStaffPool: string[];
 }
 
 export default function OccurrencesPage() {
@@ -159,9 +163,10 @@ export default function OccurrencesPage() {
       const data = await response.json();
       
       if (data.success) {
-        const patList = data.data.map((pat: { id: string; fields: { 'Patient Full Name': string } }) => ({
+        const patList = data.data.map((pat: { id: string; fields: { 'Patient Full Name': string; 'Related Staff Pool'?: string[] } }) => ({
           id: pat.id,
-          name: pat.fields['Patient Full Name']
+          name: pat.fields['Patient Full Name'],
+          relatedStaffPool: pat.fields['Related Staff Pool'] || []
         }));
         setPatientsList(patList);
       }
@@ -191,6 +196,7 @@ export default function OccurrencesPage() {
       employeeName: record.fields['Employee TXT'] || '',
       employeeRecordId: record.fields['Assigned Employee']?.[0] || '',
       scheduledAt: record.fields['Scheduled At'] || '',
+      shiftEndDate: record.fields['Shift End Date'] || record.fields['Scheduled At'] || '',
       time: record.fields['Time'] || '09:00',
       timeWindowEnd: record.fields['Time Window End'] || '10:00',
       status: record.fields['Status'] || 'Scheduled'
@@ -232,16 +238,21 @@ export default function OccurrencesPage() {
     },
     { 
       key: 'Scheduled At', 
-      label: 'Scheduled At',
+      label: 'Shift Start Date',
       render: (value: unknown) => value ? new Date(value as string).toLocaleDateString() : '-'
     },
     { 
       key: 'Time', 
-      label: 'Time Window Start'
+      label: 'Start Time'
+    },
+    { 
+      key: 'Shift End Date', 
+      label: 'Shift End Date',
+      render: (value: unknown) => value ? new Date(value as string).toLocaleDateString() : '-'
     },
     { 
       key: 'Time Window End', 
-      label: 'Time Window End'
+      label: 'End Time'
     },
     { 
       key: 'Status', 

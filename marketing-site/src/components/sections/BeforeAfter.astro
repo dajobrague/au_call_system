@@ -1,0 +1,75 @@
+---
+import Section from "@/components/layout/Section.astro";
+import Container from "@/components/layout/Container.astro";
+
+const comparisons = [
+  {
+    without: "Manual escalation through calls and texts",
+    with: "Automated escalation through configured workflows",
+  },
+  {
+    without: "Managers interrupted by routine overnight issues",
+    with: "Issues triaged and routed without waking senior staff",
+  },
+  {
+    without: "No visibility into what happens overnight",
+    with: "Live dashboard showing events, statuses, and actions",
+  },
+  {
+    without: "Messy morning handover from memory and messages",
+    with: "Downloadable reports and logs ready by morning",
+  },
+];
+---
+
+<Section padding="lg">
+  <Container>
+    <div class="mx-auto max-w-3xl text-center mb-10">
+      <h2 class="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        What changes when you switch to On Call After Hours
+      </h2>
+    </div>
+
+    <div class="mx-auto max-w-4xl">
+      {/* Column headers */}
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 mb-4">
+        <div class="flex items-center gap-2 px-1">
+          <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted">
+            <svg class="h-3.5 w-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>
+            </svg>
+          </div>
+          <span class="text-sm font-semibold text-muted-foreground">Without On Call After Hours</span>
+        </div>
+        <div class="flex items-center gap-2 px-1">
+          <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
+            <svg class="h-3.5 w-3.5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5"></path>
+            </svg>
+          </div>
+          <span class="text-sm font-semibold text-foreground">With On Call After Hours</span>
+        </div>
+      </div>
+
+      {/* Comparison rows */}
+      <div class="space-y-3">
+        {comparisons.map((row) => (
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-6">
+            <div class="flex items-start gap-3 rounded-xl border border-border/40 bg-muted/30 px-4 py-3.5">
+              <svg class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>
+              </svg>
+              <span class="text-sm text-muted-foreground">{row.without}</span>
+            </div>
+            <div class="flex items-start gap-3 rounded-xl border border-primary/15 bg-primary/[0.03] px-4 py-3.5">
+              <svg class="mt-0.5 h-4 w-4 shrink-0 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6 9 17l-5-5"></path>
+              </svg>
+              <span class="text-sm text-foreground/80">{row.with}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </Container>
+</Section>

@@ -1,0 +1,516 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Section from "@/components/layout/Section.astro";
+import Container from "@/components/layout/Container.astro";
+import { buttonVariants } from "@/components/ui/button";
+---
+
+<BaseLayout title="Features — On Call After Hours">
+
+  {/* ═══ HERO ═══ */}
+  <Section padding="lg" animate={false} class="relative overflow-hidden">
+    <div class="pointer-events-none absolute -right-40 -top-40 h-[500px] w-[500px] rounded-full bg-primary/[0.03] blur-[100px]" aria-hidden="true"></div>
+    <Container>
+      <div class="mx-auto max-w-3xl text-center">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+          Features
+        </p>
+        <h1 class="mt-3 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+          Features built for after-hours care operations
+        </h1>
+        <p class="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
+          From AI call answering to live visibility and downloadable reporting, On Call After Hours gives providers a structured way to run after-hours.
+        </p>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ FEATURE 1 — AI Call Handling ═══ */}
+  <Section padding="md" class="bg-muted/20">
+    <Container>
+      <div class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/70">
+            AI Call Handling
+          </p>
+          <h2 class="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            AI after-hours call handling
+          </h2>
+          <p class="mt-3 text-base leading-relaxed text-muted-foreground">
+            On Call After Hours answers calls, captures key details, identifies the issue, and routes the interaction into the right workflow automatically.
+          </p>
+          <ul class="mt-5 space-y-2.5">
+            {["24/7 AI voice answering", "Structured issue capture", "Call routing by workflow type", "Faster after-hours intake"].map((b) => (
+              <li class="flex items-start gap-2.5">
+                <svg class="mt-0.5 h-4 w-4 shrink-0 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6 9 17l-5-5"></path>
+                </svg>
+                <span class="text-sm text-foreground/80">{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Mockup: Live call intake window */}
+        <div class="rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden">
+          <div class="flex items-center justify-between bg-foreground/[0.03] border-b border-border/40 px-4 py-2.5">
+            <div class="flex items-center gap-2">
+              <div class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
+              <span class="text-[11px] font-semibold text-foreground">Incoming Call — Active</span>
+            </div>
+            <span class="text-[10px] font-medium text-muted-foreground/60 tabular-nums">0:42</span>
+          </div>
+          <div class="p-4 sm:p-5 space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50 mb-1">Caller</div>
+                <div class="text-[12px] font-medium text-foreground">Margaret Wilson</div>
+              </div>
+              <div>
+                <div class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50 mb-1">Provider</div>
+                <div class="text-[12px] font-medium text-foreground">BrightPath NDIS</div>
+              </div>
+              <div>
+                <div class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50 mb-1">Category</div>
+                <div class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200/60">Sick call</div>
+              </div>
+              <div>
+                <div class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50 mb-1">Urgency</div>
+                <div class="inline-flex items-center gap-1">
+                  <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                  <span class="text-[12px] font-medium text-foreground">Medium</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="border-t border-border/40 pt-3">
+              <div class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50 mb-2">Live Transcript</div>
+              <div class="rounded-lg bg-muted/30 px-3 py-2.5 space-y-1.5">
+                <p class="text-[11px] leading-relaxed text-foreground/70"><span class="font-semibold text-foreground/90">Caller:</span> Hi, I need to report that I won't be able to make my shift tomorrow morning.</p>
+                <p class="text-[11px] leading-relaxed text-foreground/70"><span class="font-semibold text-primary/80">AI:</span> I can help with that. Can you confirm your name and which location you're rostered at?</p>
+                <p class="text-[11px] leading-relaxed text-foreground/70"><span class="font-semibold text-foreground/90">Caller:</span> Margaret Wilson, Parramatta house.</p>
+                <div class="flex items-center gap-1.5 pt-1">
+                  <div class="h-1 w-1 rounded-full bg-primary animate-pulse"></div>
+                  <div class="h-1 w-1 rounded-full bg-primary animate-pulse" style="animation-delay: 0.2s"></div>
+                  <div class="h-1 w-1 rounded-full bg-primary animate-pulse" style="animation-delay: 0.4s"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between border-t border-border/40 pt-3">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">Processing...</span>
+              </div>
+              <span class="text-[10px] text-muted-foreground/50">Workflow: Sick call escalation</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ FEATURE 2 — Live Operations Dashboard ═══ */}
+  <Section padding="md">
+    <Container>
+      <div class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        {/* Mockup left */}
+        <div class="order-2 lg:order-1">
+          <div class="rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden">
+            <div class="flex items-center justify-between bg-foreground/[0.03] border-b border-border/40 px-4 py-2.5">
+              <div class="flex items-center gap-2">
+                <span class="text-[11px] font-semibold text-foreground">Operations — Live</span>
+              </div>
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200/60">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Live
+              </span>
+            </div>
+            <div class="p-4 sm:p-5">
+              {/* Summary stat bar */}
+              <div class="grid grid-cols-3 gap-3 mb-4">
+                <div class="rounded-lg bg-muted/30 px-3 py-2 text-center">
+                  <div class="text-lg font-bold text-foreground tabular-nums">3</div>
+                  <div class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">Active</div>
+                </div>
+                <div class="rounded-lg bg-muted/30 px-3 py-2 text-center">
+                  <div class="text-lg font-bold text-foreground tabular-nums">12</div>
+                  <div class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">Handled</div>
+                </div>
+                <div class="rounded-lg bg-muted/30 px-3 py-2 text-center">
+                  <div class="text-lg font-bold text-foreground tabular-nums">2</div>
+                  <div class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">Escalated</div>
+                </div>
+              </div>
+
+              {/* Event rows */}
+              <div class="space-y-0">
+                <div class="flex items-center gap-3 rounded-lg px-2.5 py-2.5 bg-primary/[0.02] ring-1 ring-primary/10">
+                  <span class="h-2 w-2 shrink-0 rounded-full bg-emerald-500"></span>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[11px] font-medium text-foreground truncate">Sick call — Margaret W.</span>
+                      <span class="text-[10px] text-muted-foreground/60 tabular-nums shrink-0">2m ago</span>
+                    </div>
+                    <p class="text-[10px] text-muted-foreground/60 mt-0.5">Parramatta · Escalation started</p>
+                  </div>
+                  <span class="inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200/60">In Progress</span>
+                </div>
+                <div class="flex items-center gap-3 rounded-lg px-2.5 py-2.5">
+                  <span class="h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[11px] font-medium text-foreground truncate">Patient concern — David L.</span>
+                      <span class="text-[10px] text-muted-foreground/60 tabular-nums shrink-0">18m ago</span>
+                    </div>
+                    <p class="text-[10px] text-muted-foreground/60 mt-0.5">Blacktown · Transferred to on-call</p>
+                  </div>
+                  <span class="inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200/60">Escalated</span>
+                </div>
+                <div class="flex items-center gap-3 rounded-lg px-2.5 py-2.5">
+                  <span class="h-2 w-2 shrink-0 rounded-full bg-blue-500"></span>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[11px] font-medium text-foreground/70 truncate">General enquiry — Karen T.</span>
+                      <span class="text-[10px] text-muted-foreground/60 tabular-nums shrink-0">34m ago</span>
+                    </div>
+                    <p class="text-[10px] text-muted-foreground/60 mt-0.5">Penrith · Logged and closed</p>
+                  </div>
+                  <span class="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-blue-600 ring-1 ring-inset ring-blue-200/60">Resolved</span>
+                </div>
+                <div class="flex items-center gap-3 rounded-lg px-2.5 py-2.5">
+                  <span class="h-2 w-2 shrink-0 rounded-full bg-blue-500"></span>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[11px] font-medium text-foreground/70 truncate">Medication query — James P.</span>
+                      <span class="text-[10px] text-muted-foreground/60 tabular-nums shrink-0">51m ago</span>
+                    </div>
+                    <p class="text-[10px] text-muted-foreground/60 mt-0.5">Parramatta · Info provided</p>
+                  </div>
+                  <span class="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-blue-600 ring-1 ring-inset ring-blue-200/60">Resolved</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Text right */}
+        <div class="order-1 lg:order-2">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/70">
+            Live Dashboard
+          </p>
+          <h2 class="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Live operations dashboard
+          </h2>
+          <p class="mt-3 text-base leading-relaxed text-muted-foreground">
+            Get a real-time view of overnight activity, active cases, actions underway, and outcomes in progress.
+          </p>
+          <ul class="mt-5 space-y-2.5">
+            {["Live event feed", "Current statuses", "Action visibility", "Overnight oversight"].map((b) => (
+              <li class="flex items-start gap-2.5">
+                <svg class="mt-0.5 h-4 w-4 shrink-0 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6 9 17l-5-5"></path>
+                </svg>
+                <span class="text-sm text-foreground/80">{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ FEATURE 3 — Provider-Controlled Settings ═══ */}
+  <Section padding="md" class="bg-muted/20">
+    <Container>
+      <div class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/70">
+            Provider Controls
+          </p>
+          <h2 class="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Provider-controlled settings
+          </h2>
+          <p class="mt-3 text-base leading-relaxed text-muted-foreground">
+            Your team can configure important operational settings directly inside the dashboard.
+          </p>
+          <ul class="mt-5 space-y-2.5">
+            {["Transfer phone numbers", "Escalation contacts", "Outbound call attempt limits", "On-call windows", "Business and location settings", "Workflow preferences"].map((b) => (
+              <li class="flex items-start gap-2.5">
+                <svg class="mt-0.5 h-4 w-4 shrink-0 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6 9 17l-5-5"></path>
+                </svg>
+                <span class="text-sm text-foreground/80">{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Mockup: Settings panel with dark header */}
+        <div class="rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden">
+          <div class="flex items-center justify-between bg-foreground/[0.03] border-b border-border/40 px-4 py-2.5">
+            <div class="flex items-center gap-2">
+              <svg class="h-3.5 w-3.5 text-muted-foreground/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              <span class="text-[11px] font-semibold text-foreground">Organisation Settings</span>
+            </div>
+            <span class="text-[10px] text-muted-foreground/50">BrightPath NDIS</span>
+          </div>
+          <div class="p-4 sm:p-5 space-y-2">
+            <div class="flex items-center justify-between rounded-lg border border-border/40 px-3.5 py-2.5">
+              <div>
+                <div class="text-[11px] font-medium text-foreground">Transfer number</div>
+                <div class="text-[10px] text-muted-foreground/60 mt-0.5">Primary on-call mobile</div>
+              </div>
+              <span class="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-medium text-foreground/70 tabular-nums">0412 ••• 891</span>
+            </div>
+            <div class="flex items-center justify-between rounded-lg border border-border/40 px-3.5 py-2.5">
+              <div>
+                <div class="text-[11px] font-medium text-foreground">Escalation contact</div>
+                <div class="text-[10px] text-muted-foreground/60 mt-0.5">After failed transfer attempts</div>
+              </div>
+              <span class="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-medium text-foreground/70">Sarah Mitchell</span>
+            </div>
+            <div class="flex items-center justify-between rounded-lg border border-border/40 px-3.5 py-2.5">
+              <div>
+                <div class="text-[11px] font-medium text-foreground">Outbound call attempts</div>
+                <div class="text-[10px] text-muted-foreground/60 mt-0.5">Max per escalation</div>
+              </div>
+              <span class="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-medium text-foreground/70 tabular-nums">3 attempts</span>
+            </div>
+            <div class="flex items-center justify-between rounded-lg border border-border/40 px-3.5 py-2.5">
+              <div>
+                <div class="text-[11px] font-medium text-foreground">On-call window</div>
+                <div class="text-[10px] text-muted-foreground/60 mt-0.5">Active operating hours</div>
+              </div>
+              <span class="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-medium text-foreground/70 tabular-nums">6:00 PM – 8:00 AM</span>
+            </div>
+            <div class="flex items-center justify-between rounded-lg border border-border/40 px-3.5 py-2.5">
+              <div>
+                <div class="text-[11px] font-medium text-foreground">SMS notifications</div>
+                <div class="text-[10px] text-muted-foreground/60 mt-0.5">Notify on escalation events</div>
+              </div>
+              <div class="h-5 w-9 rounded-full bg-primary relative">
+                <div class="absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ BOTTOM 4 FEATURES — Bento Grid ═══ */}
+  <Section padding="lg">
+    <Container>
+      <div class="mx-auto max-w-2xl text-center mb-10">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+          More capabilities
+        </p>
+        <h2 class="mt-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Everything else your overnight workflow needs
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        {/* Card 1 — Transfer to Human */}
+        <div class="group rounded-xl border border-border/60 bg-card p-5 shadow-sm transition-shadow duration-200 hover:shadow-md overflow-hidden">
+          <div class="flex items-start gap-3 mb-4">
+            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <svg class="h-[18px] w-[18px] text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="18 2 22 6 18 10"></polyline><line x1="14" x2="22" y1="6" y2="6"></line>
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-sm font-semibold text-foreground">Transfer to a nominated human contact</h3>
+              <p class="mt-1 text-sm leading-relaxed text-muted-foreground">Calls can be transferred to a configured human contact when needed, based on the provider's own settings.</p>
+            </div>
+          </div>
+          <div class="rounded-lg border border-border/40 bg-muted/20 p-3">
+            <div class="flex items-center gap-2.5 mb-2.5">
+              <div class="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-bold text-primary">MW</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-[11px] font-medium text-foreground">Margaret Wilson</div>
+                <div class="text-[9px] text-muted-foreground/60">Active call · Sick call</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 rounded-md bg-card border border-border/40 px-3 py-2">
+              <svg class="h-3 w-3 text-primary animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3"></path>
+              </svg>
+              <span class="text-[11px] font-medium text-foreground">Connecting to Sarah M...</span>
+              <span class="ml-auto text-[9px] text-muted-foreground/50 tabular-nums">Ringing</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2 — Morning Reports */}
+        <div class="group rounded-xl border border-border/60 bg-card p-5 shadow-sm transition-shadow duration-200 hover:shadow-md overflow-hidden">
+          <div class="flex items-start gap-3 mb-4">
+            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <svg class="h-[18px] w-[18px] text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-sm font-semibold text-foreground">Morning reports and overnight logs</h3>
+              <p class="mt-1 text-sm leading-relaxed text-muted-foreground">Download overnight reports and review a clearer record of calls, timestamps, actions, and event outcomes.</p>
+            </div>
+          </div>
+          <div class="rounded-lg border border-border/40 bg-muted/20 p-3">
+            <div class="flex items-center justify-between mb-2.5">
+              <span class="text-[11px] font-semibold text-foreground">Overnight Report — 25 Feb</span>
+              <span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-medium text-emerald-700 ring-1 ring-emerald-200/60">Ready</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mb-2.5">
+              <div class="rounded-md bg-card border border-border/40 px-2 py-1.5 text-center">
+                <div class="text-sm font-bold text-foreground tabular-nums">15</div>
+                <div class="text-[8px] uppercase tracking-wider text-muted-foreground/50">Calls</div>
+              </div>
+              <div class="rounded-md bg-card border border-border/40 px-2 py-1.5 text-center">
+                <div class="text-sm font-bold text-foreground tabular-nums">3</div>
+                <div class="text-[8px] uppercase tracking-wider text-muted-foreground/50">Escalated</div>
+              </div>
+              <div class="rounded-md bg-card border border-border/40 px-2 py-1.5 text-center">
+                <div class="text-sm font-bold text-foreground tabular-nums">1:24</div>
+                <div class="text-[8px] uppercase tracking-wider text-muted-foreground/50">Avg time</div>
+              </div>
+            </div>
+            <div class="flex items-center justify-center gap-1.5 rounded-md bg-card border border-border/40 px-3 py-1.5 cursor-default">
+              <svg class="h-3 w-3 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line>
+              </svg>
+              <span class="text-[10px] font-medium text-primary">Download PDF</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3 — Schedule-Ready Workflows */}
+        <div class="group rounded-xl border border-border/60 bg-card p-5 shadow-sm transition-shadow duration-200 hover:shadow-md overflow-hidden">
+          <div class="flex items-start gap-3 mb-4">
+            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <svg class="h-[18px] w-[18px] text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-sm font-semibold text-foreground">Schedule-ready overnight workflows</h3>
+              <p class="mt-1 text-sm leading-relaxed text-muted-foreground">Upload the evening schedule so On Call After Hours can process overnight events with the right operational context.</p>
+            </div>
+          </div>
+          <div class="rounded-lg border border-border/40 bg-muted/20 p-3">
+            <div class="flex items-center justify-between mb-2.5">
+              <span class="text-[11px] font-semibold text-foreground">Roster — Tue 25 Feb</span>
+              <span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-medium text-emerald-700 ring-1 ring-emerald-200/60">Uploaded</span>
+            </div>
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between rounded-md bg-card border border-border/40 px-2.5 py-1.5">
+                <div class="flex items-center gap-2">
+                  <div class="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[8px] font-bold text-primary">JR</div>
+                  <span class="text-[11px] font-medium text-foreground">Jessica R.</span>
+                </div>
+                <span class="text-[10px] text-muted-foreground/60 tabular-nums">6 PM – 12 AM</span>
+              </div>
+              <div class="flex items-center justify-between rounded-md bg-card border border-border/40 px-2.5 py-1.5">
+                <div class="flex items-center gap-2">
+                  <div class="h-5 w-5 rounded-full bg-amber-100 flex items-center justify-center text-[8px] font-bold text-amber-700">TN</div>
+                  <span class="text-[11px] font-medium text-foreground">Tom N.</span>
+                </div>
+                <span class="text-[10px] text-muted-foreground/60 tabular-nums">12 AM – 8 AM</span>
+              </div>
+              <div class="flex items-center justify-between rounded-md bg-card border border-border/40 px-2.5 py-1.5">
+                <div class="flex items-center gap-2">
+                  <div class="h-5 w-5 rounded-full bg-blue-50 flex items-center justify-center text-[8px] font-bold text-blue-600">SM</div>
+                  <span class="text-[11px] font-medium text-foreground">Sarah M.</span>
+                </div>
+                <span class="text-[10px] text-muted-foreground/60 tabular-nums">On-call backup</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4 — Security and Hosting */}
+        <div class="group rounded-xl border border-border/60 bg-card p-5 shadow-sm transition-shadow duration-200 hover:shadow-md overflow-hidden">
+          <div class="flex items-start gap-3 mb-4">
+            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <svg class="h-[18px] w-[18px] text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-sm font-semibold text-foreground">Australian-hosted records and operational traceability</h3>
+              <p class="mt-1 text-sm leading-relaxed text-muted-foreground">Maintain local hosting, controlled access, and reporting visibility designed for accountable operations.</p>
+            </div>
+          </div>
+          <div class="rounded-lg border border-border/40 bg-muted/20 p-3">
+            <div class="flex items-center justify-between mb-2.5">
+              <span class="text-[11px] font-semibold text-foreground">Audit Log</span>
+              <span class="text-[10px] text-muted-foreground/50">Last 24 hours</span>
+            </div>
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2.5 rounded-md bg-card border border-border/40 px-2.5 py-1.5">
+                <div class="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[8px] font-bold text-primary">SM</div>
+                <div class="flex-1 min-w-0">
+                  <span class="text-[11px] font-medium text-foreground">Settings updated</span>
+                  <span class="text-[10px] text-muted-foreground/50 ml-1">— Sarah M.</span>
+                </div>
+                <span class="text-[10px] text-muted-foreground/50 tabular-nums shrink-0">9:14 AM</span>
+              </div>
+              <div class="flex items-center gap-2.5 rounded-md bg-card border border-border/40 px-2.5 py-1.5">
+                <div class="h-5 w-5 rounded-full bg-emerald-100 flex items-center justify-center text-[8px] font-bold text-emerald-700">JR</div>
+                <div class="flex-1 min-w-0">
+                  <span class="text-[11px] font-medium text-foreground">Report downloaded</span>
+                  <span class="text-[10px] text-muted-foreground/50 ml-1">— Jessica R.</span>
+                </div>
+                <span class="text-[10px] text-muted-foreground/50 tabular-nums shrink-0">8:32 AM</span>
+              </div>
+              <div class="flex items-center gap-2.5 rounded-md bg-card border border-border/40 px-2.5 py-1.5">
+                <div class="h-5 w-5 rounded-full bg-blue-50 flex items-center justify-center text-[8px] font-bold text-blue-600">TN</div>
+                <div class="flex-1 min-w-0">
+                  <span class="text-[11px] font-medium text-foreground">Dashboard login</span>
+                  <span class="text-[10px] text-muted-foreground/50 ml-1">— Tom N.</span>
+                </div>
+                <span class="text-[10px] text-muted-foreground/50 tabular-nums shrink-0">6:05 PM</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ CTA ═══ */}
+  <Section padding="lg">
+    <Container>
+      <div class="overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary/85 px-6 py-14 shadow-xl sm:px-12 sm:py-20">
+        <div class="mx-auto max-w-2xl text-center">
+          <h2 class="text-3xl font-bold tracking-tight text-primary-foreground sm:text-4xl lg:text-5xl">
+            Explore the platform in a live demo
+          </h2>
+          <p class="mt-4 text-base leading-relaxed text-primary-foreground/80 sm:text-lg">
+            See how On Call After Hours could fit your organisation's after-hours workflow.
+          </p>
+
+          <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+            <a
+              href="/contact"
+              class="inline-flex h-12 items-center justify-center rounded-lg bg-white px-8 text-sm font-semibold text-primary shadow-sm transition-all duration-200 hover:bg-white/90 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+            >
+              Book a Demo
+              <svg class="ml-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"></path>
+                <path d="m12 5 7 7-7 7"></path>
+              </svg>
+            </a>
+            <a
+              href="/contact"
+              class="inline-flex h-12 items-center justify-center rounded-lg border border-white/25 bg-white/10 px-8 text-sm font-semibold text-primary-foreground backdrop-blur-sm transition-all duration-200 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+            >
+              Contact Us
+            </a>
+          </div>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+</BaseLayout>

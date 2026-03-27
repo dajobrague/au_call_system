@@ -231,7 +231,8 @@ export class MultiProviderService {
         phone: '+522281957913',
         providerId: 'recexHQJ13oafJkxZ',
         jobTemplateIds: [],
-        active: true
+        active: true,
+        outboundCallEnabled: true
       };
       
       const result = await this.getEmployeeProviders(testEmployee);

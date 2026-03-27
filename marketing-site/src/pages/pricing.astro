@@ -1,0 +1,385 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Section from "@/components/layout/Section.astro";
+import Container from "@/components/layout/Container.astro";
+import { buttonVariants } from "@/components/ui/button";
+
+const plans = [
+  {
+    name: "Starter",
+    price: "$249",
+    desc: "Best for smaller providers trialling after-hours automation.",
+    features: [
+      "1 provider account",
+      "1 dedicated after-hours number",
+      "Self-serve onboarding",
+      "Provider dashboard",
+      "Live operations window",
+      "Downloadable morning reports",
+      "Provider-controlled settings",
+      "Australian-hosted records",
+      "120 inbound voice minutes / month",
+      "25 outbound call attempts / month",
+      "100 SMS / month",
+    ],
+    overages: [
+      "Additional inbound voice: $0.18/min",
+      "Additional outbound call attempt: $1.00 each",
+      "Additional SMS: $0.20 each",
+    ],
+  },
+  {
+    name: "Growth",
+    price: "$449",
+    desc: "Best for providers with more regular after-hours activity.",
+    popular: true,
+    features: [
+      "Everything in Starter, plus:",
+      "Multi-location configuration",
+      "Expanded workflow controls",
+      "300 inbound voice minutes / month",
+      "60 outbound call attempts / month",
+      "250 SMS / month",
+    ],
+    overages: [
+      "Additional inbound voice: $0.15/min",
+      "Additional outbound call attempt: $1.20 each",
+      "Additional SMS: $0.18 each",
+    ],
+  },
+  {
+    name: "Pro",
+    price: "$749",
+    desc: "Best for providers with heavier overnight volume and more complex operations.",
+    features: [
+      "Everything in Growth, plus:",
+      "Advanced workflow settings",
+      "Expanded reporting",
+      "700 inbound voice minutes / month",
+      "140 outbound call attempts / month",
+      "600 SMS / month",
+    ],
+    overages: [
+      "Additional inbound voice: $0.12/min",
+      "Additional outbound call attempt: $1.50 each",
+      "Additional SMS: $0.16 each",
+    ],
+  },
+];
+
+const includedInEvery = [
+  "Self-serve onboarding",
+  "Dedicated after-hours number",
+  "Live dashboard access",
+  "Provider-controlled settings",
+  "Downloadable morning reports",
+  "Australian-hosted records",
+];
+
+const usageDefs = [
+  {
+    term: "Inbound voice minutes",
+    def: "Time spent on inbound after-hours calls received by the platform.",
+  },
+  {
+    term: "Outbound call attempt",
+    def: "A system-initiated outbound escalation call placed to a configured contact as part of your workflow.",
+  },
+  {
+    term: "SMS",
+    def: "A text message sent as part of workflow communication or escalation.",
+  },
+];
+
+const faqs = [
+  {
+    q: "Is there an onboarding fee?",
+    a: "No. Every plan includes self-serve onboarding.",
+  },
+  {
+    q: "Can we manage settings ourselves?",
+    a: "Yes. Providers can update key settings directly from their dashboard.",
+  },
+  {
+    q: "Can we change transfer phone numbers ourselves?",
+    a: "Yes. Transfer numbers can be updated inside the platform.",
+  },
+  {
+    q: "Can we configure escalation settings ourselves?",
+    a: "Yes. Escalation contacts and workflow preferences can be managed inside the dashboard.",
+  },
+  {
+    q: "What counts as an outbound call attempt?",
+    a: "An outbound call attempt is a system-initiated escalation call placed to a configured contact as part of your workflow.",
+  },
+  {
+    q: "What reports are available?",
+    a: "Providers can access downloadable overnight reports and logs.",
+  },
+  {
+    q: "Where are records hosted?",
+    a: "On Call After Hours provides Australian-hosted records.",
+  },
+];
+---
+
+<BaseLayout title="Pricing — On Call After Hours">
+
+  {/* Hero */}
+  <Section padding="lg" animate={false} class="relative overflow-hidden">
+    <div class="pointer-events-none absolute -right-40 -top-40 h-[500px] w-[500px] rounded-full bg-primary/[0.03] blur-[100px]" aria-hidden="true"></div>
+    <Container>
+      <div class="mx-auto max-w-3xl text-center">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+          Pricing
+        </p>
+        <h1 class="mt-3 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+          Simple monthly pricing with included after-hours usage
+        </h1>
+        <p class="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
+          Choose a plan based on your overnight volume. Every plan includes self-serve onboarding, dashboard access, and monthly allowances for inbound voice, outbound call attempts, and SMS.
+        </p>
+      </div>
+    </Container>
+  </Section>
+
+  {/* Pricing Cards */}
+  <Section padding="lg" class="bg-muted/20">
+    <Container>
+      <div class="grid grid-cols-1 items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {plans.map((plan) => (
+          <div class:list={[
+            "relative flex flex-col rounded-xl border bg-card p-6 shadow-sm",
+            plan.popular ? "border-primary/30 ring-1 ring-primary/20" : "border-border/60",
+          ]}>
+            {plan.popular && (
+              <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span class="rounded-full bg-primary px-3 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                  Most popular
+                </span>
+              </div>
+            )}
+            <div>
+              <h3 class="text-lg font-semibold text-foreground">{plan.name}</h3>
+              <div class="mt-2 flex items-baseline gap-1">
+                <span class="text-3xl font-bold tracking-tight text-foreground">{plan.price}</span>
+                <span class="text-sm text-muted-foreground">/month</span>
+              </div>
+              <p class="mt-2 text-sm text-muted-foreground">{plan.desc}</p>
+            </div>
+
+            <div class="mt-6 flex flex-1 flex-col border-t border-border/40 pt-5">
+              <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">Includes</p>
+              <ul class="mt-3 flex-1 space-y-2">
+                {plan.features.map((f) => (
+                  <li class="flex items-start gap-2">
+                    <svg class="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20 6 9 17l-5-5"></path>
+                    </svg>
+                    <span class="text-xs text-foreground/80">{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div class="mt-5 border-t border-border/40 pt-4">
+              <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">Overages</p>
+              <ul class="mt-2 space-y-1">
+                {plan.overages.map((o) => (
+                  <li class="text-xs text-muted-foreground">{o}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div class="mt-6">
+              <a
+                href="/contact"
+                class:list={[
+                  buttonVariants({ variant: plan.popular ? "default" : "outline", size: "default" }),
+                  "w-full justify-center",
+                ]}
+              >
+                Book a Demo
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Enterprise */}
+      <div class="mt-8 rounded-xl border border-border/60 bg-card p-6 text-center shadow-sm sm:p-8">
+        <h3 class="text-lg font-semibold text-foreground">Enterprise</h3>
+        <p class="mt-1 text-sm text-muted-foreground">
+          For larger providers, multi-entity groups, and tailored deployments.
+        </p>
+        <div class="mt-4">
+          <a href="/contact" class:list={[buttonVariants({ variant: "outline", size: "default" })]}>
+            Contact Us
+          </a>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* Included in every plan */}
+  <Section padding="md">
+    <Container>
+      <div class="mx-auto max-w-3xl text-center mb-8">
+        <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Included in every plan
+        </h2>
+        <p class="mt-2 text-sm text-muted-foreground">
+          No matter which plan you choose, you get the full platform from day one.
+        </p>
+      </div>
+      <div class="mx-auto max-w-4xl grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {includedInEvery.map((item, i) => (
+          <div class="flex items-start gap-3 rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              {i === 0 && (
+                <svg class="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path>
+                </svg>
+              )}
+              {i === 1 && (
+                <svg class="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+              )}
+              {i === 2 && (
+                <svg class="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                </svg>
+              )}
+              {i === 3 && (
+                <svg class="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44"></path><circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              )}
+              {i === 4 && (
+                <svg class="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path>
+                </svg>
+              )}
+              {i === 5 && (
+                <svg class="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path>
+                </svg>
+              )}
+            </div>
+            <span class="text-sm font-medium text-foreground/80 pt-1.5">{item}</span>
+          </div>
+        ))}
+      </div>
+    </Container>
+  </Section>
+
+  {/* Usage definitions */}
+  <Section padding="md" class="bg-muted/20">
+    <Container>
+      <div class="mx-auto max-w-3xl">
+        <div class="text-center mb-8">
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            How usage is measured
+          </h2>
+          <p class="mt-2 text-sm text-muted-foreground">
+            Understand what counts toward your plan's monthly allowances.
+          </p>
+        </div>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {usageDefs.map((d, i) => (
+            <div class="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
+              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 mb-3">
+                {i === 0 && (
+                  <svg class="h-[18px] w-[18px] text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 18.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Z"></path><path d="M12 8v4l2.5 1.5"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path>
+                  </svg>
+                )}
+                {i === 1 && (
+                  <svg class="h-[18px] w-[18px] text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                    <polyline points="18 2 22 6 18 10"></polyline><line x1="14" x2="22" y1="6" y2="6"></line>
+                  </svg>
+                )}
+                {i === 2 && (
+                  <svg class="h-[18px] w-[18px] text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                )}
+              </div>
+              <dt class="text-sm font-semibold text-foreground">{d.term}</dt>
+              <dd class="mt-1.5 text-sm leading-relaxed text-muted-foreground">{d.def}</dd>
+            </div>
+          ))}
+        </div>
+        <p class="mt-6 text-center text-xs text-muted-foreground/70">
+          Usage allowances reset monthly. Additional usage is billed separately based on your plan.
+        </p>
+      </div>
+    </Container>
+  </Section>
+
+  {/* FAQ */}
+  <Section padding="md">
+    <Container>
+      <div class="mx-auto max-w-2xl">
+        <div class="text-center mb-8">
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Frequently asked questions
+          </h2>
+        </div>
+        <div class="rounded-xl border border-border/60 bg-card shadow-sm divide-y divide-border/40 overflow-hidden">
+          {faqs.map((faq) => (
+            <details class="group">
+              <summary class="flex cursor-pointer items-center justify-between px-5 py-4 text-sm font-semibold text-foreground transition-colors hover:text-primary">
+                {faq.q}
+                <svg class="h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m6 9 6 6 6-6"></path>
+                </svg>
+              </summary>
+              <div class="px-5 pb-4">
+                <p class="text-sm leading-relaxed text-muted-foreground">{faq.a}</p>
+              </div>
+            </details>
+          ))}
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* CTA */}
+  <Section padding="lg">
+    <Container>
+      <div class="overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary/85 px-6 py-14 shadow-xl sm:px-12 sm:py-20">
+        <div class="mx-auto max-w-2xl text-center">
+          <h2 class="text-3xl font-bold tracking-tight text-primary-foreground sm:text-4xl lg:text-5xl">
+            Not sure which plan fits your organisation?
+          </h2>
+          <p class="mt-4 text-base leading-relaxed text-primary-foreground/80 sm:text-lg">
+            Book a demo and we'll help you choose the right plan based on your overnight volume and workflow needs.
+          </p>
+
+          <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+            <a
+              href="/contact"
+              class="inline-flex h-12 items-center justify-center rounded-lg bg-white px-8 text-sm font-semibold text-primary shadow-sm transition-all duration-200 hover:bg-white/90 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+            >
+              Book a Demo
+              <svg class="ml-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"></path>
+                <path d="m12 5 7 7-7 7"></path>
+              </svg>
+            </a>
+            <a
+              href="/contact"
+              class="inline-flex h-12 items-center justify-center rounded-lg border border-white/25 bg-white/10 px-8 text-sm font-semibold text-primary-foreground backdrop-blur-sm transition-all duration-200 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+            >
+              Contact Us
+            </a>
+          </div>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+</BaseLayout>

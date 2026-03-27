@@ -203,3 +203,95 @@ export function generateDateTimeTwiML(prompt: string, numDigits: number, voice: 
   <Hangup/>
 </Response>`;
 }
+
+/**
+ * Format ISO date string (YYYY-MM-DD) for speech output
+ * "2026-01-25" -> "Saturday, January 25th"
+ */
+export function formatDateForSpeech(dateStr: string): string {
+  if (!dateStr) return 'today';
+  
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  
+  const weekdays = [
+    'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+  ];
+  
+  try {
+    // Parse the date string (handle both YYYY-MM-DD and other formats)
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) {
+      return dateStr; // Return as-is if not in expected format
+    }
+    
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const day = parseInt(parts[2], 10);
+    
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+      return dateStr;
+    }
+    
+    // Create date object (note: month is 0-indexed in JS)
+    const date = new Date(year, month - 1, day);
+    
+    // Get day of week
+    const weekday = weekdays[date.getDay()];
+    const monthName = months[month - 1];
+    const ordinal = getOrdinalSuffix(day);
+    
+    return `${weekday}, ${monthName} ${day}${ordinal}`;
+  } catch (e) {
+    return dateStr; // Return original if parsing fails
+  }
+}
+
+/**
+ * Format HH:MM time string for speech output
+ * "06:00" -> "6 AM"
+ * "14:30" -> "2:30 PM"
+ * "12:00" -> "noon"
+ * "00:00" -> "midnight"
+ */
+export function formatTimeForSpeech(timeStr: string): string {
+  if (!timeStr) return 'soon';
+  
+  try {
+    // Handle HH:MM format
+    const parts = timeStr.split(':');
+    if (parts.length !== 2) {
+      return timeStr; // Return as-is if not in expected format
+    }
+    
+    const hour = parseInt(parts[0], 10);
+    const minute = parseInt(parts[1], 10);
+    
+    if (isNaN(hour) || isNaN(minute)) {
+      return timeStr;
+    }
+    
+    // Special cases
+    if (hour === 0 && minute === 0) {
+      return 'midnight';
+    }
+    if (hour === 12 && minute === 0) {
+      return 'noon';
+    }
+    
+    // Convert to 12-hour format
+    const isPM = hour >= 12;
+    const hour12 = hour === 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    const ampm = isPM ? 'PM' : 'AM';
+    
+    if (minute === 0) {
+      return `${hour12} ${ampm}`;
+    } else {
+      return `${hour12}:${minute.toString().padStart(2, '0')} ${ampm}`;
+    }
+  } catch (e) {
+    return timeStr; // Return original if parsing fails
+  }
+}

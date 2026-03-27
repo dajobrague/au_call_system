@@ -1,0 +1,85 @@
+---
+import Section from "@/components/layout/Section.astro";
+import Container from "@/components/layout/Container.astro";
+import HeroProductMock from "./HeroProductMock.astro";
+import { buttonVariants } from "@/components/ui/button";
+---
+
+<Section padding="lg" animate={false} class="relative overflow-hidden !pb-6 sm:!pb-10">
+  <div
+    class="pointer-events-none absolute -right-40 -top-40 h-[600px] w-[600px] rounded-full bg-primary/[0.04] blur-[100px]"
+    aria-hidden="true"
+  ></div>
+  <div
+    class="pointer-events-none absolute -bottom-32 left-1/4 h-[400px] w-[400px] rounded-full bg-blue-200/[0.08] blur-[80px]"
+    aria-hidden="true"
+  ></div>
+
+  <Container>
+    <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-16 xl:gap-20">
+      <div class="flex flex-col gap-5">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+          Healthcare operations technology
+        </p>
+
+        <h1 class="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem] lg:leading-[1.1]">
+          After-hours call handling for NDIS and home care providers
+        </h1>
+
+        <p class="max-w-[520px] text-base leading-relaxed text-muted-foreground sm:text-lg">
+          On Call After Hours automates after-hours calls, sick-call workflows, escalations, live monitoring, and morning reporting — with full provider control from your own dashboard.
+        </p>
+
+        <div class="flex flex-wrap items-center gap-3 pt-1">
+          <a
+            href="/contact"
+            class:list={[buttonVariants({ size: "lg" }), "shadow-sm"]}
+          >
+            Book a Demo
+            <svg class="ml-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"></path>
+              <path d="m12 5 7 7-7 7"></path>
+            </svg>
+          </a>
+          <a
+            href="/how-it-works"
+            class:list={[buttonVariants({ variant: "ghost", size: "lg" }), "text-muted-foreground"]}
+          >
+            See How It Works <span class="ml-1">&rarr;</span>
+          </a>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5 pt-1">
+          <span class="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1 text-xs font-medium text-foreground/70 shadow-sm">
+            <svg class="h-3.5 w-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            Live operations visibility
+          </span>
+          <span class="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1 text-xs font-medium text-foreground/70 shadow-sm">
+            <svg class="h-3.5 w-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            Provider-controlled workflows
+          </span>
+          <span class="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1 text-xs font-medium text-foreground/70 shadow-sm">
+            <svg class="h-3.5 w-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path>
+            </svg>
+            Australian-hosted records
+          </span>
+        </div>
+      </div>
+
+      <div class="relative">
+        <div
+          class="pointer-events-none absolute -right-12 top-8 h-[420px] w-[420px] rounded-full bg-primary/[0.05] blur-[80px]"
+          aria-hidden="true"
+        ></div>
+        <div class="relative">
+          <HeroProductMock />
+        </div>
+      </div>
+    </div>
+  </Container>
+</Section>

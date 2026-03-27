@@ -56,6 +56,12 @@ export interface WebSocketWithExtensions extends WebSocket {
     outbound: Buffer[];
   };
   audioFrameCount?: number;
+  
+  // Outbound call tracking
+  occurrenceId?: string;
+  
+  // Transfer tracking - set to true when WebSocket is closing due to a transfer
+  transferPending?: boolean;
 }
 
 /**
@@ -85,7 +91,8 @@ export async function handleConnectionClose(
   });
   
   // Calculate call duration and publish call_ended event (non-blocking)
-  if (ws.callStartTime && ws.providerId && callSid !== 'unknown') {
+  // Skip if the WebSocket is closing due to a transfer (the call continues via <Dial>)
+  if (ws.callStartTime && ws.providerId && callSid !== 'unknown' && !ws.transferPending) {
     const duration = Math.floor((Date.now() - ws.callStartTime.getTime()) / 1000);
     publishCallEnded(callSid, ws.providerId, duration).catch(err => {
       logger.error('Failed to publish call_ended event', {
@@ -94,10 +101,66 @@ export async function handleConnectionClose(
         type: 'redis_stream_error'
       });
     });
+  } else if (ws.transferPending) {
+    logger.info('Skipping call_ended event - transfer pending', {
+      callSid,
+      type: 'call_ended_skipped_transfer'
+    });
   }
   
+  // For outbound calls: if the call ended without an explicit accept/decline,
+  // schedule the next call attempt (handles: person hangs up, call times out, no DTMF)
+  const closeReason = reason.toString();
+  if (ws.employeeId && closeReason !== 'Job accepted' && closeReason !== 'Job declined') {
+    (async () => {
+      try {
+        const { outboundCallQueue } = await import('../services/queue/outbound-call-queue');
+        const { handleNoAnswer } = await import('../services/calling/call-outcome-handler');
+
+        // Look up the job data from the queue
+        const jobs = await outboundCallQueue.getJobs(['active', 'waiting', 'delayed', 'completed']);
+        const occurrenceId = ws.occurrenceId;
+        const currentJob = jobs.find((job: any) =>
+          (occurrenceId && job.data.occurrenceId === occurrenceId &&
+           job.data.staffPoolIds[job.data.currentStaffIndex] === ws.employeeId) ||
+          (!occurrenceId && job.data.staffPoolIds && 
+           job.data.staffPoolIds[job.data.currentStaffIndex] === ws.employeeId)
+        );
+
+        if (currentJob) {
+          const result = await handleNoAnswer(
+            currentJob.data,
+            ws.employeeId!,
+            callSid
+          );
+
+          logger.info('Outbound call ended without decision - next call scheduled', {
+            callSid,
+            employeeId: ws.employeeId,
+            closeReason,
+            nextCallScheduled: result.nextCallScheduled,
+            type: 'outbound_no_decision_next_scheduled'
+          });
+        } else {
+          logger.warn('Outbound call ended without decision - no job data found', {
+            callSid,
+            employeeId: ws.employeeId,
+            closeReason,
+            type: 'outbound_no_decision_no_job_data'
+          });
+        }
+      } catch (error) {
+        logger.error('Failed to schedule next call after no-decision close', {
+          callSid,
+          error: error instanceof Error ? error.message : 'Unknown',
+          type: 'outbound_no_decision_error'
+        });
+      }
+    })();
+  }
+
   // Finalize call log before cleanup
-  await finalizeCallLog(ws, code, reason.toString());
+  await finalizeCallLog(ws, code, closeReason);
   
   // Clean up hold music
   stopHoldMusic(ws as any);

@@ -53,8 +53,12 @@ export async function POST(request: NextRequest) {
     
     // Handle different call statuses
     switch (callStatus) {
-      case 'completed':
-        // Call completed normally (handled by response webhook)
+      case 'completed': {
+        // Call was answered and ended. This fires when:
+        //   (a) Person pressed DTMF 1/2 — DTMF handler already scheduled next/cancelled
+        //   (b) Person hung up without pressing anything
+        //   (c) Voicemail picked up and eventually hung up
+        // For (b) and (c) we must schedule the next call ourselves.
         logger.info('Call completed normally', {
           callId,
           occurrenceId,
@@ -62,7 +66,54 @@ export async function POST(request: NextRequest) {
           callDuration,
           type: 'outbound_status_completed'
         });
+        
+        // Check if DTMF handler already scheduled the next call (accept → cancelled queue, decline → next job)
+        const pendingJobs = await outboundCallQueue.getJobs(['waiting', 'delayed']);
+        const hasNextJob = pendingJobs.some((job: any) => job.data.occurrenceId === occurrenceId);
+        
+        if (!hasNextJob) {
+          // No next call queued — person hung up without DTMF or voicemail answered
+          const completedJobs = await outboundCallQueue.getJobs(['active', 'waiting', 'delayed', 'completed']);
+          const completedJob = completedJobs.find((job: any) => 
+            job.data.occurrenceId === occurrenceId && 
+            job.data.staffPoolIds[job.data.currentStaffIndex] === employeeId
+          );
+          
+          if (completedJob) {
+            const completedCallLogRecordId = searchParams.get('callLogRecordId') || undefined;
+            
+            const result = await handleNoAnswer(
+              completedJob.data,
+              employeeId,
+              callSid,
+              completedCallLogRecordId
+            );
+            
+            logger.info('Completed call handled as no-response, next call scheduled', {
+              callId,
+              occurrenceId,
+              employeeId,
+              nextCallScheduled: result.nextCallScheduled,
+              type: 'outbound_completed_fallback_scheduled'
+            });
+          } else {
+            logger.warn('Could not find job data for completed-call fallback', {
+              callId,
+              occurrenceId,
+              employeeId,
+              type: 'outbound_completed_no_job_data'
+            });
+          }
+        } else {
+          logger.info('Next call already scheduled by DTMF handler, skipping completed fallback', {
+            callId,
+            occurrenceId,
+            employeeId,
+            type: 'outbound_completed_already_handled'
+          });
+        }
         break;
+      }
         
       case 'no-answer':
       case 'canceled':
@@ -76,8 +127,9 @@ export async function POST(request: NextRequest) {
           type: 'outbound_status_no_answer'
         });
         
-        // Get job data from queue
-        const jobs = await outboundCallQueue.getJobs(['active', 'waiting', 'delayed']);
+        // Get job data from queue (include 'completed' because the Bull job finishes
+        // after twilioClient.calls.create() returns, before Twilio calls back)
+        const jobs = await outboundCallQueue.getJobs(['active', 'waiting', 'delayed', 'completed']);
         const currentJob = jobs.find((job: any) => 
           job.data.occurrenceId === occurrenceId && 
           job.data.staffPoolIds[job.data.currentStaffIndex] === employeeId
@@ -145,8 +197,8 @@ export async function POST(request: NextRequest) {
           }
         }
         
-        // Schedule next call
-        const failedJobs = await outboundCallQueue.getJobs(['active', 'waiting', 'delayed']);
+        // Schedule next call (include 'completed' -- same reason as no-answer above)
+        const failedJobs = await outboundCallQueue.getJobs(['active', 'waiting', 'delayed', 'completed']);
         const failedJob = failedJobs.find((job: any) => 
           job.data.occurrenceId === occurrenceId && 
           job.data.staffPoolIds[job.data.currentStaffIndex] === employeeId
@@ -163,12 +215,17 @@ export async function POST(request: NextRequest) {
         break;
         
       case 'answered':
-        // Call was answered - waiting for DTMF input
-        logger.info('Call answered, waiting for DTMF', {
+      case 'in-progress':
+      case 'ringing':
+      case 'initiated':
+      case 'queued':
+        // Informational statuses - no action needed
+        logger.info('Call status update', {
           callId,
           occurrenceId,
           employeeId,
-          type: 'outbound_status_answered'
+          callStatus,
+          type: 'outbound_status_info'
         });
         break;
         

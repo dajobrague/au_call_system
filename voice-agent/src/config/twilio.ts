@@ -19,6 +19,7 @@ function getEnvironmentMode(): 'test' | 'production' {
 // Read Twilio configuration from environment-aware config
 const TWILIO_ACCOUNT_SID = env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = env.TWILIO_AUTH_TOKEN;
+const TWILIO_AU1_AUTH_TOKEN = env.TWILIO_AU1_AUTH_TOKEN;
 const TWILIO_PHONE_NUMBER = env.TWILIO_PHONE_NUMBER;
 const TWILIO_MESSAGING_SID = env.TWILIO_MESSAGING_SID;
 
@@ -43,6 +44,8 @@ if (!TWILIO_MESSAGING_SID) {
 export const twilioConfig = {
   accountSid: TWILIO_ACCOUNT_SID,
   authToken: TWILIO_AUTH_TOKEN,
+  /** AU1 region-specific auth token for accessing inbound call recordings */
+  au1AuthToken: TWILIO_AU1_AUTH_TOKEN,
   phoneNumber: TWILIO_PHONE_NUMBER,
   messagingSid: TWILIO_MESSAGING_SID,
   mode: getEnvironmentMode(),

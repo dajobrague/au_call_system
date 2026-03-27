@@ -3,7 +3,7 @@
  */
 
 import type { ShiftCancellation } from '@/lib/daily-report-aggregation';
-import { UserX, Phone, User, Calendar, MessageSquare, Users, CheckCircle2, XCircle } from 'lucide-react';
+import { UserX, UserCheck, Phone, User, Calendar, MessageSquare, Users, CheckCircle2, XCircle } from 'lucide-react';
 
 interface CancellationSectionProps {
   cancellations: ShiftCancellation[];
@@ -47,15 +47,25 @@ export default function CancellationSection({ cancellations }: CancellationSecti
             
             <div className="space-y-2 text-sm">
               <div className="flex items-start gap-2">
-                <UserX className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0 print:text-black" />
+                <UserX className="w-4 h-4 text-gray-500 mt-0.5 shrink-0 print:text-black" />
                 <div>
                   <span className="font-medium text-gray-700 print:text-black">Cancelled By:</span>
                   <span className="ml-2 text-gray-900 print:text-black">{cancellation.cancelledBy}</span>
                 </div>
               </div>
               
+              {cancellation.pickedUpBy && (
+                <div className="flex items-start gap-2">
+                  <UserCheck className="w-4 h-4 text-green-600 mt-0.5 shrink-0 print:text-black" />
+                  <div>
+                    <span className="font-medium text-gray-700 print:text-black">Picked Up By:</span>
+                    <span className="ml-2 text-gray-900 print:text-black">{cancellation.pickedUpBy}</span>
+                  </div>
+                </div>
+              )}
+              
               <div className="flex items-start gap-2">
-                <Phone className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0 print:text-black" />
+                <Phone className="w-4 h-4 text-gray-500 mt-0.5 shrink-0 print:text-black" />
                 <div>
                   <span className="font-medium text-gray-700 print:text-black">Phone Number:</span>
                   <span className="ml-2 text-gray-900 print:text-black">{cancellation.phoneNumber}</span>
@@ -63,7 +73,7 @@ export default function CancellationSection({ cancellations }: CancellationSecti
               </div>
               
               <div className="flex items-start gap-2">
-                <User className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0 print:text-black" />
+                <User className="w-4 h-4 text-gray-500 mt-0.5 shrink-0 print:text-black" />
                 <div>
                   <span className="font-medium text-gray-700 print:text-black">Participant:</span>
                   <span className="ml-2 text-gray-900 print:text-black">{cancellation.participant}</span>
@@ -71,7 +81,7 @@ export default function CancellationSection({ cancellations }: CancellationSecti
               </div>
               
               <div className="flex items-start gap-2">
-                <Calendar className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0 print:text-black" />
+                <Calendar className="w-4 h-4 text-gray-500 mt-0.5 shrink-0 print:text-black" />
                 <div>
                   <span className="font-medium text-gray-700 print:text-black">Shift Time:</span>
                   <span className="ml-2 text-gray-900 print:text-black">{cancellation.shiftTime}</span>
@@ -79,7 +89,7 @@ export default function CancellationSection({ cancellations }: CancellationSecti
               </div>
               
               <div className="flex items-start gap-2">
-                <MessageSquare className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0 print:text-black" />
+                <MessageSquare className="w-4 h-4 text-gray-500 mt-0.5 shrink-0 print:text-black" />
                 <div>
                   <span className="font-medium text-gray-700 print:text-black">Reason for Cancellation:</span>
                   <span className="ml-2 text-gray-900 print:text-black">{cancellation.reason}</span>
@@ -88,9 +98,9 @@ export default function CancellationSection({ cancellations }: CancellationSecti
               
               <div className="flex items-start gap-2">
                 {cancellation.replacementTriggered ? (
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0 print:text-black" />
+                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0 print:text-black" />
                 ) : (
-                  <XCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0 print:text-black" />
+                  <XCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0 print:text-black" />
                 )}
                 <div>
                   <span className="font-medium text-gray-700 print:text-black">Replacement Workflow Triggered:</span>
@@ -103,7 +113,7 @@ export default function CancellationSection({ cancellations }: CancellationSecti
               {cancellation.replacementTriggered && (
                 <>
                   <div className="flex items-start gap-2">
-                    <Users className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0 print:text-black" />
+                    <Users className="w-4 h-4 text-gray-500 mt-0.5 shrink-0 print:text-black" />
                     <div>
                       <span className="font-medium text-gray-700 print:text-black">Staff Pool Contacted:</span>
                       <span className="ml-2 text-gray-900 print:text-black">

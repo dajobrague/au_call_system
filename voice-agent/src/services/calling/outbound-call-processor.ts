@@ -8,9 +8,9 @@
 import { logger } from '../../lib/logger';
 import { airtableClient } from '../airtable/client';
 import { twilioConfig } from '../../config/twilio';
-import { generateOutboundCallAudio } from './audio-pregenerator';
 import { generateTwiMLUrl } from './twiml-generator';
 import { createCallLog } from '../airtable/call-log-service';
+import { publishOutboundCallStarted } from '../redis/call-event-publisher';
 import type { OutboundCallJobData } from '../queue/outbound-call-queue';
 import { scheduleNextCallAttempt } from '../queue/outbound-call-queue';
 const twilio = require('twilio');
@@ -109,43 +109,11 @@ export async function processOutboundCall(jobData: OutboundCallJobData): Promise
       type: 'outbound_call_employee_found'
     });
     
-    // Step 3: Generate personalized audio
+    // Step 3: Audio is generated in real-time via WebSocket (ElevenLabs streaming)
+    // The TwiML uses <Connect><Stream> which routes to the WebSocket handler in server.js,
+    // where handleOutboundCallWs() generates and streams audio on-the-fly.
+    // No pre-generation needed.
     const callId = `${occurrenceId}-r${currentRound}-s${currentStaffIndex}`;
-    
-    const audioResult = await generateOutboundCallAudio(
-      jobDetails.messageTemplate,
-      {
-        employeeName: employeeName.split(' ')[0], // First name only
-        patientName: jobDetails.patientName,
-        date: jobDetails.displayDate,
-        time: jobDetails.startTime,
-        startTime: jobDetails.startTime,
-        endTime: jobDetails.endTime,
-        suburb: jobDetails.suburb,
-      },
-      callId
-    );
-    
-    if (!audioResult.success || !audioResult.audioUrl) {
-      logger.error('Audio generation failed', {
-        occurrenceId,
-        staffId,
-        error: audioResult.error,
-        type: 'outbound_call_audio_failed'
-      });
-      
-      // Schedule next call (skip this attempt)
-      await scheduleNextCallAttempt(jobData);
-      return;
-    }
-    
-    logger.info('Audio generated successfully', {
-      occurrenceId,
-      staffId,
-      callId,
-      audioUrl: audioResult.audioUrl,
-      type: 'outbound_call_audio_generated'
-    });
     
     // Step 4: Create Call Log record
     const callLogResult = await createCallLog({
@@ -202,6 +170,27 @@ export async function processOutboundCall(jobData: OutboundCallJobData): Promise
       status: call.status,
       type: 'outbound_call_initiated'
     });
+    
+    // Publish outbound_call_started event to Redis Stream (non-blocking)
+    if (jobData.providerId) {
+      publishOutboundCallStarted(
+        call.sid,
+        jobData.providerId,
+        {
+          employeeName,
+          employeeId: staffId,
+          patientName: jobDetails.patientName || '',
+          occurrenceId,
+          round: currentRound,
+        }
+      ).catch(err => {
+        logger.warn('Failed to publish outbound_call_started event', {
+          callSid: call.sid,
+          error: err instanceof Error ? err.message : 'Unknown error',
+          type: 'redis_stream_warning'
+        });
+      });
+    }
     
     // Update call log with actual CallSid
     if (callLogResult.recordId) {

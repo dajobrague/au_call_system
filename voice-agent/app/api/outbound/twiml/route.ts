@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     // Generate WebSocket URL
     const websocketUrl = getWebSocketUrl();
     
-    // Generate TwiML with Connect/Stream (same as inbound calls)
+    // Generate TwiML with Connect/Stream (no recording for outbound calls)
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
   </Connect>
 </Response>`;
     
-    logger.info('TwiML generated with WebSocket stream', {
+    logger.info('TwiML generated with Connect/Stream', {
       callId,
       occurrenceId,
       employeeId,

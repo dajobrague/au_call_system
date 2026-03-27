@@ -5,7 +5,7 @@
 
 // NEW: Dial-based transfer (preferred method - maintains recording, simpler)
 export { dialTransferToRepresentative } from './dial-transfer';
-export type { DialTransferOptions, DialTransferResult } from './dial-transfer';
+export type { DialTransferOptions, DialTransferResult, TransferCallContext } from './dial-transfer';
 
 // OLD: Conference-based transfer (deprecated - disconnects WebSocket)
 // export { transferToRepresentative } from './conference-manager';

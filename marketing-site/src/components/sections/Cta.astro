@@ -1,0 +1,39 @@
+---
+import Section from "@/components/layout/Section.astro";
+import Container from "@/components/layout/Container.astro";
+
+---
+
+<Section id="contact" padding="lg">
+  <Container>
+    <div class="overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary/85 px-6 py-14 shadow-xl sm:px-12 sm:py-20">
+      <div class="mx-auto max-w-2xl text-center">
+        <h2 class="text-3xl font-bold tracking-tight text-primary-foreground sm:text-4xl lg:text-5xl">
+          Run after-hours with more visibility, more control, and less manual work
+        </h2>
+        <p class="mt-4 text-base leading-relaxed text-primary-foreground/80 sm:text-lg">
+          See how On Call After Hours could fit your organisation's after-hours workflow.
+        </p>
+
+        <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+          <a
+            href="/contact"
+            class="inline-flex h-12 items-center justify-center rounded-lg bg-white px-8 text-sm font-semibold text-primary shadow-sm transition-all duration-200 hover:bg-white/90 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+          >
+            Book a Demo
+            <svg class="ml-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"></path>
+              <path d="m12 5 7 7-7 7"></path>
+            </svg>
+          </a>
+          <a
+            href="/contact"
+            class="inline-flex h-12 items-center justify-center rounded-lg border border-white/25 bg-white/10 px-8 text-sm font-semibold text-primary-foreground backdrop-blur-sm transition-all duration-200 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+          >
+            Contact Us
+          </a>
+        </div>
+      </div>
+    </div>
+  </Container>
+</Section>

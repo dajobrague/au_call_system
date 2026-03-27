@@ -7,9 +7,22 @@
 const twilio = require('twilio');
 import { twilioConfig } from '../../config/twilio';
 import { logger } from '../../lib/logger';
-import { publishTransferInitiated, publishTransferCompleted } from '../redis/call-event-publisher';
+import { publishCallEvent, publishTransferCompleted } from '../redis/call-event-publisher';
 
 const twilioClient = twilio(twilioConfig.accountSid, twilioConfig.authToken);
+
+export interface TransferCallContext {
+  employeeName?: string;
+  employeeId?: string;
+  patientName?: string;
+  occurrenceDetails?: {
+    occurrenceId?: string;
+    scheduledAt?: string;
+    time?: string;
+    displayDate?: string;
+  };
+  callPurpose?: string;
+}
 
 export interface DialTransferOptions {
   callerCallSid: string;
@@ -17,6 +30,7 @@ export interface DialTransferOptions {
   callerPhone: string;
   baseUrl?: string;
   providerId?: string;
+  callContext?: TransferCallContext;
 }
 
 export interface DialTransferResult {
@@ -42,7 +56,8 @@ export async function dialTransferToRepresentative(
     representativePhone,
     callerPhone,
     baseUrl = getBaseUrl(),
-    providerId
+    providerId,
+    callContext
   } = options;
   
   const startTime = Date.now();
@@ -54,14 +69,24 @@ export async function dialTransferToRepresentative(
       type: 'dial_transfer_update_start'
     });
     
-    // Publish transfer_initiated event to Redis Stream (non-blocking)
+    // Publish transfer_initiated event to Redis Stream with enriched context (non-blocking)
     if (providerId) {
-      publishTransferInitiated(
-        callerCallSid,
+      publishCallEvent({
+        eventType: 'transfer_initiated',
+        callSid: callerCallSid,
         providerId,
-        representativePhone,
-        'Employee requested to speak with representative'
-      ).catch(err => {
+        timestamp: new Date().toISOString(),
+        data: {
+          transferTo: representativePhone,
+          reason: 'Employee requested to speak with representative',
+          callerPhone,
+          employeeName: callContext?.employeeName,
+          employeeId: callContext?.employeeId,
+          patientName: callContext?.patientName,
+          occurrenceDetails: callContext?.occurrenceDetails,
+          callPurpose: callContext?.callPurpose,
+        },
+      }).catch(err => {
         logger.error('Failed to publish transfer_initiated event', {
           callSid: callerCallSid,
           error: err.message,

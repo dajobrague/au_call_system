@@ -59,6 +59,7 @@ export async function processPhoneAuthPhase(
           jobTemplateIds: authResult.employee.jobTemplateIds,
           notes: authResult.employee.notes,
           active: authResult.employee.active,
+          outboundCallEnabled: authResult.employee.outboundCallEnabled,
         },
         provider: authResult.provider,
         authMethod: 'phone',

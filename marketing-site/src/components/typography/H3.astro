@@ -1,0 +1,16 @@
+---
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<h3
+  class:list={[
+    "scroll-m-20 text-2xl font-semibold tracking-tight text-foreground",
+    className,
+  ]}
+>
+  <slot />
+</h3>

@@ -1,0 +1,30 @@
+---
+/**
+ * Placeholder navigation — final link structure will be added
+ * once marketing sections are defined.
+ */
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+
+const links = [
+  { label: "Home", href: "/" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
+];
+---
+
+<nav class:list={["flex items-center gap-6", className]}>
+  {
+    links.map((link) => (
+      <a
+        href={link.href}
+        class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        {link.label}
+      </a>
+    ))
+  }
+</nav>

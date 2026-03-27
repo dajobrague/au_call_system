@@ -276,7 +276,7 @@ export function testContextManager() {
   // Mock call state
   const mockState: Partial<CallState> = {
     phase: 'job_options',
-    employee: { name: 'David Bracho', id: '1', pin: 1234, phone: '+123', providerId: '1', jobTemplateIds: [], active: true },
+    employee: { name: 'David Bracho', id: '1', pin: 1234, phone: '+123', providerId: '1', jobTemplateIds: [], active: true, outboundCallEnabled: true },
     jobCode: 'AB12',
     jobTemplate: { id: '1', jobCode: 'AB12', title: 'Home Visit', serviceType: 'Healthcare', patientId: '1', occurrenceIds: [] },
     patient: { id: '1', name: 'Maria Garcia', patientId: 123 },

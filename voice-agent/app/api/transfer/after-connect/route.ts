@@ -89,12 +89,16 @@ export async function POST(request: NextRequest) {
         type: 'after_connect_transfer_found'
       });
 
-      // Generate TwiML for transfer with Dial (no recording - keep it simple)
+      // Generate TwiML for transfer with Dial and recording
       twiml.say({ voice: 'Polly.Amy' }, 'Connecting you to a representative. Please hold.');
       
       const dial = twiml.dial({
         callerId: callState.pendingTransfer.callerPhone,
         timeout: 30,
+        record: 'record-from-answer-dual',
+        recordingStatusCallback: `${APP_BASE_URL}/api/twilio/recording-status`,
+        recordingStatusCallbackMethod: 'POST',
+        recordingStatusCallbackEvent: 'completed',
         action: `${APP_BASE_URL}/api/queue/transfer-status?callSid=${callSid}&from=${encodeURIComponent(from)}`
       });
       
@@ -104,9 +108,11 @@ export async function POST(request: NextRequest) {
       twiml.say({ voice: 'Polly.Amy' }, 'The representative is not available. You will be placed in the queue.');
       twiml.redirect(`${APP_BASE_URL}/api/queue/enqueue-caller?callSid=${callSid}&from=${encodeURIComponent(from)}`);
 
-      logger.info('Dial TwiML generated for transfer', {
+      logger.info('Dial TwiML generated for transfer with recording', {
         callSid,
         representativePhone: callState.pendingTransfer.representativePhone,
+        recordingEnabled: true,
+        recordingMode: 'record-from-answer-dual',
         duration: Date.now() - startTime,
         type: 'after_connect_dial_twiml'
       });

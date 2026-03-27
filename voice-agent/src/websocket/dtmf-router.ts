@@ -14,6 +14,8 @@ import { WebSocketWithExtensions } from './connection-handler';
 import { paginateOccurrences, validateOccurrenceSelection, generateOccurrenceListPrompt } from '../handlers/occurrence-pagination';
 import { jobNotificationService } from '../services/sms/job-notification-service';
 import { airtableClient } from '../services/airtable/client';
+import { formatDateForSpeech, formatTimeForSpeech } from '../utils/date-time';
+import { publishCallEvent } from '../services/redis/call-event-publisher';
 
 export interface DTMFRoutingContext {
   ws: any;
@@ -119,11 +121,15 @@ async function handleOutboundJobOffer(context: DTMFRoutingContext): Promise<void
     
     // Play confirmation IMMEDIATELY (don't wait for Airtable)
     const patientName = callState.jobDetails?.patientName || 'the patient';
-    const displayDate = callState.jobDetails?.displayDate || 'the scheduled date';
-    const startTime = callState.jobDetails?.startTime || 'the scheduled time';
+    const rawDate = callState.jobDetails?.displayDate || '';
+    const rawTime = callState.jobDetails?.startTime || '';
+    
+    // Format date and time for natural speech
+    const speechDate = formatDateForSpeech(rawDate) || 'the scheduled date';
+    const speechTime = formatTimeForSpeech(rawTime) || 'the scheduled time';
     
     await context.generateAndSpeak(
-      `Great! You've accepted the shift for ${patientName} on ${displayDate} at ${startTime}. ` +
+      `Great! You've accepted the shift for ${patientName} on ${speechDate} at ${speechTime}. ` +
       `You'll receive a confirmation text message shortly. Thank you! Goodbye.`
     );
     
@@ -172,12 +178,47 @@ async function handleOutboundJobOffer(context: DTMFRoutingContext): Promise<void
       `Okay, I've recorded that you declined this shift. We'll contact another team member. Thank you! Goodbye.`
     );
     
-    // Log decline in background (non-blocking)
-    logger.info('Recording job decline', {
-      occurrenceId: callState.occurrenceId,
-      employeeId: callState.employee?.id,
-      type: 'decline_recorded'
-    });
+    // Process decline and schedule next call in background (non-blocking)
+    (async () => {
+      try {
+        const { handleJobDecline } = await import('../services/calling/call-outcome-handler');
+        const { outboundCallQueue } = await import('../services/queue/outbound-call-queue');
+        
+        // Look up the job data from the queue (same pattern as status callback)
+        const jobs = await outboundCallQueue.getJobs(['active', 'waiting', 'delayed', 'completed']);
+        const currentJob = jobs.find((job: any) =>
+          job.data.occurrenceId === callState.occurrenceId &&
+          job.data.staffPoolIds[job.data.currentStaffIndex] === callState.employee?.id
+        );
+        
+        if (currentJob) {
+          const result = await handleJobDecline(
+            currentJob.data,
+            callState.employee?.id || '',
+            callState.sid
+          );
+          
+          logger.info('Job decline processed, next call scheduled', {
+            occurrenceId: callState.occurrenceId,
+            employeeId: callState.employee?.id,
+            nextCallScheduled: result.nextCallScheduled,
+            type: 'decline_next_call_scheduled'
+          });
+        } else {
+          logger.warn('Could not find job data for decline handling', {
+            occurrenceId: callState.occurrenceId,
+            employeeId: callState.employee?.id,
+            type: 'decline_no_job_data'
+          });
+        }
+      } catch (error) {
+        logger.error('Background job decline error', {
+          callSid: callState.sid,
+          error: error instanceof Error ? error.message : 'Unknown',
+          type: 'background_decline_error'
+        });
+      }
+    })();
     
     // Close WebSocket to end call after message plays
     if (ws.readyState === 1) {
@@ -899,10 +940,45 @@ async function handleTransferToRepresentative(context: DTMFRoutingContext): Prom
   
   await saveState(transferState);
   
+  // Publish enriched transfer_initiated event to Redis Stream for operator dashboard
+  if (callState.provider?.id) {
+    publishCallEvent({
+      eventType: 'transfer_initiated',
+      callSid: callState.sid,
+      providerId: callState.provider.id,
+      timestamp: new Date().toISOString(),
+      data: {
+        transferTo: transferNumber,
+        reason: 'Employee requested to speak with representative',
+        callerPhone,
+        employeeName: callState.employee?.name,
+        employeeId: callState.employee?.id,
+        patientName: callState.patient?.name,
+        occurrenceDetails: callState.selectedOccurrence ? {
+          occurrenceId: callState.selectedOccurrence.occurrenceId,
+          scheduledAt: callState.selectedOccurrence.scheduledAt,
+          time: callState.selectedOccurrence.time,
+          displayDate: callState.selectedOccurrence.displayDate,
+        } : undefined,
+        callPurpose: callState.actionType || 'representative_request',
+      },
+    }).catch(err => {
+      logger.error('Failed to publish transfer_initiated event', {
+        callSid: callState.sid,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        type: 'redis_stream_error'
+      });
+    });
+  }
+  
   logger.info('Transfer state saved, closing WebSocket to trigger action URL', {
     callSid: callState.sid,
     type: 'transfer_closing_ws_for_action'
   });
+  
+  // Mark the WebSocket as having a pending transfer so connection-handler
+  // does NOT publish a call_ended event (the call continues via <Dial>)
+  ws.transferPending = true;
   
   // Close WebSocket - this will cause Twilio to call the action URL
   if (ws.readyState === 1) {

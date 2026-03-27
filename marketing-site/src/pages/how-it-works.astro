@@ -1,0 +1,558 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Section from "@/components/layout/Section.astro";
+import Container from "@/components/layout/Container.astro";
+import HeroProductMock from "@/components/sections/HeroProductMock.astro";
+import { buttonVariants } from "@/components/ui/button";
+
+const steps = [
+  {
+    num: "1",
+    icon: "building",
+    title: "Complete self-serve onboarding",
+    body: "Set up your organisation through a guided onboarding flow. Add your ABN, business name, staff, locations, contacts, and key operating details directly inside the platform.",
+  },
+  {
+    num: "2",
+    icon: "settings",
+    title: "Configure your after-hours settings",
+    body: "Choose how your organisation wants On Call After Hours to operate. Update transfer phone numbers, escalation contacts, outbound call attempt limits, on-call windows, and workflow preferences from your own dashboard.",
+  },
+  {
+    num: "3",
+    icon: "calendar",
+    title: "Upload the evening schedule",
+    body: "Upload the current schedule so the system is prepared to handle overnight events and call activity with the right context.",
+  },
+  {
+    num: "4",
+    icon: "zap",
+    title: "Let On Call After Hours answer and process calls",
+    body: "When a call comes in, the platform captures the issue, routes it into the right workflow, and begins the required actions based on your settings.",
+  },
+  {
+    num: "5",
+    icon: "eye",
+    title: "Track activity live overnight",
+    body: "Managers and authorised users can view live events, monitor statuses, see actions in progress, and step in when needed.",
+  },
+  {
+    num: "6",
+    icon: "file-check",
+    title: "Review reports by morning",
+    body: "Download overnight reports, review timestamps and event logs, and start the day with a clearer handover record.",
+  },
+];
+
+const heroSteps = [
+  { label: "Onboard", icon: "building" },
+  { label: "Configure", icon: "settings" },
+  { label: "Schedule", icon: "calendar" },
+  { label: "Process", icon: "zap" },
+  { label: "Monitor", icon: "eye" },
+  { label: "Report", icon: "file-check" },
+];
+
+const providerControls = [
+  { label: "Transfer numbers", value: "+61 4XX XXX XXX" },
+  { label: "Escalation contact", value: "Sarah Mitchell" },
+  { label: "Outbound attempts", value: "3 attempts" },
+  { label: "On-call window", value: "6:00 PM – 8:00 AM" },
+  { label: "Location", value: "Sydney Metro" },
+  { label: "Workflow", value: "Sick call → Escalate" },
+];
+
+const visibilityBullets = [
+  "View active cases live",
+  "Track escalation progress",
+  "See who is being contacted",
+  "Step in when needed",
+];
+
+const reportBullets = [
+  "Timestamped event logs",
+  "Downloadable overnight reports",
+  "Clear handover summaries",
+];
+---
+
+<BaseLayout title="How It Works — On Call After Hours">
+
+  {/* ═══ HERO ═══ */}
+  <Section padding="lg" animate={false} class="relative overflow-hidden">
+    <div class="pointer-events-none absolute -right-40 -top-40 h-[500px] w-[500px] rounded-full bg-primary/[0.03] blur-[100px]" aria-hidden="true"></div>
+    <Container>
+      <div class="mx-auto max-w-3xl text-center">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+          How it works
+        </p>
+        <h1 class="mt-3 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+          How On Call After Hours handles after-hours issues from start to finish
+        </h1>
+        <p class="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
+          A structured overnight workflow that helps providers manage calls, escalation, visibility, and reporting in one system.
+        </p>
+      </div>
+
+      {/* Horizontal workflow diagram */}
+      <div class="mx-auto mt-12 max-w-4xl">
+        <div class="hidden items-center justify-between sm:flex">
+          {heroSteps.map((s, i) => (
+            <div class="flex items-center">
+              <div class="flex flex-col items-center gap-2">
+                <div class="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                  {s.icon === "building" && <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>}
+                  {s.icon === "settings" && <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>}
+                  {s.icon === "calendar" && <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path></svg>}
+                  {s.icon === "zap" && <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>}
+                  {s.icon === "eye" && <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>}
+                  {s.icon === "file-check" && <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="m9 15 2 2 4-4"></path></svg>}
+                </div>
+                <span class="text-[11px] font-medium text-muted-foreground">{s.label}</span>
+              </div>
+              {i < heroSteps.length - 1 && (
+                <div class="mx-2 h-px w-8 bg-border/80 lg:mx-3 lg:w-12" aria-hidden="true"></div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ STEP 1 — Onboarding ═══ */}
+  <Section padding="md" class="bg-muted/20">
+    <Container>
+      <div class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/70">Step 1</p>
+          <h2 class="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{steps[0].title}</h2>
+          <p class="mt-3 text-sm leading-relaxed text-muted-foreground">{steps[0].body}</p>
+        </div>
+        <div class="rounded-xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
+          <div class="flex items-center gap-2 border-b border-border/40 pb-3 mb-4">
+            <div class="h-5 w-5 rounded bg-primary/10 flex items-center justify-center">
+              <svg class="h-3 w-3 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path></svg>
+            </div>
+            <span class="text-[11px] font-semibold text-foreground">Organisation Setup</span>
+            <span class="ml-auto text-[9px] font-medium text-emerald-600 bg-emerald-50 rounded-full px-2 py-0.5">In progress</span>
+          </div>
+          <div class="space-y-3">
+            <div>
+              <label class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">Business Name</label>
+              <div class="mt-1 rounded-md border border-border/50 bg-muted/20 px-3 py-1.5 text-[11px] font-medium text-foreground">BrightPath Disability Services</div>
+            </div>
+            <div>
+              <label class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">ABN</label>
+              <div class="mt-1 rounded-md border border-border/50 bg-muted/20 px-3 py-1.5 text-[11px] font-medium text-foreground tabular-nums">51 824 753 001</div>
+            </div>
+            <div>
+              <label class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">Primary Location</label>
+              <div class="mt-1 rounded-md border border-border/50 bg-muted/20 px-3 py-1.5 text-[11px] font-medium text-foreground">Sydney Metro</div>
+            </div>
+            <div>
+              <label class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">Primary Contact</label>
+              <div class="mt-1 rounded-md border border-border/50 bg-muted/20 px-3 py-1.5 text-[11px] font-medium text-foreground">Sarah Mitchell — Coordinator</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ STEP 2 — Configure ═══ */}
+  <Section padding="md">
+    <Container>
+      <div class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        <div class="order-2 lg:order-1">
+          <div class="rounded-xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
+            <div class="flex items-center gap-2 border-b border-border/40 pb-3 mb-4">
+              <div class="h-5 w-5 rounded bg-primary/10 flex items-center justify-center">
+                <svg class="h-3 w-3 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </div>
+              <span class="text-[11px] font-semibold text-foreground">After-Hours Settings</span>
+            </div>
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between rounded-md border border-border/40 px-3 py-2">
+                <span class="text-[11px] text-foreground/80">Transfer to mobile</span>
+                <div class="h-4 w-7 rounded-full bg-primary relative"><div class="absolute right-0.5 top-0.5 h-3 w-3 rounded-full bg-white shadow-sm"></div></div>
+              </div>
+              <div class="flex items-center justify-between rounded-md border border-border/40 px-3 py-2">
+                <span class="text-[11px] text-foreground/80">Escalation after 2 attempts</span>
+                <div class="h-4 w-7 rounded-full bg-primary relative"><div class="absolute right-0.5 top-0.5 h-3 w-3 rounded-full bg-white shadow-sm"></div></div>
+              </div>
+              <div class="flex items-center justify-between rounded-md border border-border/40 px-3 py-2">
+                <span class="text-[11px] text-foreground/80">On-call window</span>
+                <span class="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-foreground/70">6:00 PM – 8:00 AM</span>
+              </div>
+              <div class="flex items-center justify-between rounded-md border border-border/40 px-3 py-2">
+                <span class="text-[11px] text-foreground/80">Outbound call limit</span>
+                <span class="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-foreground/70">3 attempts</span>
+              </div>
+              <div class="flex items-center justify-between rounded-md border border-border/40 px-3 py-2">
+                <span class="text-[11px] text-foreground/80">SMS notifications</span>
+                <div class="h-4 w-7 rounded-full bg-primary relative"><div class="absolute right-0.5 top-0.5 h-3 w-3 rounded-full bg-white shadow-sm"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="order-1 lg:order-2">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/70">Step 2</p>
+          <h2 class="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{steps[1].title}</h2>
+          <p class="mt-3 text-sm leading-relaxed text-muted-foreground">{steps[1].body}</p>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ STEP 3 — Upload schedule ═══ */}
+  <Section padding="md" class="bg-muted/20">
+    <Container>
+      <div class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/70">Step 3</p>
+          <h2 class="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{steps[2].title}</h2>
+          <p class="mt-3 text-sm leading-relaxed text-muted-foreground">{steps[2].body}</p>
+        </div>
+        <div class="rounded-xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
+          <div class="flex items-center gap-2 border-b border-border/40 pb-3 mb-4">
+            <div class="h-5 w-5 rounded bg-primary/10 flex items-center justify-center">
+              <svg class="h-3 w-3 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path></svg>
+            </div>
+            <span class="text-[11px] font-semibold text-foreground">Evening Roster — Tue 25 Feb</span>
+          </div>
+          <div class="space-y-1.5">
+            <div class="flex items-center gap-3 rounded-md bg-muted/30 px-3 py-2">
+              <span class="text-[10px] font-medium text-muted-foreground w-20 shrink-0 tabular-nums">6 PM – 12 AM</span>
+              <div class="h-5 w-5 rounded-full bg-blue-100 flex items-center justify-center text-[8px] font-bold text-blue-700 shrink-0">SM</div>
+              <span class="text-[11px] font-medium text-foreground truncate">Sarah Mitchell</span>
+              <span class="ml-auto text-[9px] text-muted-foreground">On-call</span>
+            </div>
+            <div class="flex items-center gap-3 rounded-md bg-muted/30 px-3 py-2">
+              <span class="text-[10px] font-medium text-muted-foreground w-20 shrink-0 tabular-nums">12 AM – 6 AM</span>
+              <div class="h-5 w-5 rounded-full bg-amber-100 flex items-center justify-center text-[8px] font-bold text-amber-700 shrink-0">JR</div>
+              <span class="text-[11px] font-medium text-foreground truncate">James Rivera</span>
+              <span class="ml-auto text-[9px] text-muted-foreground">On-call</span>
+            </div>
+            <div class="flex items-center gap-3 rounded-md bg-muted/30 px-3 py-2">
+              <span class="text-[10px] font-medium text-muted-foreground w-20 shrink-0 tabular-nums">6 AM – 8 AM</span>
+              <div class="h-5 w-5 rounded-full bg-emerald-100 flex items-center justify-center text-[8px] font-bold text-emerald-700 shrink-0">KP</div>
+              <span class="text-[11px] font-medium text-foreground truncate">Kim Patel</span>
+              <span class="ml-auto text-[9px] text-muted-foreground">On-call</span>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center gap-2 border-t border-border/40 pt-3">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            <span class="text-[10px] font-medium text-emerald-700">Schedule uploaded and active</span>
+          </div>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ STEP 4 — Call processing ═══ */}
+  <Section padding="md">
+    <Container>
+      <div class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        <div class="order-2 lg:order-1">
+          <div class="rounded-xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
+            <div class="flex items-center gap-2 border-b border-border/40 pb-3 mb-4">
+              <div class="h-5 w-5 rounded bg-primary/10 flex items-center justify-center">
+                <svg class="h-3 w-3 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              </div>
+              <span class="text-[11px] font-semibold text-foreground">Incoming Call</span>
+              <span class="ml-auto inline-flex items-center gap-1 text-[9px] font-medium text-primary">
+                <span class="h-1.5 w-1.5 rounded-full bg-primary animate-pulse"></span>
+                Live
+              </span>
+            </div>
+            <div class="space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <div class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-0.5">Caller</div>
+                  <div class="text-[11px] font-medium text-foreground">Staff — Night shift</div>
+                </div>
+                <div>
+                  <div class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-0.5">Duration</div>
+                  <div class="text-[11px] font-medium text-foreground tabular-nums">1m 42s</div>
+                </div>
+              </div>
+              <div>
+                <div class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1">Issue Captured</div>
+                <div class="rounded-md bg-muted/30 px-3 py-2 text-[10px] leading-relaxed text-foreground/70">
+                  Staff member reporting sick for tomorrow morning shift. Needs replacement by 6:00 AM.
+                </div>
+              </div>
+              <div class="flex items-center gap-3 border-t border-border/40 pt-3">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">Workflow</span>
+                  <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Sick call</span>
+                </div>
+                <div class="flex items-center gap-1.5 ml-auto">
+                  <span class="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">Status</span>
+                  <span class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">Routing...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="order-1 lg:order-2">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/70">Step 4</p>
+          <h2 class="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{steps[3].title}</h2>
+          <p class="mt-3 text-sm leading-relaxed text-muted-foreground">{steps[3].body}</p>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ STEP 5 — Live tracking ═══ */}
+  <Section padding="md" class="bg-muted/20">
+    <Container>
+      <div class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/70">Step 5</p>
+          <h2 class="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{steps[4].title}</h2>
+          <p class="mt-3 text-sm leading-relaxed text-muted-foreground">{steps[4].body}</p>
+        </div>
+        <div class="rounded-xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
+          <div class="flex items-center gap-2 border-b border-border/40 pb-3 mb-4">
+            <div class="h-5 w-5 rounded bg-primary/10 flex items-center justify-center">
+              <svg class="h-3 w-3 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </div>
+            <span class="text-[11px] font-semibold text-foreground">Live Activity</span>
+            <span class="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-medium text-emerald-700 ring-1 ring-emerald-200/60">
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              3 active
+            </span>
+          </div>
+          <div class="space-y-2">
+            <div class="flex items-center gap-3 rounded-md px-2 py-1.5">
+              <span class="text-[10px] text-muted-foreground/60 w-12 shrink-0 tabular-nums">11:42 PM</span>
+              <span class="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0"></span>
+              <span class="text-[11px] text-foreground/80 truncate">Escalation started — contacting Sarah Mitchell</span>
+              <span class="ml-auto shrink-0 rounded-md bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700">Escalated</span>
+            </div>
+            <div class="flex items-center gap-3 rounded-md bg-primary/[0.02] ring-1 ring-primary/10 px-2 py-1.5">
+              <span class="text-[10px] text-muted-foreground/60 w-12 shrink-0 tabular-nums">11:38 PM</span>
+              <span class="h-1.5 w-1.5 rounded-full bg-primary shrink-0"></span>
+              <span class="text-[11px] text-foreground/80 truncate">Call in progress — sick call workflow</span>
+              <span class="ml-auto shrink-0 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">Active</span>
+            </div>
+            <div class="flex items-center gap-3 rounded-md px-2 py-1.5">
+              <span class="text-[10px] text-muted-foreground/60 w-12 shrink-0 tabular-nums">11:15 PM</span>
+              <span class="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0"></span>
+              <span class="text-[11px] text-foreground/70 truncate">Client enquiry — resolved by AI</span>
+              <span class="ml-auto shrink-0 rounded-md bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-blue-600">Resolved</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ STEP 6 — Morning reports ═══ */}
+  <Section padding="md">
+    <Container>
+      <div class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        <div class="order-2 lg:order-1">
+          <div class="rounded-xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
+            <div class="flex items-center gap-2 border-b border-border/40 pb-3 mb-4">
+              <div class="h-5 w-5 rounded bg-emerald-100 flex items-center justify-center">
+                <svg class="h-3 w-3 text-emerald-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="m9 15 2 2 4-4"></path></svg>
+              </div>
+              <span class="text-[11px] font-semibold text-foreground">Overnight Report</span>
+              <span class="ml-auto rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-medium text-emerald-700">Ready</span>
+            </div>
+            <div class="grid grid-cols-3 gap-3 mb-4">
+              <div class="rounded-md bg-muted/30 p-2.5 text-center">
+                <div class="text-lg font-bold text-foreground tabular-nums">7</div>
+                <div class="text-[9px] text-muted-foreground">Total calls</div>
+              </div>
+              <div class="rounded-md bg-muted/30 p-2.5 text-center">
+                <div class="text-lg font-bold text-foreground tabular-nums">2</div>
+                <div class="text-[9px] text-muted-foreground">Escalations</div>
+              </div>
+              <div class="rounded-md bg-muted/30 p-2.5 text-center">
+                <div class="text-lg font-bold text-foreground tabular-nums">5</div>
+                <div class="text-[9px] text-muted-foreground">Resolved</div>
+              </div>
+            </div>
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between rounded-md border border-border/40 px-3 py-2">
+                <span class="text-[11px] text-foreground/80">Event log</span>
+                <span class="text-[10px] text-muted-foreground">12 entries</span>
+              </div>
+              <div class="flex items-center justify-between rounded-md border border-border/40 px-3 py-2">
+                <span class="text-[11px] text-foreground/80">Call recordings</span>
+                <span class="text-[10px] text-muted-foreground">7 files</span>
+              </div>
+            </div>
+            <button class="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-primary/10 px-4 py-2 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/15">
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>
+              Download Report
+            </button>
+          </div>
+        </div>
+        <div class="order-1 lg:order-2">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/70">Step 6</p>
+          <h2 class="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{steps[5].title}</h2>
+          <p class="mt-3 text-sm leading-relaxed text-muted-foreground">{steps[5].body}</p>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ PROVIDER CONTROLS ═══ */}
+  <Section padding="lg">
+    <Container>
+      <div class="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+            Provider controls
+          </p>
+          <h2 class="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            You stay in control
+          </h2>
+          <p class="mt-4 text-base leading-relaxed text-muted-foreground">
+            On Call After Hours is designed so providers can manage key settings themselves without needing manual support for routine changes.
+          </p>
+        </div>
+        <div class="rounded-xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
+          <div class="flex items-center gap-2 border-b border-border/40 pb-3 mb-4">
+            <div class="h-5 w-5 rounded bg-primary/10 flex items-center justify-center">
+              <svg class="h-3 w-3 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="4" y1="21" y2="14"></line><line x1="4" x2="4" y1="10" y2="3"></line><line x1="12" x2="12" y1="21" y2="12"></line><line x1="12" x2="12" y1="8" y2="3"></line><line x1="20" x2="20" y1="21" y2="16"></line><line x1="20" x2="20" y1="12" y2="3"></line><line x1="2" x2="6" y1="14" y2="14"></line><line x1="10" x2="14" y1="8" y2="8"></line><line x1="18" x2="22" y1="16" y2="16"></line></svg>
+            </div>
+            <span class="text-[11px] font-semibold text-foreground">Provider Settings</span>
+            <span class="ml-auto text-[9px] text-muted-foreground">Last updated 2h ago</span>
+          </div>
+          <div class="space-y-2">
+            {providerControls.map((c) => (
+              <div class="flex items-center justify-between rounded-md border border-border/40 px-3 py-2">
+                <span class="text-[11px] text-foreground/80">{c.label}</span>
+                <span class="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-medium text-foreground/70">{c.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ LIVE VISIBILITY ═══ */}
+  <Section padding="lg">
+    <Container>
+      <div class="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+            Live visibility
+          </p>
+          <h2 class="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            A live view of overnight operations
+          </h2>
+          <p class="mt-4 text-base leading-relaxed text-muted-foreground">
+            The dashboard shows active cases, current statuses, transfer actions, and workflow progress as events unfold.
+          </p>
+          <ul class="mt-5 space-y-2.5">
+            {visibilityBullets.map((b) => (
+              <li class="flex items-center gap-2.5">
+                <svg class="h-4 w-4 shrink-0 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6 9 17l-5-5"></path>
+                </svg>
+                <span class="text-sm text-foreground/80">{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <HeroProductMock />
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ MORNING REPORTING ═══ */}
+  <Section padding="lg" variant="tinted">
+    <Container>
+      <div class="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+            Morning reports
+          </p>
+          <h2 class="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            Start the day with reporting already done
+          </h2>
+          <p class="mt-4 text-base leading-relaxed text-muted-foreground">
+            Overnight records, event summaries, and downloadable reports help support clearer handovers and stronger operational visibility.
+          </p>
+          <ul class="mt-5 space-y-2.5">
+            {reportBullets.map((b) => (
+              <li class="flex items-center gap-2.5">
+                <svg class="h-4 w-4 shrink-0 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6 9 17l-5-5"></path>
+                </svg>
+                <span class="text-sm text-foreground/80">{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div class="rounded-xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
+          <div class="flex items-center gap-2 border-b border-border/40 pb-3 mb-4">
+            <div class="h-5 w-5 rounded bg-emerald-100 flex items-center justify-center">
+              <svg class="h-3 w-3 text-emerald-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg>
+            </div>
+            <span class="text-[11px] font-semibold text-foreground">Morning Summary — Wed 26 Feb</span>
+          </div>
+          <div class="space-y-2 mb-4">
+            <div class="flex items-center gap-2 text-[11px]">
+              <span class="text-muted-foreground/60 w-14 shrink-0 tabular-nums">11:15 PM</span>
+              <span class="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0"></span>
+              <span class="text-foreground/70 truncate">Client enquiry — resolved</span>
+            </div>
+            <div class="flex items-center gap-2 text-[11px]">
+              <span class="text-muted-foreground/60 w-14 shrink-0 tabular-nums">11:38 PM</span>
+              <span class="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0"></span>
+              <span class="text-foreground/70 truncate">Sick call — escalated to Sarah M.</span>
+            </div>
+            <div class="flex items-center gap-2 text-[11px]">
+              <span class="text-muted-foreground/60 w-14 shrink-0 tabular-nums">1:22 AM</span>
+              <span class="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0"></span>
+              <span class="text-foreground/70 truncate">Medication query — resolved</span>
+            </div>
+            <div class="flex items-center gap-2 text-[11px]">
+              <span class="text-muted-foreground/60 w-14 shrink-0 tabular-nums">3:05 AM</span>
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <span class="text-foreground/70 truncate">Welfare check — completed</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between border-t border-border/40 pt-3">
+            <span class="text-[10px] text-muted-foreground">4 events · 0 unresolved</span>
+            <span class="flex items-center gap-1.5 text-[10px] font-medium text-primary cursor-pointer hover:underline underline-offset-2">
+              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>
+              Download PDF
+            </span>
+          </div>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+  {/* ═══ CTA ═══ */}
+  <Section padding="lg">
+    <Container>
+      <div class="mx-auto max-w-2xl text-center">
+        <h2 class="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          See how On Call After Hours fits your workflow
+        </h2>
+        <div class="mt-6">
+          <a href="/contact" class:list={[buttonVariants({ size: "lg" }), "shadow-sm"]}>
+            Book a Demo
+            <svg class="ml-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </Container>
+  </Section>
+
+</BaseLayout>

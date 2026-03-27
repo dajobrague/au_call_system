@@ -1,0 +1,168 @@
+---
+// Purely visual dashboard mockup — no JS, no React. All Tailwind + HTML.
+// Designed to look like a real SaaS call-management app at a glance.
+---
+
+<div class="rounded-xl border border-border/80 bg-card shadow-xl shadow-black/[0.03] overflow-hidden">
+  {/* Title bar — macOS-style window chrome */}
+  <div class="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-2.5">
+    <span class="h-2.5 w-2.5 rounded-full bg-[#ff5f57]"></span>
+    <span class="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]"></span>
+    <span class="h-2.5 w-2.5 rounded-full bg-[#28c840]"></span>
+    <span class="ml-auto text-[11px] font-medium text-muted-foreground/70">OnCallAfterHours</span>
+    <span class="ml-auto">
+      {/* Fake window control dots (right side spacing) */}
+    </span>
+  </div>
+
+  <div class="flex">
+    {/* Sidebar */}
+    <div class="hidden w-12 shrink-0 border-r border-border/40 bg-muted/20 py-3 sm:flex sm:flex-col sm:items-center sm:gap-3">
+      {/* Sidebar icon glyphs — abstract nav icons */}
+      <div class="h-5 w-5 rounded-md bg-primary/15 flex items-center justify-center">
+        <div class="h-2.5 w-2.5 rounded-sm bg-primary/50"></div>
+      </div>
+      <div class="h-5 w-5 rounded-md bg-muted flex items-center justify-center">
+        <svg class="h-3 w-3 text-muted-foreground/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91"></path>
+        </svg>
+      </div>
+      <div class="h-5 w-5 rounded-md bg-muted flex items-center justify-center">
+        <svg class="h-3 w-3 text-muted-foreground/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"></path><circle cx="9" cy="7" r="4"></circle>
+        </svg>
+      </div>
+      <div class="h-5 w-5 rounded-md bg-muted flex items-center justify-center">
+        <svg class="h-3 w-3 text-muted-foreground/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line>
+        </svg>
+      </div>
+      <div class="mt-auto h-5 w-5 rounded-md bg-muted flex items-center justify-center">
+        <svg class="h-3 w-3 text-muted-foreground/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle><path d="M12 1v2m0 18v2m-7.07-3.93l1.41 1.41M4.22 4.22l1.41 1.41m12.73 12.73l1.41 1.41m1.41-16.97l-1.41 1.41M1 12h2m18 0h2"></path>
+        </svg>
+      </div>
+    </div>
+
+    {/* Main content */}
+    <div class="flex-1 min-w-0">
+      {/* Sub-header with breadcrumb feel */}
+      <div class="flex items-center justify-between border-b border-border/40 px-4 py-2">
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] font-semibold text-foreground">Call Queue</span>
+          <span class="text-[10px] text-muted-foreground/60">›</span>
+          <span class="text-[10px] text-muted-foreground/70">Live</span>
+        </div>
+        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200/60">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          3 active
+        </span>
+      </div>
+
+      <div class="p-3 sm:p-4 space-y-3">
+        {/* Call list with timeline nodes */}
+        <div class="space-y-0">
+          {/* Row 1 — Escalated */}
+          <div class="group flex items-start gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-muted/30">
+            <div class="flex flex-col items-center pt-0.5">
+              <div class="h-7 w-7 shrink-0 rounded-full bg-amber-100 flex items-center justify-center text-[10px] font-bold text-amber-700">
+                SM
+              </div>
+              <div class="mt-1 h-6 w-px bg-border/60"></div>
+            </div>
+            <div class="flex-1 min-w-0 pt-0.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-medium text-foreground truncate">Dr. Sarah Mitchell</span>
+                <span class="text-[10px] text-muted-foreground/70 tabular-nums shrink-0">2m 14s</span>
+              </div>
+              <p class="text-[10px] text-muted-foreground/60 mt-0.5">Cardiology • Patient callback</p>
+            </div>
+            <span class="mt-0.5 inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200/60">
+              Escalated
+            </span>
+          </div>
+
+          {/* Row 2 — In Progress */}
+          <div class="group flex items-start gap-3 rounded-lg bg-primary/[0.02] px-2.5 py-2 ring-1 ring-primary/10 transition-colors">
+            <div class="flex flex-col items-center pt-0.5">
+              <div class="h-7 w-7 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                JR
+              </div>
+              <div class="mt-1 h-6 w-px bg-border/60"></div>
+            </div>
+            <div class="flex-1 min-w-0 pt-0.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-medium text-foreground truncate">James Rivera, RN</span>
+                <span class="text-[10px] text-muted-foreground/70 tabular-nums shrink-0">5m 01s</span>
+              </div>
+              <p class="text-[10px] text-muted-foreground/60 mt-0.5">ER Triage • Urgent consult</p>
+            </div>
+            <span class="mt-0.5 inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200/60">
+              In Progress
+            </span>
+          </div>
+
+          {/* Row 3 — Resolved */}
+          <div class="group flex items-start gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-muted/30">
+            <div class="flex flex-col items-center pt-0.5">
+              <div class="h-7 w-7 shrink-0 rounded-full bg-blue-50 flex items-center justify-center text-[10px] font-bold text-blue-600">
+                KP
+              </div>
+            </div>
+            <div class="flex-1 min-w-0 pt-0.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-medium text-foreground/70 truncate">Kim Patel</span>
+                <span class="text-[10px] text-muted-foreground/70 tabular-nums shrink-0">1m 48s</span>
+              </div>
+              <p class="text-[10px] text-muted-foreground/60 mt-0.5">Front Desk • Rx refill request</p>
+            </div>
+            <span class="mt-0.5 inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-blue-600 ring-1 ring-inset ring-blue-200/60">
+              Resolved
+            </span>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div class="border-t border-border/50"></div>
+
+        {/* Call detail panel — selected call (James Rivera) */}
+        <div class="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-semibold text-foreground">Call Summary</span>
+            <span class="text-[9px] font-medium text-muted-foreground/60 uppercase tracking-wider">Live</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-x-3 gap-y-2">
+            <div>
+              <div class="text-[9px] font-medium text-muted-foreground/60 uppercase tracking-wider mb-0.5">Caller</div>
+              <div class="text-[11px] font-medium text-foreground">James Rivera, RN</div>
+            </div>
+            <div>
+              <div class="text-[9px] font-medium text-muted-foreground/60 uppercase tracking-wider mb-0.5">Duration</div>
+              <div class="text-[11px] font-medium text-foreground tabular-nums">5m 01s</div>
+            </div>
+            <div>
+              <div class="text-[9px] font-medium text-muted-foreground/60 uppercase tracking-wider mb-0.5">Department</div>
+              <div class="text-[11px] font-medium text-foreground">ER Triage</div>
+            </div>
+            <div>
+              <div class="text-[9px] font-medium text-muted-foreground/60 uppercase tracking-wider mb-0.5">Priority</div>
+              <div class="flex items-center gap-1">
+                <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                <span class="text-[11px] font-medium text-foreground">High</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Notes / Transcript placeholder */}
+          <div class="border-t border-border/40 pt-2">
+            <div class="text-[9px] font-medium text-muted-foreground/60 uppercase tracking-wider mb-1.5">Intake Notes</div>
+            <div class="rounded-md bg-card px-2.5 py-2 text-[10px] leading-relaxed text-foreground/70 ring-1 ring-border/40">
+              Patient requesting urgent consult re: post-op complication. Routed to on-call attending.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

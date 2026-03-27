@@ -1,0 +1,42 @@
+---
+import Section from "@/components/layout/Section.astro";
+import Container from "@/components/layout/Container.astro";
+import HeroProductMock from "./HeroProductMock.astro";
+---
+
+<Section padding="lg">
+  <Container>
+    <div class="mx-auto max-w-2xl text-center">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+        Dashboard
+      </p>
+      <h2 class="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        See what is happening in real time
+      </h2>
+      <p class="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
+        The live dashboard gives managers and authorised team members a real-time view of overnight events, actions underway, transfer activity, and current statuses — all in one place.
+      </p>
+    </div>
+
+    <div class="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+      {["View active cases live", "Track escalation progress", "See who is being contacted", "Step in when needed"].map((item) => (
+        <div class="flex items-center gap-2">
+          <svg class="h-4 w-4 shrink-0 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 6 9 17l-5-5"></path>
+          </svg>
+          <span class="text-sm font-medium text-foreground/80">{item}</span>
+        </div>
+      ))}
+    </div>
+
+    <div class="relative mx-auto mt-12 max-w-4xl">
+      <div
+        class="pointer-events-none absolute -inset-4 rounded-2xl bg-primary/[0.03] blur-2xl"
+        aria-hidden="true"
+      ></div>
+      <div class="relative">
+        <HeroProductMock />
+      </div>
+    </div>
+  </Container>
+</Section>

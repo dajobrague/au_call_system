@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     }
     
     const body = await request.json();
-    const { patientRecordId, employeeRecordId, scheduledAt, time, timeWindowEnd } = body;
+    const { patientRecordId, employeeRecordId, scheduledAt, shiftEndDate, time, timeWindowEnd } = body;
     
     if (!patientRecordId || !employeeRecordId || !scheduledAt || !time || !timeWindowEnd) {
       return NextResponse.json(
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
       patientRecordId,
       employeeRecordId,
       scheduledAt,
+      shiftEndDate,
       time,
       timeWindowEnd
     });
@@ -91,7 +92,7 @@ export async function PATCH(request: Request) {
     }
     
     const body = await request.json();
-    const { recordId, patientRecordId, employeeRecordId, scheduledAt, time, timeWindowEnd, status } = body;
+    const { recordId, patientRecordId, employeeRecordId, scheduledAt, shiftEndDate, time, timeWindowEnd, status } = body;
     
     if (!recordId) {
       return NextResponse.json(
@@ -104,6 +105,7 @@ export async function PATCH(request: Request) {
       patientRecordId,
       employeeRecordId,
       scheduledAt,
+      shiftEndDate,
       time,
       timeWindowEnd,
       status

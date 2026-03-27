@@ -1,0 +1,17 @@
+---
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<a href="/" class:list={["flex items-center", className]}>
+  <img
+    src="/images/On-Call-After-Hours-Logo-Updated-1 (1).webp"
+    alt="On Call After Hours"
+    class="h-10 w-auto sm:h-11"
+    width="220"
+    height="44"
+  />
+</a>
