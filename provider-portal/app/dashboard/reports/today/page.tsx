@@ -89,13 +89,13 @@ export default function TodayLiveCallLogPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/30">
       <div className="max-w-7xl mx-auto p-8">
         {/* Header */}
         <div className="mb-6">
           <Link
             href="/dashboard/reports"
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors font-medium mb-4"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors font-medium mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
             <span>Back to Reports</span>
@@ -103,19 +103,19 @@ export default function TodayLiveCallLogPage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Live Call Log</h1>
-              <p className="text-gray-600 mt-1">
+              <h1 className="text-3xl font-bold text-foreground">Live Call Log</h1>
+              <p className="text-muted-foreground mt-1">
                 Real-time view of today's call activity
               </p>
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
+              <label className="flex items-center gap-2 text-sm text-foreground/80">
                 <input
                   type="checkbox"
                   checked={autoRefresh}
                   onChange={(e) => setAutoRefresh(e.target.checked)}
-                  className="rounded border-gray-300"
+                  className="rounded border-input"
                 />
                 Auto-refresh (30s)
               </label>
@@ -123,7 +123,7 @@ export default function TodayLiveCallLogPage() {
               <button
                 onClick={handleRefresh}
                 disabled={isLoading}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground/80 bg-card border border-input rounded-lg hover:bg-muted/30 transition-colors shadow-sm disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh
@@ -133,8 +133,8 @@ export default function TodayLiveCallLogPage() {
         </div>
 
         {/* Time Range Selector */}
-        <div className="bg-white border border-gray-300 rounded-lg p-4 mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="bg-card border border-input rounded-lg p-4 mb-6">
+          <label className="block text-sm font-medium text-foreground/80 mb-2">
             Time Range
           </label>
           <div className="flex flex-wrap gap-2">
@@ -144,8 +144,8 @@ export default function TodayLiveCallLogPage() {
                 onClick={() => setTimeRange(range.value)}
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                   timeRange === range.value
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted/50 text-foreground/80 hover:bg-muted'
                 }`}
               >
                 {range.label}
@@ -157,34 +157,34 @@ export default function TodayLiveCallLogPage() {
         {/* Stats */}
         {data && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white border border-gray-300 rounded-lg p-6">
+            <div className="bg-card border border-input rounded-lg p-6">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <Phone className="w-6 h-6 text-blue-600" />
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <Phone className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Total Calls</p>
-                  <p className="text-2xl font-bold text-gray-900">{data.totalCalls}</p>
+                  <p className="text-sm text-muted-foreground">Total Calls</p>
+                  <p className="text-2xl font-bold text-foreground">{data.totalCalls}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white border border-gray-300 rounded-lg p-6">
+            <div className="bg-card border border-input rounded-lg p-6">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-green-50 rounded-lg">
                   <Activity className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">In Progress</p>
-                  <p className="text-2xl font-bold text-gray-900">{data.inProgressCalls}</p>
+                  <p className="text-sm text-muted-foreground">In Progress</p>
+                  <p className="text-2xl font-bold text-foreground">{data.inProgressCalls}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white border border-gray-300 rounded-lg p-6">
+            <div className="bg-card border border-input rounded-lg p-6">
               <div>
-                <p className="text-sm text-gray-600">Last Updated</p>
-                <p className="text-lg font-semibold text-gray-900">
+                <p className="text-sm text-muted-foreground">Last Updated</p>
+                <p className="text-lg font-semibold text-foreground">
                   {formatRelativeTime(data.lastUpdated)}
                 </p>
               </div>
@@ -193,28 +193,28 @@ export default function TodayLiveCallLogPage() {
         )}
 
         {/* Call Log */}
-        <div className="bg-white border border-gray-300 rounded-lg overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">
+        <div className="bg-card border border-input rounded-lg overflow-hidden">
+          <div className="p-6 border-b border-border/60">
+            <h2 className="text-xl font-bold text-foreground">
               Call Activity {data && `(${data.totalCalls} ${data.totalCalls === 1 ? 'call' : 'calls'})`}
             </h2>
           </div>
 
           <div className="p-6">
             {error && (
-              <div className="text-center py-8 text-red-600">
+              <div className="text-center py-8 text-destructive">
                 Failed to load call log. Please try again.
               </div>
             )}
 
             {isLoading && !data && (
-              <div className="text-center py-8 text-gray-600">
+              <div className="text-center py-8 text-muted-foreground">
                 Loading call log...
               </div>
             )}
 
             {data && data.calls.length === 0 && (
-              <div className="text-center py-8 text-gray-600">
+              <div className="text-center py-8 text-muted-foreground">
                 No calls in the selected time range.
               </div>
             )}
@@ -227,55 +227,55 @@ export default function TodayLiveCallLogPage() {
                     className={`border rounded-lg p-4 ${
                       call.status === 'in_progress'
                         ? 'border-green-300 bg-green-50'
-                        : 'border-gray-200'
+                        : 'border-border/60'
                     }`}
                   >
                     {/* Call Header */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         {call.status === 'in_progress' && (
-                          <span className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded-full">
+                          <span className="flex items-center gap-2 px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-full">
                             <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
                             IN PROGRESS
                           </span>
                         )}
                         {call.status === 'completed' && (
-                          <span className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full">
+                          <span className="px-3 py-1 bg-muted text-foreground/80 text-xs font-semibold rounded-full">
                             COMPLETED
                           </span>
                         )}
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-sm font-medium text-foreground">
                           {formatTime(call.startTime)}
                           {call.endTime && ` - ${formatTime(call.endTime)}`}
                           {call.duration && ` (${Math.floor(call.duration / 60)}m ${call.duration % 60}s)`}
                         </span>
                       </div>
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-muted-foreground">
                         {formatRelativeTime(call.startTime)}
                       </span>
                     </div>
 
                     {/* Caller Info */}
                     <div className="mb-3">
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-muted-foreground">
                         <span className="font-medium">
                           {call.callerName ? `👤 ${call.callerName}` : '📞 Caller'} 
                         </span>
                         {call.fromNumber && (
-                          <span className="ml-2 text-gray-500">{call.fromNumber}</span>
+                          <span className="ml-2 text-muted-foreground">{call.fromNumber}</span>
                         )}
                       </p>
                     </div>
 
                     {/* Event Timeline */}
-                    <div className="space-y-2 pl-4 border-l-2 border-gray-300">
+                    <div className="space-y-2 pl-4 border-l-2 border-input">
                       {call.events.map((event, idx) => (
                         <div key={idx} className="relative">
-                          <div className="absolute -left-[21px] w-4 h-4 bg-blue-600 rounded-full border-2 border-white"></div>
+                          <div className="absolute -left-[21px] w-4 h-4 bg-primary rounded-full border-2 border-white"></div>
                           <div className="text-sm">
-                            <span className="text-gray-500">{formatTime(event.timestamp)}</span>
-                            <span className="mx-2 text-gray-400">•</span>
-                            <span className="text-gray-900">{event.description}</span>
+                            <span className="text-muted-foreground">{formatTime(event.timestamp)}</span>
+                            <span className="mx-2 text-muted-foreground/60">•</span>
+                            <span className="text-foreground">{event.description}</span>
                           </div>
                         </div>
                       ))}

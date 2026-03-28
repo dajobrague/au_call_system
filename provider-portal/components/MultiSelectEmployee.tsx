@@ -123,7 +123,7 @@ export default function MultiSelectEmployee({
   return (
     <div className="w-full" ref={containerRef}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-foreground/80 mb-1">
           {label}
         </label>
       )}
@@ -134,13 +134,13 @@ export default function MultiSelectEmployee({
           {selectedEmployees.map((employee) => (
             <div
               key={employee.id}
-              className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+              className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm"
             >
               <span>{employee.name}</span>
               <button
                 type="button"
                 onClick={() => handleRemove(employee.id)}
-                className="hover:bg-blue-200 rounded-full p-0.5 transition-colors"
+                className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -151,8 +151,8 @@ export default function MultiSelectEmployee({
 
       {/* Search Input */}
       <div className="relative">
-        <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white">
-          <Search className="w-4 h-4 text-gray-400" />
+        <div className="flex items-center gap-2 px-3 py-2 border border-input rounded-md focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary bg-card">
+          <Search className="w-4 h-4 text-muted-foreground/60" />
           <input
             ref={inputRef}
             type="text"
@@ -166,20 +166,20 @@ export default function MultiSelectEmployee({
             }}
             onFocus={handleInputFocus}
             placeholder={placeholder}
-            className="flex-1 outline-none text-gray-900 text-sm"
+            className="flex-1 outline-none text-foreground text-sm"
           />
           <button
             type="button"
             onClick={toggleDropdown}
-            className="hover:bg-gray-100 rounded p-1 transition-colors"
+            className="hover:bg-muted/50 rounded p-1 transition-colors"
           >
-            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-muted-foreground/60 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
         </div>
 
         {/* Dropdown */}
         {isOpen && (
-          <div className="fixed z-[9999] bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto"
+          <div className="fixed z-9999 bg-card border border-input rounded-md shadow-lg max-h-60 overflow-auto"
             style={{
               top: `${dropdownPosition.top}px`,
               left: `${dropdownPosition.left}px`,
@@ -187,7 +187,7 @@ export default function MultiSelectEmployee({
             }}
           >
             {availableEmployees.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-gray-500 text-center">
+              <div className="px-3 py-2 text-sm text-muted-foreground text-center">
                 {searchTerm ? 'No employees found' : 'All employees selected'}
               </div>
             ) : (
@@ -196,7 +196,7 @@ export default function MultiSelectEmployee({
                   key={employee.id}
                   type="button"
                   onClick={() => handleSelect(employee.id)}
-                  className="w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-blue-50 transition-colors"
+                  className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-muted/30 transition-colors"
                 >
                   {employee.name}
                 </button>
@@ -207,7 +207,7 @@ export default function MultiSelectEmployee({
       </div>
 
       {/* Helper text */}
-      <p className="mt-1 text-xs text-gray-500">
+      <p className="mt-1 text-xs text-muted-foreground">
         {selectedEmployees.length === 0 
           ? 'Click to search and select employees' 
           : `${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} selected`}

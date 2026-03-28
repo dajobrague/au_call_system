@@ -60,8 +60,8 @@ export default function CallLogsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Call Logs</h1>
-        <p className="text-gray-600 mt-1">View call history for your provider</p>
+        <h1 className="text-2xl font-bold text-foreground">Call Logs</h1>
+        <p className="text-muted-foreground mt-1">View call history for your provider</p>
       </div>
       
       {error && (
@@ -70,7 +70,7 @@ export default function CallLogsPage() {
         </div>
       )}
       
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-card rounded-lg shadow">
         <DataTable 
           columns={columns} 
           data={callLogs} 

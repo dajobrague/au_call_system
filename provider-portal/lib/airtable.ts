@@ -10,6 +10,11 @@ const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 const USER_TABLE_ID = process.env.USER_TABLE_ID || 'tblLiBIYIt9jDwQGT';
 
+export const PRICING_PLANS_TABLE =
+  process.env.PRICING_PLANS_TABLE || 'Pricing Plans';
+export const USAGE_TRACKING_TABLE =
+  process.env.USAGE_TRACKING_TABLE || 'Usage Tracking';
+
 if (!AIRTABLE_API_KEY) {
   throw new Error('AIRTABLE_API_KEY environment variable is required');
 }
@@ -20,7 +25,7 @@ if (!AIRTABLE_BASE_ID) {
 
 const REQUEST_TIMEOUT = 30000; // 30 seconds - increased from 5s to handle large data fetches
 
-interface AirtableRecord {
+export interface AirtableRecord {
   id: string;
   fields: Record<string, unknown>;
   createdTime: string;
@@ -1148,6 +1153,13 @@ export async function createProvider(
     'Transfer Number'?: string;
     'Logo'?: Array<{ url: string }>;
     'Active'?: boolean;
+    'Stripe Customer ID'?: string;
+    'Stripe Subscription ID'?: string;
+    'Plan'?: string[];
+    'Subscription Status'?: string;
+    'Billing Period Start'?: string;
+    'Billing Period End'?: string;
+    'Onboarding Status'?: string;
   }
 ): Promise<AirtableRecord> {
   return createAirtableRecord('Providers', fields);
@@ -1174,9 +1186,151 @@ export async function createUser(
     'Pass': string;
     'First Name': string;
     'Last Name'?: string;
+    'Role'?: string;
+    'Is Primary'?: boolean;
   }
 ): Promise<AirtableRecord> {
   return createAirtableRecord(USER_TABLE_ID, fields);
+}
+
+export async function findProviderByStripeCustomerId(
+  stripeCustomerId: string
+): Promise<AirtableRecord | null> {
+  const escaped = stripeCustomerId.replace(/'/g, "\\'");
+  const response = await makeAirtableRequest('Providers', {
+    filterByFormula: `{Stripe Customer ID} = '${escaped}'`,
+    maxRecords: 1,
+  });
+  return response.records.length > 0 ? response.records[0] : null;
+}
+
+/**
+ * Normalize Pricing Plans row fields. Airtable uses "Price (Monthly)",
+ * "Inbound Minutes Limit", etc.; older code expected "Price", "Inbound Minutes", …
+ */
+export function parsePricingPlanFields(fields: Record<string, unknown>): {
+  name: string;
+  priceMonthly: number;
+  inboundMinutes: number;
+  outboundAttempts: number;
+  smsIncluded: number;
+  stripePriceId: string;
+  overageInbound: number | undefined;
+  overageOutbound: number | undefined;
+  overageSms: number | undefined;
+  multiLocation: boolean;
+} {
+  const num = (...candidates: unknown[]): number => {
+    for (const v of candidates) {
+      if (v === undefined || v === null || v === '') continue;
+      const n = Number(v);
+      if (!Number.isNaN(n)) return n;
+    }
+    return 0;
+  };
+
+  const multiRaw = fields['Multi-Location'] ?? fields['Multi Location'];
+
+  return {
+    name: (fields.Name as string) || '',
+    priceMonthly: num(fields['Price (Monthly)'], fields.Price),
+    inboundMinutes: num(
+      fields['Inbound Minutes Limit'],
+      fields['Inbound Minutes']
+    ),
+    outboundAttempts: num(
+      fields['Outbound Attempts Limit'],
+      fields['Outbound Attempts']
+    ),
+    smsIncluded: num(fields['SMS Limit'], fields['SMS Included']),
+    stripePriceId: (fields['Stripe Price ID'] as string) || '',
+    overageInbound: fields['Overage Rate Inbound'] as number | undefined,
+    overageOutbound: fields['Overage Rate Outbound'] as number | undefined,
+    overageSms: fields['Overage Rate SMS'] as number | undefined,
+    multiLocation: Boolean(multiRaw),
+  };
+}
+
+export async function getPricingPlanById(
+  recordId: string
+): Promise<AirtableRecord | null> {
+  return getRecordById(PRICING_PLANS_TABLE, recordId);
+}
+
+export async function listActivePricingPlans(): Promise<AirtableRecord[]> {
+  const response = await makeAirtableRequest(PRICING_PLANS_TABLE, {
+    filterByFormula: `{Active} = TRUE()`,
+    maxRecords: 50,
+  });
+  return response.records;
+}
+
+export async function findPricingPlanByStripePriceId(
+  stripePriceId: string
+): Promise<AirtableRecord | null> {
+  const escaped = stripePriceId.replace(/'/g, "\\'");
+  const response = await makeAirtableRequest(PRICING_PLANS_TABLE, {
+    filterByFormula: `{Stripe Price ID} = '${escaped}'`,
+    maxRecords: 1,
+  });
+  return response.records.length > 0 ? response.records[0] : null;
+}
+
+export async function getUsageTrackingRecordsForProvider(
+  providerRecordId: string
+): Promise<AirtableRecord[]> {
+  const response = await makeAirtableRequest(USAGE_TRACKING_TABLE, {
+    filterByFormula: `FIND('${providerRecordId}', ARRAYJOIN({Provider}))`,
+    maxRecords: 50,
+  });
+  return response.records;
+}
+
+export async function getUsageTrackingByProvider(
+  providerRecordId: string
+): Promise<AirtableRecord | null> {
+  const records = await getUsageTrackingRecordsForProvider(providerRecordId);
+  if (records.length === 0) return null;
+  records.sort((a, b) => {
+    const aStart = (a.fields['Billing Period Start'] as string) || '';
+    const bStart = (b.fields['Billing Period Start'] as string) || '';
+    return bStart.localeCompare(aStart);
+  });
+  return records[0];
+}
+
+export async function resetUsageTracking(
+  recordId: string,
+  billingPeriodStart: string,
+  billingPeriodEnd: string
+): Promise<void> {
+  await updateAirtableRecord(USAGE_TRACKING_TABLE, recordId, {
+    'Inbound Minutes Used': 0,
+    'Outbound Attempts Used': 0,
+    'SMS Sent': 0,
+    'Billing Period Start': billingPeriodStart,
+    'Billing Period End': billingPeriodEnd,
+    'Last Aggregated': new Date().toISOString(),
+  });
+}
+
+export async function createUsageTrackingRecord(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fields: Record<string, any>
+): Promise<AirtableRecord> {
+  return createAirtableRecord(USAGE_TRACKING_TABLE, fields);
+}
+
+export async function deleteProviderRecord(
+  recordId: string
+): Promise<{ deleted: boolean; id: string }> {
+  return deleteAirtableRecord('Providers', recordId);
+}
+
+export async function deleteUserRecord(
+  recordId: string
+): Promise<{ deleted: boolean; id: string }> {
+  return deleteAirtableRecord(USER_TABLE_ID, recordId);
 }
 
 /**

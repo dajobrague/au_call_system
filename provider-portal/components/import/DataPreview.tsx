@@ -31,30 +31,30 @@ export default function DataPreview({ data, mappings, validationResults }: DataP
 
   return (
     <div className="mt-6">
-      <h4 className="font-semibold text-gray-900 mb-3">Data Preview (First 10 Rows)</h4>
+      <h4 className="font-semibold text-foreground mb-3">Data Preview (First 10 Rows)</h4>
       
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="border border-border/60 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-border/60">
+            <thead className="bg-muted/30">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                   Row
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                   Status
                 </th>
                 {mappedSystemFields.map(systemField => (
-                  <th key={systemField} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th key={systemField} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                     {systemField}
-                    <div className="text-xs text-gray-400 font-normal normal-case mt-1">
+                    <div className="text-xs text-muted-foreground/60 font-normal normal-case mt-1">
                       ← {mappings[systemField]}
                     </div>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-card divide-y divide-border/60">
               {data.slice(0, 10).map((row, rowIndex) => {
                 const rowValidation = getRowValidation(rowIndex);
                 const isValid = rowValidation?.overallValid;
@@ -70,12 +70,12 @@ export default function DataPreview({ data, mappings, validationResults }: DataP
                       ? 'bg-yellow-50'
                       : ''
                   }>
-                    <td className="px-4 py-3 text-sm text-gray-900 font-medium">
+                    <td className="px-4 py-3 text-sm text-foreground font-medium">
                       {rowIndex + 1}
                     </td>
                     <td className="px-4 py-3">
                       {isValid === undefined ? (
-                        <div className="w-5 h-5 bg-gray-200 rounded-full animate-pulse" />
+                        <div className="w-5 h-5 bg-muted rounded-full animate-pulse" />
                       ) : isValid ? (
                         hasWarnings ? (
                           <span title="Has warnings"><AlertTriangle className="w-5 h-5 text-yellow-600" /></span>
@@ -105,7 +105,7 @@ export default function DataPreview({ data, mappings, validationResults }: DataP
                               ? 'text-red-900 font-medium'
                               : hasWarning
                               ? 'text-yellow-900'
-                              : 'text-gray-700'
+                              : 'text-foreground/80'
                           }`}
                           title={
                             hasError

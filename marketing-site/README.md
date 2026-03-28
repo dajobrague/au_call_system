@@ -80,3 +80,4 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 - **shadcn/ui** — React component primitives (Button, Card, Badge)
 - **lucide-react** — Icon library
 - **TypeScript 5** — Strict mode
+# oncall-site

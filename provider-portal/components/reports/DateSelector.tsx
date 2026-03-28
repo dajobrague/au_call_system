@@ -170,10 +170,10 @@ export default function DateSelector({ onDateRangeChange, initialDateRange }: Da
           <button
             key={quickSelect.id}
             onClick={() => handleQuickSelect(quickSelect)}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
               selectedRange.label === quickSelect.label
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-card text-foreground/80 border border-input hover:bg-muted/50 hover:text-foreground'
             }`}
           >
             {quickSelect.label}
@@ -181,10 +181,10 @@ export default function DateSelector({ onDateRangeChange, initialDateRange }: Da
         ))}
         <button
           onClick={() => setShowCustomPicker(!showCustomPicker)}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
             showCustomPicker
-              ? 'bg-blue-600 text-white'
-              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-card text-foreground/80 border border-input hover:bg-muted/50 hover:text-foreground'
           }`}
         >
           <Calendar className="w-4 h-4" />
@@ -194,10 +194,10 @@ export default function DateSelector({ onDateRangeChange, initialDateRange }: Da
       
       {/* Custom Date Picker */}
       {showCustomPicker && (
-        <div className="bg-white border border-gray-300 rounded-md p-4">
+        <div className="bg-card border border-border/60 rounded-xl p-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground/80 mb-2">
                 Start Date
               </label>
               <DatePicker
@@ -207,12 +207,12 @@ export default function DateSelector({ onDateRangeChange, initialDateRange }: Da
                 startDate={customStartDate}
                 endDate={customEndDate}
                 maxDate={new Date()}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                className="w-full rounded-lg border border-input bg-card px-3.5 py-2.5 text-sm text-foreground shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 dateFormat="MMM d, yyyy"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground/80 mb-2">
                 End Date
               </label>
               <DatePicker
@@ -223,7 +223,7 @@ export default function DateSelector({ onDateRangeChange, initialDateRange }: Da
                 endDate={customEndDate}
                 minDate={customStartDate || undefined}
                 maxDate={new Date()}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                className="w-full rounded-lg border border-input bg-card px-3.5 py-2.5 text-sm text-foreground shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 dateFormat="MMM d, yyyy"
               />
             </div>
@@ -231,14 +231,14 @@ export default function DateSelector({ onDateRangeChange, initialDateRange }: Da
           <div className="mt-4 flex justify-end gap-2">
             <button
               onClick={() => setShowCustomPicker(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="px-4 py-2 text-sm font-medium text-foreground bg-card border border-input rounded-lg hover:bg-muted/50 transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleCustomDateApply}
               disabled={!customStartDate || !customEndDate}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Apply
             </button>
@@ -247,24 +247,24 @@ export default function DateSelector({ onDateRangeChange, initialDateRange }: Da
       )}
       
       {/* Selected Period Display with Navigation */}
-      <div className="flex items-center justify-between bg-gray-50 rounded-md p-4">
+      <div className="flex items-center justify-between bg-muted/30 rounded-xl p-4">
         <button
           onClick={handlePrevPeriod}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
+          className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
           title="Previous period"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
         
         <div className="text-center">
-          <div className="text-sm text-gray-500 mb-1">Selected Period</div>
-          <div className="text-lg font-semibold text-gray-900">
+          <div className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide mb-1">Selected period</div>
+          <div className="text-lg font-semibold text-foreground">
             {selectedRange.label === 'Yesterday' 
               ? `${format(selectedRange.startDate, 'EEEE, MMMM d, yyyy')}`
               : selectedRange.label
             }
           </div>
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-muted-foreground mt-1">
             {format(selectedRange.startDate, 'MMM d, yyyy')} - {format(selectedRange.endDate, 'MMM d, yyyy')}
           </div>
         </div>
@@ -272,7 +272,7 @@ export default function DateSelector({ onDateRangeChange, initialDateRange }: Da
         <button
           onClick={handleNextPeriod}
           disabled={isNextDisabled}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           title="Next period"
         >
           <ChevronRight className="w-5 h-5" />
@@ -281,4 +281,3 @@ export default function DateSelector({ onDateRangeChange, initialDateRange }: Da
     </div>
   );
 }
-

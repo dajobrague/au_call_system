@@ -78,28 +78,28 @@ export default function ImportsPage() {
 
   const getFileTypeColor = (fileType: string) => {
     switch (fileType) {
-      case 'staff': return 'bg-blue-100 text-blue-800';
+      case 'staff': return 'bg-primary/10 text-primary';
       case 'participants': return 'bg-green-100 text-green-800';
       case 'pools': return 'bg-purple-100 text-purple-800';
       case 'shifts': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
+      default: return 'bg-muted/50 text-foreground';
     }
   };
 
   return (
     <div className="p-6">
       {/* Coming Soon Banner */}
-      <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-6">
+      <div className="mb-6 rounded-xl border border-border/60 bg-accent/30 p-6">
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0">
-            <AlertCircle className="w-8 h-8 text-blue-600" />
+          <div className="shrink-0">
+            <AlertCircle className="w-8 h-8 text-primary" />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-blue-900 mb-2">Coming Soon</h2>
-            <p className="text-blue-800 mb-3">
+            <h2 className="text-xl font-bold text-primary mb-2">Coming Soon</h2>
+            <p className="text-foreground/80 mb-3">
               Bulk CSV imports are currently under development. This feature will allow you to import large amounts of data quickly and efficiently with custom column mapping.
             </p>
-            <p className="text-sm text-blue-700">
+            <p className="text-sm text-primary">
               <strong>Note:</strong> You can still import individual records through the Patients, Employees, and Job Occurrences pages using the "Add" buttons.
             </p>
           </div>
@@ -110,14 +110,14 @@ export default function ImportsPage() {
       <div className="mb-8 opacity-50">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">CSV Imports</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-3xl font-bold text-foreground">CSV Imports</h1>
+            <p className="text-muted-foreground mt-2">
               Upload and manage bulk data imports with mapping profiles
             </p>
           </div>
           <button
             disabled
-            className="flex items-center gap-2 px-6 py-3 bg-gray-400 text-white rounded-lg cursor-not-allowed shadow-sm"
+            className="flex items-center gap-2 px-6 py-3 bg-muted-foreground text-white rounded-lg cursor-not-allowed shadow-sm"
           >
             <Plus className="w-5 h-5" />
             New Import
@@ -149,10 +149,10 @@ export default function ImportsPage() {
       </div>
 
       {/* Saved Mapping Profiles */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 opacity-50">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Saved Mapping Profiles</h2>
-          <p className="text-sm text-gray-600 mt-1">
+      <div className="bg-card rounded-lg shadow-sm border border-border/60 opacity-50">
+        <div className="px-6 py-4 border-b border-border/60">
+          <h2 className="text-lg font-semibold text-foreground">Saved Mapping Profiles</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Reuse your column mappings for faster imports
           </p>
         </div>
@@ -160,13 +160,13 @@ export default function ImportsPage() {
         <div className="p-6 pointer-events-none">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-muted-foreground"></div>
             </div>
           ) : profiles.length === 0 ? (
             <div className="text-center py-12">
-              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 mb-2">No mapping profiles yet</p>
-              <p className="text-sm text-gray-500">
+              <Upload className="w-12 h-12 text-muted-foreground/60 mx-auto mb-4" />
+              <p className="text-muted-foreground mb-2">No mapping profiles yet</p>
+              <p className="text-sm text-muted-foreground">
                 Create your first profile by importing a CSV and saving the mapping
               </p>
             </div>
@@ -175,11 +175,11 @@ export default function ImportsPage() {
               {profiles.map((profile) => (
                 <div
                   key={profile.id}
-                  className="border border-gray-200 rounded-lg p-4 cursor-not-allowed"
+                  className="border border-border/60 rounded-lg p-4 cursor-not-allowed"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 mb-1">{profile.name}</h3>
+                      <h3 className="font-semibold text-foreground mb-1">{profile.name}</h3>
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getFileTypeColor(profile.fileType)}`}>
                         {getFileTypeName(profile.fileType)}
                       </span>
@@ -187,14 +187,14 @@ export default function ImportsPage() {
                     <div className="flex gap-1">
                       <button
                         disabled
-                        className="p-1 text-gray-400 rounded cursor-not-allowed"
+                        className="p-1 text-muted-foreground/60 rounded cursor-not-allowed"
                         title="Coming soon"
                       >
                         <Upload className="w-4 h-4" />
                       </button>
                       <button
                         disabled
-                        className="p-1 text-gray-400 rounded cursor-not-allowed"
+                        className="p-1 text-muted-foreground/60 rounded cursor-not-allowed"
                         title="Coming soon"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -202,12 +202,12 @@ export default function ImportsPage() {
                     </div>
                   </div>
 
-                  <div className="text-xs text-gray-500 flex items-center gap-1 mb-2">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
                     <Clock className="w-3 h-3" />
                     Last used: {new Date(profile.lastUsedAt).toLocaleDateString()}
                   </div>
 
-                  <div className="text-xs text-gray-600">
+                  <div className="text-xs text-muted-foreground">
                     {profile.columnMappings.length} columns mapped
                   </div>
                 </div>
@@ -228,4 +228,3 @@ export default function ImportsPage() {
     </div>
   );
 }
-

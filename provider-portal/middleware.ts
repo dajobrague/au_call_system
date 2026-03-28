@@ -17,7 +17,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/auth/login') ||
     pathname.startsWith('/api/test-redis') ||
     pathname.startsWith('/wizard') ||           // Allow wizard pages for new provider registration
-    pathname.startsWith('/api/wizard')          // Allow wizard API routes
+    pathname.startsWith('/api/wizard') ||      // Allow wizard API routes
+    pathname.startsWith('/api/webhooks')        // Stripe webhooks (signature-verified in route)
   ) {
     return NextResponse.next();
   }

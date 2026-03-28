@@ -15,7 +15,7 @@ interface IntentDistributionChartProps {
 
 // Color palette for intents
 const COLORS = [
-  '#3b82f6', // blue
+  '#dc2626', // primary red
   '#10b981', // green
   '#f59e0b', // amber
   '#ef4444', // red
@@ -28,12 +28,12 @@ const COLORS = [
 export default function IntentDistributionChart({ data }: IntentDistributionChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Intent Distribution</h3>
-        <div className="h-80 flex items-center justify-center text-gray-500">
+      <div className="bg-card rounded-xl shadow-sm border border-border/60 p-6">
+        <h3 className="text-base font-semibold text-foreground mb-4">Intent Distribution</h3>
+        <div className="h-80 flex items-center justify-center text-muted-foreground">
           <div className="text-center">
             <p className="text-sm">No intent data available</p>
-            <p className="text-xs mt-1">Select a different date range</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">Select a different date range</p>
           </div>
         </div>
       </div>
@@ -56,11 +56,11 @@ export default function IntentDistributionChart({ data }: IntentDistributionChar
   };
   
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6" data-chart="intent-distribution">
+    <div className="bg-card rounded-xl shadow-sm border border-border/60 p-6" data-chart="intent-distribution">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Intent Distribution</h3>
+        <h3 className="text-base font-semibold text-foreground">Intent Distribution</h3>
         {data.length > 8 && (
-          <span className="text-xs text-gray-500">Top 8 of {data.length}</span>
+          <span className="text-xs text-muted-foreground">Top 8 of {data.length}</span>
         )}
       </div>
       <ResponsiveContainer width="100%" height={320}>
@@ -81,10 +81,12 @@ export default function IntentDistributionChart({ data }: IntentDistributionChar
           </Pie>
           <Tooltip 
             contentStyle={{ 
-              backgroundColor: '#fff', 
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              padding: '12px'
+              backgroundColor: 'hsl(0, 0%, 100%)',
+              border: '1px solid hsl(220, 13%, 91%)',
+              borderRadius: '12px',
+              padding: '12px',
+              boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
+              fontSize: '13px'
             }}
             formatter={(value: number, name: string, props: any) => {
               return [`${value} calls (${props.payload.percentage}%)`, props.payload.fullName];
@@ -135,4 +137,3 @@ function shortenIntent(intent: string): string {
   
   return intent;
 }
-

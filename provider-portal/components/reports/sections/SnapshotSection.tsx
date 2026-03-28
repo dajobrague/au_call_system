@@ -11,53 +11,52 @@ interface SnapshotSectionProps {
 
 export default function SnapshotSection({ snapshot }: SnapshotSectionProps) {
   return (
-    <div className="bg-white border border-gray-300 rounded-lg p-6 mb-6 print:border-black">
-      <h2 className="text-xl font-bold text-gray-900 mb-4 print:text-black">
+    <div className="bg-card border border-input rounded-lg p-6 mb-6 print:border-black">
+      <h2 className="text-xl font-bold text-foreground mb-4 print:text-black">
         Snapshot Summary
       </h2>
       
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center print:bg-gray-200">
+          <div className="shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center print:bg-muted">
             <Phone className="w-5 h-5 text-blue-600 print:text-black" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900 print:text-black">{snapshot.totalCalls}</p>
-            <p className="text-xs text-gray-600 print:text-black">Total Calls</p>
+            <p className="text-2xl font-bold text-foreground print:text-black">{snapshot.totalCalls}</p>
+            <p className="text-xs text-muted-foreground print:text-black">Total Calls</p>
           </div>
         </div>
         
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center print:bg-gray-200">
+          <div className="shrink-0 w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center print:bg-muted">
             <UserX className="w-5 h-5 text-yellow-600 print:text-black" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900 print:text-black">{snapshot.totalShiftCancellations}</p>
-            <p className="text-xs text-gray-600 print:text-black">Shift Cancellations</p>
+            <p className="text-2xl font-bold text-foreground print:text-black">{snapshot.totalShiftCancellations}</p>
+            <p className="text-xs text-muted-foreground print:text-black">Shift Cancellations</p>
           </div>
         </div>
         
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center print:bg-gray-200">
+          <div className="shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center print:bg-muted">
             <Send className="w-5 h-5 text-purple-600 print:text-black" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900 print:text-black">{snapshot.totalDispatchAttempts}</p>
-            <p className="text-xs text-gray-600 print:text-black">Dispatch Attempts</p>
+            <p className="text-2xl font-bold text-foreground print:text-black">{snapshot.totalDispatchAttempts}</p>
+            <p className="text-xs text-muted-foreground print:text-black">Dispatch Attempts</p>
           </div>
         </div>
         
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center print:bg-gray-200">
+          <div className="shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center print:bg-muted">
             <CheckCircle className="w-5 h-5 text-green-600 print:text-black" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900 print:text-black">{snapshot.successfulFills}</p>
-            <p className="text-xs text-gray-600 print:text-black">Successful Fills</p>
+            <p className="text-2xl font-bold text-foreground print:text-black">{snapshot.successfulFills}</p>
+            <p className="text-xs text-muted-foreground print:text-black">Successful Fills</p>
           </div>
         </div>
       </div>
     </div>
   );
 }
-

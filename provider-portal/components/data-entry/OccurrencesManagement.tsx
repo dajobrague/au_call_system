@@ -250,7 +250,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
       <div className="mb-6 relative" ref={dropdownRef}>
         <button
           onClick={() => setShowAddDropdown(!showAddDropdown)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
         >
           <Plus className="w-5 h-5" />
           Add New Occurrence
@@ -258,34 +258,34 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
         </button>
 
         {showAddDropdown && (
-          <div className="absolute left-0 mt-2 w-64 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+          <div className="absolute left-0 mt-2 w-64 bg-card rounded-xl shadow-lg border border-border/60 z-50">
             <div className="py-1">
               <button
                 onClick={() => {
                   setShowAddDropdown(false);
                   handleOpenModal();
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left text-foreground/80 hover:bg-muted/30 transition-colors"
               >
-                <CalendarPlus className="w-5 h-5 text-blue-600" />
+                <CalendarPlus className="w-5 h-5 text-primary" />
                 <div>
                   <div className="font-medium">Add One Occurrence</div>
-                  <div className="text-xs text-gray-500">Manually schedule a shift</div>
+                  <div className="text-xs text-muted-foreground">Manually schedule a shift</div>
                 </div>
               </button>
               <button
                 disabled
-                className="w-full flex items-center gap-3 px-4 py-3 text-left border-t border-gray-100 opacity-50 cursor-not-allowed"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left border-t border-border/40 opacity-50 cursor-not-allowed"
               >
-                <Upload className="w-5 h-5 text-gray-400" />
+                <Upload className="w-5 h-5 text-muted-foreground/60" />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-500">Import Shifts</span>
-                    <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                    <span className="font-medium text-muted-foreground">Import Shifts</span>
+                    <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full font-medium">
                       Coming Soon
                     </span>
                   </div>
-                  <div className="text-xs text-gray-400">Upload CSV file to import</div>
+                  <div className="text-xs text-muted-foreground/60">Upload CSV file to import</div>
                 </div>
               </button>
             </div>
@@ -301,17 +301,17 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
           onClick={handleCloseModal}
         >
           <div
-            className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto"
+            className="bg-card rounded-xl border border-border/60 shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">
+            <div className="flex items-center justify-between p-6 border-b border-border/60">
+              <h2 className="text-xl font-semibold text-foreground">
                 {editingOccurrence ? 'Edit Occurrence' : 'Add New Occurrence'}
               </h2>
               <button
                 onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -320,14 +320,14 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
             {/* Modal Body */}
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                   {error}
                 </div>
               )}
               
               {/* Patient Selection */}
               <div>
-                <label htmlFor="patient" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="patient" className="block text-sm font-medium text-foreground/80 mb-2">
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4" />
                     Patient *
@@ -337,7 +337,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                   id="patient"
                   value={patientRecordId}
                   onChange={(e) => setPatientRecordId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-input rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground"
                   required
                 >
                   <option value="">Select a patient...</option>
@@ -351,7 +351,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
               
               {/* Employee Selection */}
               <div>
-                <label htmlFor="employee" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="employee" className="block text-sm font-medium text-foreground/80 mb-2">
                   <div className="flex items-center gap-2">
                     <UserCircle className="w-4 h-4" />
                     Assigned Employee *
@@ -361,7 +361,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                   id="employee"
                   value={employeeRecordId}
                   onChange={(e) => setEmployeeRecordId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-input rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground"
                   required
                 >
                   <option value="">
@@ -383,7 +383,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
               {/* Shift Start Date */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="scheduledAt" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="scheduledAt" className="block text-sm font-medium text-foreground/80 mb-2">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       Shift Start Date *
@@ -400,14 +400,14 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                       }
                     }}
                     min={today}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 scheme-light"
+                    className="w-full px-3 py-2 border border-input rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground scheme-light"
                     required
                   />
                 </div>
 
                 {/* Shift End Date */}
                 <div>
-                  <label htmlFor="shiftEndDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="shiftEndDate" className="block text-sm font-medium text-foreground/80 mb-2">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       Shift End Date *
@@ -419,7 +419,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                     value={shiftEndDate}
                     onChange={(e) => setShiftEndDate(e.target.value)}
                     min={scheduledAt || today}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 scheme-light"
+                    className="w-full px-3 py-2 border border-input rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground scheme-light"
                     required
                   />
                 </div>
@@ -427,7 +427,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
               
               {/* Shift Start Time */}
               <div>
-                <label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="time" className="block text-sm font-medium text-foreground/80 mb-2">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
                     Shift Start Time *
@@ -437,7 +437,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                   id="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-input rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground"
                   required
                 >
                   {timeSlots.map((slot) => (
@@ -450,7 +450,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
               
               {/* Shift End Time */}
               <div>
-                <label htmlFor="timeWindowEnd" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="timeWindowEnd" className="block text-sm font-medium text-foreground/80 mb-2">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
                     Shift End Time *
@@ -460,7 +460,7 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
                   id="timeWindowEnd"
                   value={timeWindowEnd}
                   onChange={(e) => setTimeWindowEnd(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-input rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground"
                   required
                 >
                   {timeSlots.map((slot) => (
@@ -472,18 +472,18 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
               </div>
               
               {/* Modal Footer */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              <div className="flex justify-end gap-3 pt-4 border-t border-border/60">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-foreground/80 bg-card border border-input rounded-lg hover:bg-muted/30 transition-colors"
                   disabled={submitting}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   disabled={submitting}
                 >
                   {submitting ? (
@@ -520,4 +520,3 @@ const OccurrencesManagement = forwardRef<OccurrencesManagementRef, OccurrencesMa
 OccurrencesManagement.displayName = 'OccurrencesManagement';
 
 export default OccurrencesManagement;
-

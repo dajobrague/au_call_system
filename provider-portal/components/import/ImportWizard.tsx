@@ -213,8 +213,8 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
 
   const renderStep1 = () => (
     <div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Import Type</h3>
-      <p className="text-gray-600 mb-6">Choose the type of data you want to import</p>
+      <h3 className="text-lg font-semibold text-foreground mb-4">Select Import Type</h3>
+      <p className="text-muted-foreground mb-6">Choose the type of data you want to import</p>
 
       <div className="space-y-3">
         {(Object.keys(fileTypeDescriptions) as FileType[]).map((type) => (
@@ -223,21 +223,21 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
             onClick={() => setFileType(type)}
             className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
               fileType === type
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300'
+                ? 'border-primary bg-primary/10'
+                : 'border-border/60 hover:border-input'
             }`}
           >
             <div className="flex items-center gap-3">
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                fileType === type ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                fileType === type ? 'border-primary bg-primary' : 'border-input'
               }`}>
                 {fileType === type && <Check className="w-3 h-3 text-white" />}
               </div>
               <div>
-                <div className="font-semibold text-gray-900">
+                <div className="font-semibold text-foreground">
                   {fileTypeDescriptions[type].name}
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   {fileTypeDescriptions[type].description}
                 </div>
               </div>
@@ -249,7 +249,7 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
       <div className="mt-6 flex justify-end">
         <button
           onClick={() => setStep(2)}
-          className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
         >
           Next
           <ChevronRight className="w-4 h-4" />
@@ -260,20 +260,20 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
 
   const renderStep2 = () => (
     <div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Upload CSV File</h3>
-      <p className="text-gray-600 mb-6">
+      <h3 className="text-lg font-semibold text-foreground mb-4">Upload CSV File</h3>
+      <p className="text-muted-foreground mb-6">
         Select a CSV file for {fileTypeDescriptions[fileType].name}
       </p>
 
       <div
         onClick={() => fileInputRef.current?.click()}
-        className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
+        className="border-2 border-dashed border-input rounded-lg p-12 text-center cursor-pointer hover:border-primary hover:bg-muted/50 transition-all"
       >
-        <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-700 font-medium mb-2">
+        <Upload className="w-12 h-12 text-muted-foreground/60 mx-auto mb-4" />
+        <p className="text-foreground/80 font-medium mb-2">
           {file ? file.name : 'Click to upload or drag and drop'}
         </p>
-        <p className="text-sm text-gray-500">CSV files only, max 10MB</p>
+        <p className="text-sm text-muted-foreground">CSV files only, max 10MB</p>
       </div>
 
       <input
@@ -293,7 +293,7 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
       <div className="mt-6 flex justify-between">
         <button
           onClick={() => setStep(1)}
-          className="flex items-center gap-2 px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+          className="flex items-center gap-2 px-6 py-2 border border-input text-foreground/80 rounded-lg hover:bg-muted/30"
         >
           <ChevronLeft className="w-4 h-4" />
           Back
@@ -312,8 +312,8 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
 
     return (
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Map Columns</h3>
-        <p className="text-gray-600 mb-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Map Columns</h3>
+        <p className="text-muted-foreground mb-6">
           Match your CSV columns to system fields. All required fields must be mapped.
         </p>
 
@@ -341,7 +341,7 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
         <div className="mt-6 flex justify-between">
           <button
             onClick={() => setStep(2)}
-            className="flex items-center gap-2 px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            className="flex items-center gap-2 px-6 py-2 border border-input text-foreground/80 rounded-lg hover:bg-muted/30"
           >
             <ChevronLeft className="w-4 h-4" />
             Back
@@ -349,7 +349,7 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
           <button
             onClick={handleValidate}
             disabled={loading || !canProceed}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             title={!canProceed ? 'All required fields must be mapped' : ''}
           >
             {loading ? 'Validating...' : 'Validate Data'}
@@ -362,8 +362,8 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
 
   const renderStep4 = () => (
     <div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Review & Confirm</h3>
-      <p className="text-gray-600 mb-6">
+      <h3 className="text-lg font-semibold text-foreground mb-4">Review & Confirm</h3>
+      <p className="text-muted-foreground mb-6">
         Check validation results before importing
       </p>
 
@@ -379,15 +379,15 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
             />
           )}
 
-          <div className="mt-6 border-t border-gray-200 pt-6">
+          <div className="mt-6 border-t border-border/60 pt-6">
             <label className="flex items-center gap-2 mb-4">
               <input
                 type="checkbox"
                 checked={saveProfileChecked}
                 onChange={(e) => setSaveProfileChecked(e.target.checked)}
-                className="w-4 h-4 text-blue-600"
+                className="w-4 h-4 text-primary"
               />
-              <span className="text-gray-700">Save this mapping as a profile</span>
+              <span className="text-foreground/80">Save this mapping as a profile</span>
             </label>
 
             {saveProfileChecked && (
@@ -396,7 +396,7 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
                 value={saveProfileName}
                 onChange={(e) => setSaveProfileName(e.target.value)}
                 placeholder="Profile name (e.g., 'My Staff Import')"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-input rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-transparent"
               />
             )}
           </div>
@@ -412,7 +412,7 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
       <div className="mt-6 flex justify-between">
         <button
           onClick={() => setStep(3)}
-          className="flex items-center gap-2 px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+          className="flex items-center gap-2 px-6 py-2 border border-input text-foreground/80 rounded-lg hover:bg-muted/30"
         >
           <ChevronLeft className="w-4 h-4" />
           Back
@@ -435,26 +435,26 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Check className="w-8 h-8 text-green-600" />
         </div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-2">Import Complete!</h3>
-        <p className="text-gray-600 mb-8">Your data has been successfully imported</p>
+        <h3 className="text-2xl font-bold text-foreground mb-2">Import Complete!</h3>
+        <p className="text-muted-foreground mb-8">Your data has been successfully imported</p>
 
         {importResults && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="text-3xl font-bold text-gray-900">{importResults.totalRows}</div>
-              <div className="text-sm text-gray-600">Total Rows</div>
+            <div className="bg-muted/30 rounded-lg p-4">
+              <div className="text-3xl font-bold text-foreground">{importResults.totalRows}</div>
+              <div className="text-sm text-muted-foreground">Total Rows</div>
             </div>
             <div className="bg-green-50 rounded-lg p-4">
               <div className="text-3xl font-bold text-green-600">{importResults.created}</div>
-              <div className="text-sm text-gray-600">Created</div>
+              <div className="text-sm text-muted-foreground">Created</div>
             </div>
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="text-3xl font-bold text-blue-600">{importResults.updated}</div>
-              <div className="text-sm text-gray-600">Updated</div>
+            <div className="bg-primary/10 rounded-lg p-4">
+              <div className="text-3xl font-bold text-primary">{importResults.updated}</div>
+              <div className="text-sm text-muted-foreground">Updated</div>
             </div>
             <div className="bg-orange-50 rounded-lg p-4">
               <div className="text-3xl font-bold text-orange-600">{importResults.skipped}</div>
-              <div className="text-sm text-gray-600">Skipped</div>
+              <div className="text-sm text-muted-foreground">Skipped</div>
             </div>
           </div>
         )}
@@ -488,13 +488,13 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
               setSaveProfileChecked(false);
               setSaveProfileName('');
             }}
-            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            className="px-6 py-2 border border-input text-foreground/80 rounded-lg hover:bg-muted/30"
           >
             Import Another File
           </button>
           <button
             onClick={onClose}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
           >
             Close
           </button>
@@ -513,20 +513,20 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-card rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900">CSV Import Wizard</h2>
+        <div className="sticky top-0 bg-card border-b border-border/60 px-6 py-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-foreground">CSV Import Wizard</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Progress Steps */}
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-border/60">
           <div className="flex items-center justify-between">
             {steps.map((s, i) => (
               <div key={s.number} className="flex items-center flex-1">
@@ -535,16 +535,16 @@ export default function ImportWizard({ onClose, initialProfile, preselectedFileT
                     step > s.number
                       ? 'bg-green-500 text-white'
                       : step === s.number
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-200 text-gray-600'
+                      ? 'bg-primary text-white'
+                      : 'bg-muted text-muted-foreground'
                   }`}>
                     {step > s.number ? <Check className="w-5 h-5" /> : s.number}
                   </div>
-                  <span className="text-xs mt-1 text-gray-600">{s.title}</span>
+                  <span className="text-xs mt-1 text-muted-foreground">{s.title}</span>
                 </div>
                 {i < steps.length - 1 && (
                   <div className={`flex-1 h-1 mx-2 ${
-                    step > s.number ? 'bg-green-500' : 'bg-gray-200'
+                    step > s.number ? 'bg-green-500' : 'bg-muted'
                   }`} />
                 )}
               </div>

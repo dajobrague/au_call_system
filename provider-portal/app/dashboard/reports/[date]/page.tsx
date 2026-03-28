@@ -100,8 +100,8 @@ export default function DailyReportPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading daily report...</p>
+          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading daily report...</p>
         </div>
       </div>
     );
@@ -112,7 +112,7 @@ export default function DailyReportPage() {
       <div className="flex items-center justify-center min-h-screen px-4">
         <div className="max-w-md w-full bg-red-50 border border-red-200 rounded-lg p-6">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
             <div>
               <h3 className="text-lg font-semibold text-red-900 mb-2">
                 Error Loading Report
@@ -120,7 +120,7 @@ export default function DailyReportPage() {
               <p className="text-red-700 mb-4">{error}</p>
               <button
                 onClick={() => fetchReportData(dateParam)}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors"
               >
                 Try Again
               </button>
@@ -134,7 +134,7 @@ export default function DailyReportPage() {
   if (!reportData) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-600">No report data available</p>
+        <p className="text-muted-foreground">No report data available</p>
       </div>
     );
   }
@@ -149,4 +149,3 @@ export default function DailyReportPage() {
     />
   );
 }
-

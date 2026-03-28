@@ -269,17 +269,20 @@ export default function ReportsPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Daily Reports</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Daily Reports</h1>
+            <p className="text-muted-foreground mt-2">
               View and analyze your call activity reports
             </p>
           </div>
           
           <Link
             href="/dashboard/reports/today"
-            className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+            className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
           >
-            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
             Today (Live)
           </Link>
         </div>
@@ -312,7 +315,7 @@ export default function ReportsPage() {
             loading={true}
           />
         ) : (
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             No call data available for the selected period
           </div>
         )}
@@ -320,7 +323,7 @@ export default function ReportsPage() {
       
       {/* Error Message */}
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -329,8 +332,8 @@ export default function ReportsPage() {
       {statistics && statistics.totalCalls > 0 && (
         <div className="mb-8">
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Analytics & Insights</h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <h2 className="text-lg font-semibold text-foreground">Analytics & Insights</h2>
+            <p className="text-sm text-muted-foreground mt-1">
               Visual breakdown of call activity for the selected period
             </p>
           </div>
@@ -358,14 +361,14 @@ export default function ReportsPage() {
       {/* Daily Detailed Reports Section */}
       <div className="mb-8">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Daily Detailed Reports</h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <h2 className="text-lg font-semibold text-foreground">Daily Detailed Reports</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             View comprehensive daily reports with call logs, cancellations, and staff engagement
           </p>
         </div>
         
         {!statsLoading && statistics && statistics.callsByDate && statistics.callsByDate.length > 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 divide-y divide-gray-200">
+          <div className="bg-card rounded-xl shadow-sm border border-border/60 divide-y divide-border/60">
             {statistics.callsByDate.map((dayData) => {
               // dayData.date is already in YYYY-MM-DD format, use it directly
               const dateForLink = dayData.date;
@@ -376,20 +379,20 @@ export default function ReportsPage() {
                 <Link
                   key={dayData.date}
                   href={`/dashboard/reports/${dateForLink}`}
-                  className="p-4 hover:bg-gray-50 transition-colors duration-150 flex items-center justify-between gap-4 group"
+                  className="p-4 hover:bg-muted/30 transition-colors duration-150 flex items-center justify-between gap-4 group"
                 >
                   {/* Report Info */}
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div className="shrink-0">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <Calendar className="w-5 h-5 text-blue-600" />
+                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-primary" />
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-gray-900">
+                      <h3 className="text-sm font-semibold text-foreground">
                         {displayDate}
                       </h3>
-                      <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                         <span>{dayData.callCount} calls</span>
                         <span>•</span>
                         <span>{(dayData.totalDuration / 60).toFixed(1)} min</span>
@@ -398,7 +401,7 @@ export default function ReportsPage() {
                   </div>
                   
                   {/* View Button */}
-                  <div className="flex items-center gap-2 text-sm text-blue-600 group-hover:text-blue-700 font-medium shrink-0">
+                  <div className="flex items-center gap-2 text-sm text-primary group-hover:text-primary font-medium shrink-0">
                     <span>View Report</span>
                     <Eye className="w-4 h-4" />
                   </div>
@@ -408,12 +411,12 @@ export default function ReportsPage() {
           </div>
         ) : statsLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
         ) : (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600">No call data available for the selected period</p>
+          <div className="bg-muted/30 border border-border/60 rounded-xl p-8 text-center">
+            <FileText className="w-12 h-12 text-muted-foreground/60 mx-auto mb-3" />
+            <p className="text-muted-foreground">No call data available for the selected period</p>
           </div>
         )}
       </div>
@@ -422,17 +425,17 @@ export default function ReportsPage() {
       <div id="pdf-reports-section" className="mb-6 scroll-mt-8">
         <div className="flex items-center justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">PDF Reports</h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <h2 className="text-lg font-semibold text-foreground">PDF Reports</h2>
+            <p className="text-sm text-muted-foreground mt-1">
               Generated daily call summary reports
             </p>
           </div>
           
           {/* Compact Date Filter */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-md">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <span className="text-gray-700">
+            <div className="flex items-center gap-2 px-3 py-2 text-sm bg-muted/30 border border-input rounded-lg">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <span className="text-foreground/80">
                 {pdfReportsStartDate ? (
                   <>From: {format(new Date(pdfReportsStartDate + 'T00:00:00'), 'MMM d, yyyy')}</>
                 ) : (
@@ -443,7 +446,7 @@ export default function ReportsPage() {
             {pdfReportsStartDate && (
               <button
                 onClick={handleClearPdfFilter}
-                className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 title="Show all reports"
               >
                 ✕
@@ -457,44 +460,44 @@ export default function ReportsPage() {
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
-            <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">Loading reports...</p>
+            <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading reports...</p>
           </div>
         </div>
       ) : (
         <>
           {/* Reports List */}
           {reports.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <div className="bg-card rounded-xl shadow-sm border border-border/60 p-12 text-center">
+              <FileText className="w-16 h-16 text-muted-foreground/60 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">
                 No reports available
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Reports will appear here once they are generated
               </p>
             </div>
           ) : (
             <>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 divide-y divide-gray-200">
+              <div className="bg-card rounded-xl shadow-sm border border-border/60 divide-y divide-border/60">
                 {currentReports.map((report) => (
                   <div
                     key={report.id}
-                    className="p-4 hover:bg-gray-50 transition-colors duration-150"
+                    className="p-4 hover:bg-muted/30 transition-colors duration-150"
                   >
                     <div className="flex items-center justify-between gap-4">
                       {/* Report Info */}
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div className="shrink-0">
-                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <FileText className="w-5 h-5 text-blue-600" />
+                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <FileText className="w-5 h-5 text-primary" />
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-semibold text-gray-900 truncate">
+                          <h3 className="text-sm font-semibold text-foreground truncate">
                             {report.fields.Name}
                           </h3>
-                          <div className="flex items-center text-sm text-gray-500 mt-1">
+                          <div className="flex items-center text-sm text-muted-foreground mt-1">
                             <Calendar className="w-4 h-4 mr-1" />
                             <span>{formatDate(report.fields.Date)}</span>
                           </div>
@@ -506,7 +509,7 @@ export default function ReportsPage() {
                         <button
                           onClick={() => handleViewReport(report)}
                           disabled={loadingReportId === report.id}
-                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/15 transition-colors disabled:opacity-50 disabled:cursor-wait"
                         >
                           {loadingReportId === report.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -518,7 +521,7 @@ export default function ReportsPage() {
                         <button
                           onClick={() => handleDownload(report)}
                           disabled={loadingReportId === report.id}
-                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-wait"
                         >
                           {loadingReportId === report.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -536,7 +539,7 @@ export default function ReportsPage() {
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="mt-6 flex items-center justify-between">
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-muted-foreground">
                     Showing {startIndex + 1} to {Math.min(endIndex, reports.length)} of {reports.length} report{reports.length !== 1 ? 's' : ''}
                   </div>
                   
@@ -544,7 +547,7 @@ export default function ReportsPage() {
                     <button
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-foreground/80 bg-card border border-input rounded-lg hover:bg-muted/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       Previous
@@ -555,10 +558,10 @@ export default function ReportsPage() {
                         <button
                           key={pageNum}
                           onClick={() => handlePageChange(pageNum)}
-                          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                          className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                             pageNum === currentPage
-                              ? 'bg-blue-600 text-white'
-                              : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-foreground/80 bg-card border border-input hover:bg-muted/30'
                           }`}
                         >
                           {pageNum}
@@ -569,7 +572,7 @@ export default function ReportsPage() {
                     <button
                       onClick={() => handlePageChange(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-foreground/80 bg-card border border-input rounded-lg hover:bg-muted/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Next
                       <ChevronRight className="w-4 h-4" />

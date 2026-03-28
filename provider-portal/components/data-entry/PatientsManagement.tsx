@@ -260,15 +260,15 @@ export default function PatientsManagement() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Patients</h1>
-          <p className="text-gray-600 mt-1">Add and manage your patients</p>
+          <h1 className="text-2xl font-bold text-foreground">Patients</h1>
+          <p className="text-muted-foreground mt-1">Add and manage your patients</p>
         </div>
         
         {/* Add Patient Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setShowAddDropdown(!showAddDropdown)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add Patient
@@ -276,34 +276,34 @@ export default function PatientsManagement() {
           </button>
 
           {showAddDropdown && (
-            <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+            <div className="absolute right-0 mt-2 w-56 bg-card rounded-xl shadow-lg border border-border/60 z-50">
               <div className="py-1">
                 <button
                   onClick={() => {
                     setShowAddDropdown(false);
                     handleAdd();
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-foreground/80 hover:bg-muted/30 transition-colors"
                 >
-                  <UserPlus className="w-5 h-5 text-blue-600" />
+                  <UserPlus className="w-5 h-5 text-primary" />
                   <div>
                     <div className="font-medium">Add One Patient</div>
-                    <div className="text-xs text-gray-500">Manually enter patient details</div>
+                    <div className="text-xs text-muted-foreground">Manually enter patient details</div>
                   </div>
                 </button>
                 <button
                   disabled
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left border-t border-gray-100 opacity-50 cursor-not-allowed"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left border-t border-border/40 opacity-50 cursor-not-allowed"
                 >
-                  <Upload className="w-5 h-5 text-gray-400" />
+                  <Upload className="w-5 h-5 text-muted-foreground/60" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-500">Import Patients</span>
-                      <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                      <span className="font-medium text-muted-foreground">Import Patients</span>
+                      <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full font-medium">
                         Coming Soon
                       </span>
                     </div>
-                    <div className="text-xs text-gray-400">Upload CSV file to import</div>
+                    <div className="text-xs text-muted-foreground/60">Upload CSV file to import</div>
                   </div>
                 </button>
               </div>
@@ -332,67 +332,67 @@ export default function PatientsManagement() {
       
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : (
-        <div className="overflow-x-auto shadow-sm border border-gray-200 rounded-lg">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto shadow-sm border border-border/60 rounded-lg">
+          <table className="min-w-full divide-y divide-border/60">
+            <thead className="bg-muted/30">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Patient ID
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Phone
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   DOB
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Related Staff
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-card divide-y divide-border/60">
               {patients.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
                     No patients found. Click &quot;Add Patient&quot; to get started.
                   </td>
                 </tr>
               ) : (
                 patients.map((patient) => (
-                  <tr key={patient.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <tr key={patient.id} className="hover:bg-muted/30">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
                       {patient.fields['Patient Full Name']}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {patient.fields['Patient ID']}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {formatPhoneNumber(patient.fields['Phone'])}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {formatDate(patient.fields['DOB'])}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-muted-foreground">
                       <div className="flex flex-wrap gap-1 min-w-[320px] max-w-4xl">
                         {getEmployeesByIds(patient.fields['Related Staff Pool']).length === 0 ? (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-muted-foreground/60">-</span>
                         ) : (
                           getEmployeesByIds(patient.fields['Related Staff Pool']).map((emp) => (
                             <span
                               key={emp.id}
-                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary"
                             >
                               {emp.name}
                             </span>
@@ -404,30 +404,30 @@ export default function PatientsManagement() {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         patient.fields['Active'] !== false
                           ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
+                          : 'bg-muted/50 text-foreground'
                       }`}>
                         {patient.fields['Active'] !== false ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleView(patient)}
-                          className="text-gray-600 hover:text-gray-900 p-1"
+                          className="text-muted-foreground hover:text-foreground p-1"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleEdit(patient)}
-                          className="text-blue-600 hover:text-blue-900 p-1"
+                          className="text-primary hover:text-primary/80 p-1"
                           title="Edit"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(patient)}
-                          className="text-red-600 hover:text-red-900 p-1"
+                          className="text-destructive hover:text-destructive/80 p-1"
                           title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -445,15 +445,15 @@ export default function PatientsManagement() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-card rounded-xl border border-border/60 shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-foreground">
                   {editingPatient ? 'Edit Patient' : 'Add New Patient'}
                 </h3>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -461,65 +461,65 @@ export default function PatientsManagement() {
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground/80 mb-1">
                     Patient Full Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.patientName}
                     onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
                     placeholder="Jane Smith"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground/80 mb-1">
                     Phone <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
                     placeholder="(555) 123-4567"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground/80 mb-1">
                     Date of Birth <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
                     value={formData.dob}
                     onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground/80 mb-1">
                     Address
                   </label>
                   <input
                     type="text"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
                     placeholder="123 Main St, City, State"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground/80 mb-1">
                     Important Notes
                   </label>
                   <textarea
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
                     placeholder="Medical conditions, allergies, etc."
                   />
                 </div>
@@ -543,25 +543,25 @@ export default function PatientsManagement() {
                     id="active"
                     checked={formData.active}
                     onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-primary focus:ring-primary/20 border-input rounded"
                   />
-                  <label htmlFor="active" className="ml-2 block text-sm text-gray-700">
+                  <label htmlFor="active" className="ml-2 block text-sm text-foreground/80">
                     Active
                   </label>
                 </div>
               </div>
               
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border/60">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 text-foreground/80 border border-input rounded-lg hover:bg-muted/30 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSubmit}
                   disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <Save className="w-4 h-4" />
                   {saving ? 'Saving...' : 'Save'}
@@ -575,16 +575,16 @@ export default function PatientsManagement() {
       {/* View-Only Modal */}
       {showViewModal && viewingPatient && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-card rounded-xl border border-border/60 shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               {/* Header */}
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-foreground">
                   Patient Details
                 </h3>
                 <button
                   onClick={() => setShowViewModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -594,7 +594,7 @@ export default function PatientsManagement() {
               {(!viewingPatient.fields['Related Staff Pool'] || viewingPatient.fields['Related Staff Pool'].length === 0) && (
                 <div className="mb-6 bg-amber-50 border-l-4 border-amber-400 p-4 rounded">
                   <div className="flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                     <div>
                       <h4 className="text-sm font-semibold text-amber-900 mb-1">
                         No Staff Pool Assigned
@@ -613,49 +613,49 @@ export default function PatientsManagement() {
                 {/* Basic Info Grid */}
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">
                       Patient Full Name
                     </label>
-                    <p className="text-base text-gray-900 font-medium">
+                    <p className="text-base text-foreground font-medium">
                       {viewingPatient.fields['Patient Full Name']}
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">
                       Patient ID
                     </label>
-                    <p className="text-base text-gray-900">
+                    <p className="text-base text-foreground">
                       {viewingPatient.fields['Patient ID']}
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">
                       Phone Number
                     </label>
-                    <p className="text-base text-gray-900">
+                    <p className="text-base text-foreground">
                       {formatPhoneNumber(viewingPatient.fields['Phone'])}
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">
                       Date of Birth
                     </label>
-                    <p className="text-base text-gray-900">
+                    <p className="text-base text-foreground">
                       {formatDate(viewingPatient.fields['DOB'])}
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">
                       Status
                     </label>
                     <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
                       viewingPatient.fields['Active'] !== false
                         ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
+                        : 'bg-muted/50 text-foreground'
                     }`}>
                       {viewingPatient.fields['Active'] !== false ? 'Active' : 'Inactive'}
                     </span>
@@ -665,10 +665,10 @@ export default function PatientsManagement() {
                 {/* Address */}
                 {viewingPatient.fields['Address'] && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">
                       Address
                     </label>
-                    <p className="text-base text-gray-900">
+                    <p className="text-base text-foreground">
                       {viewingPatient.fields['Address']}
                     </p>
                   </div>
@@ -677,10 +677,10 @@ export default function PatientsManagement() {
                 {/* Important Notes */}
                 {viewingPatient.fields['Important Notes'] && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">
                       Important Notes
                     </label>
-                    <p className="text-base text-gray-900 whitespace-pre-wrap">
+                    <p className="text-base text-foreground whitespace-pre-wrap">
                       {viewingPatient.fields['Important Notes']}
                     </p>
                   </div>
@@ -688,11 +688,11 @@ export default function PatientsManagement() {
 
                 {/* Related Staff Pool */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-2">
+                  <label className="block text-sm font-medium text-muted-foreground mb-2">
                     Related Staff Pool
                   </label>
                   {(!viewingPatient.fields['Related Staff Pool'] || viewingPatient.fields['Related Staff Pool'].length === 0) ? (
-                    <p className="text-sm text-gray-400 italic">
+                    <p className="text-sm text-muted-foreground/60 italic">
                       No staff members assigned to this patient's pool
                     </p>
                   ) : (
@@ -700,7 +700,7 @@ export default function PatientsManagement() {
                       {getEmployeesByIds(viewingPatient.fields['Related Staff Pool']).map((emp) => (
                         <span
                           key={emp.id}
-                          className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                          className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-primary/10 text-primary"
                         >
                           {emp.name}
                         </span>
@@ -711,20 +711,20 @@ export default function PatientsManagement() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-between items-center gap-3 mt-8 pt-6 border-t border-gray-200">
+              <div className="flex justify-between items-center gap-3 mt-8 pt-6 border-t border-border/60">
                 <button
                   onClick={() => {
                     setShowViewModal(false);
                     handleEdit(viewingPatient);
                   }}
-                  className="flex items-center gap-2 px-4 py-2 text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 text-primary border border-primary rounded-lg hover:bg-primary/10 transition-colors"
                 >
                   <Edit className="w-4 h-4" />
                   Edit Patient
                 </button>
                 <button
                   onClick={() => setShowViewModal(false)}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 text-foreground/80 border border-input rounded-lg hover:bg-muted/30 transition-colors"
                 >
                   Close
                 </button>
@@ -747,4 +747,3 @@ export default function PatientsManagement() {
     </div>
   );
 }
-

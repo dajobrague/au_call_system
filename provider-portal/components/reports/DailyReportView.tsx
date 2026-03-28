@@ -84,7 +84,7 @@ export default function DailyReportView({
         <div className="flex items-center justify-between mb-6 print:hidden">
           <Link 
             href="/dashboard/reports"
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors font-medium"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors font-medium"
           >
             <ArrowLeft className="w-5 h-5" />
             <span>Back to Reports</span>
@@ -93,7 +93,7 @@ export default function DailyReportView({
           <div className="flex items-center gap-3">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground/80 bg-card border border-input rounded-lg hover:bg-muted/30 transition-colors shadow-sm"
             >
               <Printer className="w-4 h-4" />
               Print Report
@@ -102,7 +102,7 @@ export default function DailyReportView({
             <button
               onClick={handleDownload}
               disabled={downloading}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
               <Download className="w-4 h-4" />
               {downloading ? 'Generating PDF...' : 'Download PDF'}
@@ -132,7 +132,7 @@ export default function DailyReportView({
         <ComplianceSection compliance={reportData.compliance} />
         
         {/* Footer Note - Hidden when printing */}
-        <div className="mt-8 text-center text-sm text-gray-500 print:hidden">
+        <div className="mt-8 text-center text-sm text-muted-foreground print:hidden">
           <p>Report generated for {date}</p>
           <p className="mt-1">Add any additional comments above before downloading the PDF</p>
         </div>
@@ -140,4 +140,3 @@ export default function DailyReportView({
     </div>
   );
 }
-

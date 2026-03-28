@@ -6,32 +6,41 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed-stripe": "tsx scripts/seed-stripe.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.962.0",
     "@aws-sdk/s3-request-presigner": "^3.962.0",
     "@elevenlabs/elevenlabs-js": "^2.28.0",
+    "@stripe/react-stripe-js": "^3.6.0",
+    "@stripe/stripe-js": "^5.8.0",
     "@types/react-datepicker": "^7.0.0",
+    "bcryptjs": "^3.0.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "html2canvas": "^1.4.1",
     "ioredis": "^5.8.2",
     "iron-session": "^8.0.4",
-    "jspdf": "^3.0.4",
+    "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.545.0",
-    "next": "16.0.10",
+    "next": "^16.2.1",
     "papaparse": "^5.5.3",
     "react": "19.1.0",
     "react-datepicker": "^8.9.0",
     "react-dom": "19.1.0",
     "recharts": "^3.5.0",
-    "swr": "^2.2.5"
+    "stripe": "^17.7.0",
+    "swr": "^2.2.5",
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19",
@@ -39,6 +48,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
     "tailwindcss": "^4",
+    "tsx": "^4.19.4",
     "typescript": "^5"
   }
 }

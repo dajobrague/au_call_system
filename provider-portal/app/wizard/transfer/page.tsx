@@ -10,6 +10,9 @@ import {
   formatAustralianPhoneForDisplay,
 } from '@/lib/utils/phone-utils';
 
+const field =
+  'w-full rounded-md border border-border bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/40 transition-colors focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20';
+
 export default function WizardTransferPage() {
   const router = useRouter();
   const [transferNumber, setTransferNumber] = useState('');
@@ -17,9 +20,12 @@ export default function WizardTransferPage() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load saved state
   useEffect(() => {
     const wizardState = getWizardState();
+    if (!wizardState.plan?.planRecordId) {
+      router.replace('/wizard/plan');
+      return;
+    }
     if (wizardState.transfer) {
       if (wizardState.transfer.transferNumber) {
         setTransferNumber(wizardState.transfer.transferNumber);
@@ -28,7 +34,7 @@ export default function WizardTransferPage() {
         setSkipTransfer(true);
       }
     }
-  }, []);
+  }, [router]);
 
   const handleBack = () => {
     router.push('/wizard/greeting');
@@ -39,19 +45,17 @@ export default function WizardTransferPage() {
     setError('');
     setIsSubmitting(true);
 
-    // If skipping, save empty transfer number
     if (skipTransfer) {
       saveWizardState({
         transfer: {
           transferNumber: undefined,
         },
-        currentStep: 5,
+        currentStep: 7,
       });
       router.push('/wizard/review');
       return;
     }
 
-    // Validate phone number
     if (!transferNumber.trim()) {
       setError('Please enter a transfer number or check "Skip for now"');
       setIsSubmitting(false);
@@ -64,38 +68,34 @@ export default function WizardTransferPage() {
       return;
     }
 
-    // Normalize phone number
     const normalized = normalizeAustralianPhone(transferNumber);
 
-    // Save to wizard state
     saveWizardState({
       transfer: {
         transferNumber: normalized || undefined,
       },
-      currentStep: 5,
+      currentStep: 7,
     });
 
-    // Navigate to next step
     router.push('/wizard/review');
   };
 
   return (
     <WizardLayout>
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Transfer Number
+        <h2 className="text-xl font-bold tracking-tight text-foreground">
+          Transfer number
         </h2>
-        <p className="text-gray-600 mb-6">
+        <p className="mt-1 mb-6 text-sm leading-relaxed text-muted-foreground">
           Add a phone number for call transfers (optional)
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Warning Box */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
+          <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 p-4">
+            <div className="flex gap-3">
+              <div className="shrink-0 text-amber-600" aria-hidden>
                 <svg
-                  className="h-5 w-5 text-yellow-400"
+                  className="h-5 w-5"
                   viewBox="0 0 20 20"
                   fill="currentColor"
                 >
@@ -106,92 +106,87 @@ export default function WizardTransferPage() {
                   />
                 </svg>
               </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">
-                  Optional but Recommended
+              <div>
+                <h3 className="text-sm font-medium text-amber-900">
+                  Optional but recommended
                 </h3>
-                <div className="mt-2 text-sm text-yellow-700">
-                  <p>
-                    Without a transfer number, call transfers won't be available until
-                    you add one later in your settings.
-                  </p>
-                </div>
+                <p className="mt-2 text-sm text-amber-800/90">
+                  Without a transfer number, call transfers won&apos;t be
+                  available until you add one later in your settings.
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Skip Transfer Checkbox */}
-          <div className="flex items-start">
-            <div className="flex items-center h-5">
-              <input
-                id="skipTransfer"
-                type="checkbox"
-                checked={skipTransfer}
-                onChange={(e) => {
-                  setSkipTransfer(e.target.checked);
-                  if (e.target.checked) {
-                    setTransferNumber('');
-                    setError('');
-                  }
-                }}
-                className="w-4 h-4 text-[#bd1e2b] border-gray-300 rounded focus:ring-[#bd1e2b]"
-              />
-            </div>
-            <div className="ml-3 text-sm">
-              <label htmlFor="skipTransfer" className="font-medium text-gray-700">
-                Skip for now (I'll add this later)
-              </label>
-            </div>
+          <div className="flex items-start gap-3">
+            <input
+              id="skipTransfer"
+              type="checkbox"
+              checked={skipTransfer}
+              onChange={(e) => {
+                setSkipTransfer(e.target.checked);
+                if (e.target.checked) {
+                  setTransferNumber('');
+                  setError('');
+                }
+              }}
+              className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/20"
+            />
+            <label htmlFor="skipTransfer" className="text-sm text-foreground">
+              <span className="font-medium">Skip for now</span>
+              <span className="text-muted-foreground">
+                {' '}
+                (I&apos;ll add this later)
+              </span>
+            </label>
           </div>
 
-          {/* Transfer Number Input */}
           {!skipTransfer && (
             <div>
               <label
                 htmlFor="transferNumber"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
               >
-                Transfer Number
+                Transfer number
               </label>
               <input
                 type="tel"
                 id="transferNumber"
                 value={transferNumber}
                 onChange={(e) => setTransferNumber(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#bd1e2b] focus:border-transparent"
+                className={field}
                 placeholder="+61 4XX XXX XXX or 04XX XXX XXX"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="mt-1 text-[10px] text-muted-foreground/70">
                 Accepts Australian mobile and landline numbers in any format
               </p>
               {transferNumber && validateAustralianPhone(transferNumber) && (
-                <p className="text-xs text-green-600 mt-1">
-                  ✓ Will be saved as: {formatAustralianPhoneForDisplay(transferNumber)}
+                <p className="mt-1 text-xs font-medium text-emerald-700">
+                  ✓ Will be saved as:{' '}
+                  {formatAustralianPhoneForDisplay(transferNumber)}
                 </p>
               )}
             </div>
           )}
 
-          {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+              <p className="text-sm text-destructive">{error}</p>
             </div>
           )}
 
-          {/* Navigation Buttons */}
           <div className="flex justify-between pt-4">
             <button
               type="button"
               onClick={handleBack}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+              className="rounded-lg border border-border px-6 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
             >
               Back
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-3 bg-[#bd1e2b] text-white rounded-lg font-semibold hover:bg-[#9a1823] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? 'Saving...' : 'Next: Review'}
             </button>
@@ -201,4 +196,3 @@ export default function WizardTransferPage() {
     </WizardLayout>
   );
 }
-

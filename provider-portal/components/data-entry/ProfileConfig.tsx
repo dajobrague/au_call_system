@@ -149,7 +149,7 @@ export default function ProfileConfig() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -157,8 +157,8 @@ export default function ProfileConfig() {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Provider Profile Configuration</h2>
-        <p className="text-sm text-gray-600 mt-1">Configure your provider information and greeting</p>
+        <h2 className="text-xl font-semibold text-foreground">Provider Profile Configuration</h2>
+        <p className="text-sm text-muted-foreground mt-1">Configure your provider information and greeting</p>
       </div>
       
       {error && (
@@ -182,7 +182,7 @@ export default function ProfileConfig() {
       <div className="space-y-6">
         {/* Logo Section */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-foreground/80 mb-2">
             Provider Logo
           </label>
           {logoPreview && (
@@ -192,19 +192,19 @@ export default function ProfileConfig() {
                 alt="Provider Logo"
                 width={200}
                 height={80}
-                className="object-contain border border-gray-200 rounded p-2"
+                className="object-contain border border-border/60 rounded p-2"
                 style={{ maxHeight: '80px' }}
               />
             </div>
           )}
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted-foreground">
             <p>Logo management coming soon. Currently displaying your existing logo from Airtable.</p>
           </div>
         </div>
         
         {/* Name */}
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="name" className="block text-sm font-medium text-foreground/80 mb-2">
             Provider Name
           </label>
           <input
@@ -212,14 +212,14 @@ export default function ProfileConfig() {
             type="text"
             value={formData.name}
             onChange={(e) => handleInputChange('name', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
             placeholder="Enter provider name"
           />
         </div>
         
         {/* State */}
         <div>
-          <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="state" className="block text-sm font-medium text-foreground/80 mb-2">
             State
           </label>
           <input
@@ -227,14 +227,14 @@ export default function ProfileConfig() {
             type="text"
             value={formData.state}
             onChange={(e) => handleInputChange('state', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
             placeholder="Enter state"
           />
         </div>
         
         {/* Suburb */}
         <div>
-          <label htmlFor="suburb" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="suburb" className="block text-sm font-medium text-foreground/80 mb-2">
             Suburb
           </label>
           <input
@@ -242,14 +242,14 @@ export default function ProfileConfig() {
             type="text"
             value={formData.suburb}
             onChange={(e) => handleInputChange('suburb', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
             placeholder="Enter suburb"
           />
         </div>
         
         {/* Address */}
         <div>
-          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="address" className="block text-sm font-medium text-foreground/80 mb-2">
             Address
           </label>
           <input
@@ -257,14 +257,14 @@ export default function ProfileConfig() {
             type="text"
             value={formData.address}
             onChange={(e) => handleInputChange('address', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
             placeholder="Enter address"
           />
         </div>
         
         {/* Greeting (IVR) */}
         <div>
-          <label htmlFor="greeting" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="greeting" className="block text-sm font-medium text-foreground/80 mb-2">
             Greeting (IVR)
           </label>
           <textarea
@@ -272,17 +272,17 @@ export default function ProfileConfig() {
             value={formData.greeting}
             onChange={(e) => handleInputChange('greeting', e.target.value)}
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
             placeholder="Enter the greeting that the AI will read when calls happen"
           />
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             This greeting will be read by the AI voice agent when calls are received.
           </p>
         </div>
         
         {/* Transfer Number */}
         <div>
-          <label htmlFor="transferNumber" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="transferNumber" className="block text-sm font-medium text-foreground/80 mb-2">
             Transfer Number
           </label>
           <input
@@ -290,21 +290,21 @@ export default function ProfileConfig() {
             type="tel"
             value={formData.transferNumber}
             onChange={(e) => handleInputChange('transferNumber', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
             placeholder="+61 4XX XXX XXX or 04XX XXX XXX"
           />
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Australian phone number to transfer calls to when a representative is requested. 
             Accepts mobile (+61 4XX XXX XXX) or landline (+61 X XXXX XXXX) formats.
           </p>
         </div>
         
         {/* Save Button */}
-        <div className="flex justify-end pt-4 border-t border-gray-200">
+        <div className="flex justify-end pt-4 border-t border-border/60">
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save Changes'}

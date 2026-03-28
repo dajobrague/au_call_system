@@ -6,6 +6,7 @@ import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
 import { SessionData, sessionOptions } from './session';
 import { findUserByEmail, getProviderIdFromUser } from './airtable';
+import { verifyPassword } from './auth/password';
 
 /**
  * Get current session
@@ -26,8 +27,7 @@ export async function authenticateUser(email: string, password: string) {
       return { success: false, error: 'Invalid email or password' };
     }
     
-    // Check password (plain text comparison as per requirements)
-    if (user.fields.Pass !== password) {
+    if (!(await verifyPassword(password, user.fields.Pass as string))) {
       return { success: false, error: 'Invalid email or password' };
     }
     

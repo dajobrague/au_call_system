@@ -3,6 +3,13 @@
  * Stores wizard data temporarily during the onboarding flow
  */
 
+export interface WizardPlanData {
+  planRecordId: string;
+  planName: string;
+  stripePriceId: string;
+  priceMonthly: number;
+}
+
 export interface WizardUserData {
   email: string;
   password: string;
@@ -32,6 +39,7 @@ export interface WizardTransferData {
 }
 
 export interface WizardState {
+  plan?: WizardPlanData;
   user?: WizardUserData;
   business?: WizardBusinessData;
   logo?: WizardLogoData;
@@ -95,6 +103,8 @@ export function clearWizardState(): void {
  */
 export function isWizardComplete(state: WizardState): boolean {
   return !!(
+    state.plan?.planRecordId &&
+    state.plan?.stripePriceId &&
     state.user?.email &&
     state.user?.password &&
     state.business?.providerName &&

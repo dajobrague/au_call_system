@@ -261,10 +261,10 @@ export default function OccurrencesPage() {
         const status = value as string;
         return (
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            status === 'Scheduled' ? 'bg-blue-100 text-blue-800' :
+            status === 'Scheduled' ? 'bg-primary/10 text-primary' :
             status === 'Completed' ? 'bg-green-100 text-green-800' :
             status === 'Cancelled' ? 'bg-red-100 text-red-800' :
-            'bg-gray-100 text-gray-800'
+            'bg-muted/50 text-foreground'
           }`}>
             {status || '-'}
           </span>
@@ -278,14 +278,14 @@ export default function OccurrencesPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleEdit(row)}
-            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            className="p-1.5 text-primary hover:bg-muted/50 rounded transition-colors"
             title="Edit"
           >
             <Edit className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleDelete(row.id)}
-            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+            className="p-1.5 text-destructive hover:bg-red-50 rounded transition-colors"
             title="Delete"
           >
             <Trash2 className="w-4 h-4" />
@@ -300,8 +300,8 @@ export default function OccurrencesPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Job Occurrences</h1>
-        <p className="text-gray-600 mt-1">View and manage scheduled job occurrences</p>
+        <h1 className="text-2xl font-bold text-foreground">Job Occurrences</h1>
+        <p className="text-muted-foreground mt-1">View and manage scheduled job occurrences</p>
       </div>
       
       {/* Occurrences Management */}
@@ -321,14 +321,14 @@ export default function OccurrencesPage() {
       )}
       
       {/* Filters */}
-      <div className="mb-6 bg-white rounded-lg shadow p-4">
+      <div className="mb-6 bg-card rounded-lg shadow p-4">
         <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-5 h-5 text-gray-600" />
-          <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
+          <Filter className="w-5 h-5 text-muted-foreground" />
+          <h2 className="text-lg font-semibold text-foreground">Filters</h2>
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="ml-auto text-sm text-blue-600 hover:text-blue-800"
+              className="ml-auto text-sm text-primary hover:text-primary"
             >
               Clear all
             </button>
@@ -338,14 +338,14 @@ export default function OccurrencesPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Employee Filter */}
           <div>
-            <label htmlFor="employee-filter" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="employee-filter" className="block text-sm font-medium text-foreground/80 mb-1">
               Employee
             </label>
             <select
               id="employee-filter"
               value={selectedEmployee}
               onChange={(e) => setSelectedEmployee(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              className="w-full px-3 py-2 border border-input rounded-lg shadow-sm focus:outline-none focus:ring-primary/20 focus:border-primary text-foreground"
             >
               <option value="">All Employees</option>
               {employees.map((employee) => (
@@ -358,14 +358,14 @@ export default function OccurrencesPage() {
           
           {/* Patient Filter */}
           <div>
-            <label htmlFor="patient-filter" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="patient-filter" className="block text-sm font-medium text-foreground/80 mb-1">
               Patient
             </label>
             <select
               id="patient-filter"
               value={selectedPatient}
               onChange={(e) => setSelectedPatient(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              className="w-full px-3 py-2 border border-input rounded-lg shadow-sm focus:outline-none focus:ring-primary/20 focus:border-primary text-foreground"
             >
               <option value="">All Patients</option>
               {patients.map((patient) => (
@@ -378,7 +378,7 @@ export default function OccurrencesPage() {
           
           {/* Date Filter */}
           <div>
-            <label htmlFor="date-filter" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="date-filter" className="block text-sm font-medium text-foreground/80 mb-1">
               Date
             </label>
             <input
@@ -386,19 +386,19 @@ export default function OccurrencesPage() {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              className="w-full px-3 py-2 border border-input rounded-lg shadow-sm focus:outline-none focus:ring-primary/20 focus:border-primary text-foreground"
             />
           </div>
         </div>
         
         {hasActiveFilters && (
-          <div className="mt-3 text-sm text-gray-600">
+          <div className="mt-3 text-sm text-muted-foreground">
             Showing {filteredOccurrences.length} of {occurrences.length} occurrences
           </div>
         )}
       </div>
       
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-card rounded-lg shadow">
         <DataTable 
           columns={columns} 
           data={filteredOccurrences.length > 0 || hasActiveFilters ? filteredOccurrences : occurrences} 
@@ -409,4 +409,3 @@ export default function OccurrencesPage() {
     </div>
   );
 }
-

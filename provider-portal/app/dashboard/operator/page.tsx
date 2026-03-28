@@ -134,13 +134,13 @@ export default function OperatorDashboardPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/30">
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Operator Dashboard</h1>
-            <p className="text-gray-600 mt-1">Real-time call monitoring and shift management</p>
+            <h1 className="text-2xl font-bold text-foreground">Operator Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Real-time call monitoring and shift management</p>
           </div>
           <div className="flex items-center gap-3">
             <span className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
@@ -163,10 +163,10 @@ export default function OperatorDashboardPage() {
         {/* Stats Bar */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <StatCard
-            icon={<Phone className="w-5 h-5 text-blue-600" />}
+            icon={<Phone className="w-5 h-5 text-primary" />}
             label="Active Calls"
             value={stats.activeCalls}
-            bgColor="bg-blue-50"
+            bgColor="bg-primary/10"
           />
           <StatCard
             icon={<ArrowRightLeft className="w-5 h-5 text-purple-600" />}
@@ -244,12 +244,12 @@ function StatCard({
   highlight?: boolean;
 }) {
   return (
-    <div className={`bg-white border rounded-lg p-4 ${highlight ? 'border-red-300 ring-1 ring-red-200' : 'border-gray-200'}`}>
+    <div className={`bg-card border rounded-lg p-4 ${highlight ? 'border-red-300 ring-1 ring-red-200' : 'border-border/60'}`}>
       <div className="flex items-center gap-3">
         <div className={`p-2.5 rounded-lg ${bgColor}`}>{icon}</div>
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-wider">{label}</p>
-          <p className={`text-2xl font-bold ${highlight ? 'text-red-600' : 'text-gray-900'}`}>{value}</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">{label}</p>
+          <p className={`text-2xl font-bold ${highlight ? 'text-red-600' : 'text-foreground'}`}>{value}</p>
         </div>
       </div>
     </div>
@@ -270,30 +270,30 @@ function TransferDetailsPanel({
   formatRelativeTime: (ts: string) => string;
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div className="p-4 border-b border-gray-200">
+    <div className="bg-card border border-border/60 rounded-lg overflow-hidden">
+      <div className="p-4 border-b border-border/60">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <PhoneIncoming className="w-5 h-5 text-purple-600" />
             Transfer Details
           </h2>
-          <span className="text-xs text-gray-500">{transfers.length} transfers</span>
+          <span className="text-xs text-muted-foreground">{transfers.length} transfers</span>
         </div>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
           <input
             type="text"
             placeholder="Search by phone number, name, or patient..."
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 text-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>
       </div>
 
       <div className="p-4 max-h-[500px] overflow-y-auto">
         {transfers.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 text-sm">
+          <div className="text-center py-8 text-muted-foreground text-sm">
             No active or recent transfers
           </div>
         ) : (
@@ -312,15 +312,15 @@ function TransferDetailsPanel({
                 {/* Status Badge */}
                 <div className="flex items-center justify-between mb-3">
                   <TransferStatusBadge status={transfer.status} />
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">
                     {formatRelativeTime(transfer.initiatedAt)}
                   </span>
                 </div>
 
                 {/* Caller Phone - PROMINENT for operator matching */}
-                <div className="bg-white border border-gray-200 rounded-lg p-3 mb-3">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Caller Phone (Match on your phone)</p>
-                  <p className="text-2xl font-bold text-gray-900 tracking-wide font-mono">
+                <div className="bg-card border border-border/60 rounded-lg p-3 mb-3">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Caller Phone (Match on your phone)</p>
+                  <p className="text-2xl font-bold text-foreground tracking-wide font-mono">
                     {transfer.callerPhone || 'Unknown'}
                   </p>
                 </div>
@@ -329,44 +329,44 @@ function TransferDetailsPanel({
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   {transfer.employeeName && (
                     <div>
-                      <span className="text-gray-500">Employee:</span>
-                      <span className="ml-1 font-medium text-gray-900">{transfer.employeeName}</span>
+                      <span className="text-muted-foreground">Employee:</span>
+                      <span className="ml-1 font-medium text-foreground">{transfer.employeeName}</span>
                     </div>
                   )}
                   {transfer.patientName && (
                     <div>
-                      <span className="text-gray-500">Patient:</span>
-                      <span className="ml-1 font-medium text-gray-900">{transfer.patientName}</span>
+                      <span className="text-muted-foreground">Patient:</span>
+                      <span className="ml-1 font-medium text-foreground">{transfer.patientName}</span>
                     </div>
                   )}
                   {transfer.occurrenceDetails?.displayDate && (
                     <div>
-                      <span className="text-gray-500">Shift Date:</span>
-                      <span className="ml-1 font-medium text-gray-900">{transfer.occurrenceDetails.displayDate}</span>
+                      <span className="text-muted-foreground">Shift Date:</span>
+                      <span className="ml-1 font-medium text-foreground">{transfer.occurrenceDetails.displayDate}</span>
                     </div>
                   )}
                   {transfer.occurrenceDetails?.time && (
                     <div>
-                      <span className="text-gray-500">Shift Time:</span>
-                      <span className="ml-1 font-medium text-gray-900">{transfer.occurrenceDetails.time}</span>
+                      <span className="text-muted-foreground">Shift Time:</span>
+                      <span className="ml-1 font-medium text-foreground">{transfer.occurrenceDetails.time}</span>
                     </div>
                   )}
                   {transfer.callPurpose && (
                     <div className="col-span-2">
-                      <span className="text-gray-500">Purpose:</span>
-                      <span className="ml-1 font-medium text-gray-900">{transfer.callPurpose}</span>
+                      <span className="text-muted-foreground">Purpose:</span>
+                      <span className="ml-1 font-medium text-foreground">{transfer.callPurpose}</span>
                     </div>
                   )}
                   {transfer.transferTo && (
                     <div className="col-span-2">
-                      <span className="text-gray-500">Transfer To:</span>
-                      <span className="ml-1 font-medium text-gray-900 font-mono">{transfer.transferTo}</span>
+                      <span className="text-muted-foreground">Transfer To:</span>
+                      <span className="ml-1 font-medium text-foreground font-mono">{transfer.transferTo}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Timestamps */}
-                <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-500">
+                <div className="mt-2 pt-2 border-t border-border/60 text-xs text-muted-foreground">
                   <span>Initiated: {formatTime(transfer.initiatedAt)}</span>
                   {transfer.answeredAt && (
                     <span className="ml-3">Answered: {formatTime(transfer.answeredAt)}</span>
@@ -425,9 +425,9 @@ function LiveActivityPanel({
   const completedCalls = displayCalls.filter(c => c.status === 'completed');
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+    <div className="bg-card border border-border/60 rounded-lg overflow-hidden">
+      <div className="p-4 border-b border-border/60">
+        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Activity className="w-5 h-5 text-green-600" />
           Live Activity
           {inProgressCalls.length > 0 && (
@@ -440,7 +440,7 @@ function LiveActivityPanel({
 
       <div className="p-4 max-h-[500px] overflow-y-auto">
         {displayCalls.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 text-sm">
+          <div className="text-center py-8 text-muted-foreground text-sm">
             No call activity yet. Events will appear here in real-time.
           </div>
         ) : (
@@ -490,11 +490,11 @@ function CallCard({
       className={`border rounded-lg ${
         call.status === 'in_progress'
           ? 'border-green-300 bg-green-50'
-          : 'border-gray-200'
+          : 'border-border/60'
       }`}
     >
       <div
-        className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+        className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-2 min-w-0">
@@ -504,33 +504,33 @@ function CallCard({
               LIVE
             </span>
           ) : (
-            <span className="px-2 py-0.5 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full whitespace-nowrap">
+            <span className="px-2 py-0.5 bg-muted text-foreground/80 text-xs font-semibold rounded-full whitespace-nowrap">
               DONE
             </span>
           )}
-          <span className="text-gray-500">{directionIcon}</span>
-          <span className="text-sm font-medium text-gray-900 truncate">
+          <span className="text-muted-foreground">{directionIcon}</span>
+          <span className="text-sm font-medium text-foreground truncate">
             {call.callerName || call.fromNumber || 'Unknown'}
           </span>
-          <span className="text-xs text-gray-500 whitespace-nowrap">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
             {formatTime(call.startTime)}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">{formatRelativeTime(call.startTime)}</span>
-          {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+          <span className="text-xs text-muted-foreground">{formatRelativeTime(call.startTime)}</span>
+          {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground/60" /> : <ChevronDown className="w-4 h-4 text-muted-foreground/60" />}
         </div>
       </div>
 
       {isExpanded && call.events.length > 0 && (
         <div className="px-3 pb-3">
-          <div className="space-y-1.5 pl-3 border-l-2 border-gray-300">
+          <div className="space-y-1.5 pl-3 border-l-2 border-input">
             {call.events.map((event, idx) => (
               <div key={idx} className="relative text-xs">
-                <div className="absolute -left-[11px] w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-white" />
-                <span className="text-gray-400 font-mono">{formatTime(event.timestamp)}</span>
-                <span className="mx-1.5 text-gray-300">|</span>
-                <span className="text-gray-700">
+                <div className="absolute -left-[11px] w-2.5 h-2.5 bg-primary rounded-full border-2 border-white" />
+                <span className="text-muted-foreground/60 font-mono">{formatTime(event.timestamp)}</span>
+                <span className="mx-1.5 text-muted-foreground/30">|</span>
+                <span className="text-foreground/80">
                   {formatOperatorEventDescription(event.eventType, event.data)}
                 </span>
               </div>
@@ -558,9 +558,9 @@ function UnfilledShiftsPanel({
   onRefresh: () => void;
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+    <div className="bg-card border border-border/60 rounded-lg overflow-hidden">
+      <div className="p-4 border-b border-border/60 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <AlertTriangle className="w-5 h-5 text-red-500" />
           Unfilled Shifts
           {shifts.length > 0 && (
@@ -572,7 +572,7 @@ function UnfilledShiftsPanel({
         <button
           onClick={onRefresh}
           disabled={isLoading}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground bg-muted/50 rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh
@@ -587,13 +587,13 @@ function UnfilledShiftsPanel({
         )}
 
         {isLoading && shifts.length === 0 && (
-          <div className="text-center py-8 text-gray-500 text-sm">
+          <div className="text-center py-8 text-muted-foreground text-sm">
             Loading unfilled shifts...
           </div>
         )}
 
         {!isLoading && !error && shifts.length === 0 && (
-          <div className="text-center py-8 text-gray-500 text-sm">
+          <div className="text-center py-8 text-muted-foreground text-sm">
             No unfilled shifts. All shifts have been covered.
           </div>
         )}
@@ -621,8 +621,8 @@ function UnfilledShiftsPanel({
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
                         <div className="min-w-0">
-                          <p className="font-medium text-gray-900 truncate">{patientName}</p>
-                          <p className="text-xs text-gray-600">
+                          <p className="font-medium text-foreground truncate">{patientName}</p>
+                          <p className="text-xs text-muted-foreground">
                             {scheduledAt && <span>{scheduledAt}</span>}
                             {time && <span className="ml-2">at {time}</span>}
                           </p>
@@ -630,14 +630,14 @@ function UnfilledShiftsPanel({
                       </div>
                       <div className="flex items-center gap-2">
                         {shift.callAttempts.length > 0 && (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-muted-foreground">
                             {shift.callAttempts.length} calls made
                           </span>
                         )}
                         {isExpanded ? (
-                          <ChevronUp className="w-4 h-4 text-gray-400" />
+                          <ChevronUp className="w-4 h-4 text-muted-foreground/60" />
                         ) : (
-                          <ChevronDown className="w-4 h-4 text-gray-400" />
+                          <ChevronDown className="w-4 h-4 text-muted-foreground/60" />
                         )}
                       </div>
                     </div>
@@ -647,13 +647,13 @@ function UnfilledShiftsPanel({
                     <div className="px-3 pb-3 border-t border-red-200">
                       {/* Occurrence Details */}
                       <div className="mt-3 mb-3">
-                        <p className="text-xs text-gray-500 mb-1">Occurrence ID</p>
-                        <p className="text-sm font-mono text-gray-700">{occurrenceId}</p>
+                        <p className="text-xs text-muted-foreground mb-1">Occurrence ID</p>
+                        <p className="text-sm font-mono text-foreground/80">{occurrenceId}</p>
                       </div>
 
                       {rescheduleReason && (
-                        <div className="mb-3 p-2 bg-white border border-red-100 rounded text-sm text-gray-700">
-                          <p className="text-xs text-gray-500 mb-1 font-medium">Reason</p>
+                        <div className="mb-3 p-2 bg-card border border-red-100 rounded text-sm text-foreground/80">
+                          <p className="text-xs text-muted-foreground mb-1 font-medium">Reason</p>
                           {rescheduleReason}
                         </div>
                       )}
@@ -661,19 +661,19 @@ function UnfilledShiftsPanel({
                       {/* Call Attempt History */}
                       {shift.callAttempts.length > 0 ? (
                         <div>
-                          <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wider">
+                          <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wider">
                             Call Attempts ({shift.callAttempts.length})
                           </p>
                           <div className="space-y-2">
                             {shift.callAttempts.map((attempt, idx) => (
                               <div
                                 key={idx}
-                                className="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded text-sm"
+                                className="flex items-center gap-2 p-2 bg-card border border-border/60 rounded text-sm"
                               >
                                 <CallOutcomeIcon outcome={attempt['Call Outcome'] as string} />
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-2">
-                                    <span className="font-medium text-gray-900 truncate">
+                                    <span className="font-medium text-foreground truncate">
                                       Round {String(attempt['Attempt Round'] ?? '?')}
                                     </span>
                                     <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
@@ -683,10 +683,10 @@ function UnfilledShiftsPanel({
                                     </span>
                                   </div>
                                   {attempt['Started At'] ? (
-                                    <p className="text-xs text-gray-500">{String(attempt['Started At'])}</p>
+                                    <p className="text-xs text-muted-foreground">{String(attempt['Started At'])}</p>
                                   ) : null}
                                   {attempt['Notes'] ? (
-                                    <p className="text-xs text-gray-600 mt-0.5">{String(attempt['Notes'])}</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">{String(attempt['Notes'])}</p>
                                   ) : null}
                                 </div>
                               </div>
@@ -694,7 +694,7 @@ function UnfilledShiftsPanel({
                           </div>
                         </div>
                       ) : (
-                        <p className="text-sm text-gray-500 italic">No call attempt data available</p>
+                        <p className="text-sm text-muted-foreground italic">No call attempt data available</p>
                       )}
                     </div>
                   )}
@@ -717,7 +717,7 @@ function CallOutcomeIcon({ outcome }: { outcome: string }) {
     case 'No Answer':
       return <Clock className="w-4 h-4 text-yellow-500 shrink-0" />;
     default:
-      return <Phone className="w-4 h-4 text-gray-400 shrink-0" />;
+      return <Phone className="w-4 h-4 text-muted-foreground/60 shrink-0" />;
   }
 }
 
@@ -734,6 +734,6 @@ function getOutcomeColor(outcome: string): string {
     case 'Failed':
       return 'bg-red-100 text-red-800';
     default:
-      return 'bg-gray-100 text-gray-800';
+      return 'bg-muted/50 text-foreground';
   }
 }

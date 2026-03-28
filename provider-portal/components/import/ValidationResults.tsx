@@ -29,11 +29,11 @@ export default function ValidationResults({ results }: ValidationResultsProps) {
     <div className="space-y-4">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <div className="bg-muted/30 border border-border/60 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-1">
-            <div className="text-2xl font-bold text-gray-900">{totalRows}</div>
+            <div className="text-2xl font-bold text-foreground">{totalRows}</div>
           </div>
-          <div className="text-sm text-gray-600">Total Rows</div>
+          <div className="text-sm text-muted-foreground">Total Rows</div>
         </div>
 
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -41,7 +41,7 @@ export default function ValidationResults({ results }: ValidationResultsProps) {
             <CheckCircle className="w-5 h-5 text-green-600" />
             <div className="text-2xl font-bold text-green-600">{validRows}</div>
           </div>
-          <div className="text-sm text-gray-600">Valid Rows</div>
+          <div className="text-sm text-muted-foreground">Valid Rows</div>
         </div>
 
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -49,7 +49,7 @@ export default function ValidationResults({ results }: ValidationResultsProps) {
             <AlertTriangle className="w-5 h-5 text-yellow-600" />
             <div className="text-2xl font-bold text-yellow-600">{warningRows}</div>
           </div>
-          <div className="text-sm text-gray-600">Warnings</div>
+          <div className="text-sm text-muted-foreground">Warnings</div>
         </div>
 
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -57,7 +57,7 @@ export default function ValidationResults({ results }: ValidationResultsProps) {
             <XCircle className="w-5 h-5 text-red-600" />
             <div className="text-2xl font-bold text-red-600">{errorRows}</div>
           </div>
-          <div className="text-sm text-gray-600">Errors (Will Skip)</div>
+          <div className="text-sm text-muted-foreground">Errors (Will Skip)</div>
         </div>
       </div>
 
@@ -71,11 +71,11 @@ export default function ValidationResults({ results }: ValidationResultsProps) {
       }`}>
         <div className="flex items-start gap-3">
           {errorRows === 0 ? (
-            <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+            <CheckCircle className="w-6 h-6 text-green-600 shrink-0 mt-0.5" />
           ) : errorRows < totalRows ? (
-            <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-6 h-6 text-yellow-600 shrink-0 mt-0.5" />
           ) : (
-            <XCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+            <XCircle className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
           )}
           <div>
             <h4 className={`font-semibold ${
@@ -129,17 +129,17 @@ export default function ValidationResults({ results }: ValidationResultsProps) {
           </button>
           
           {showErrors && (
-            <div className="bg-white p-4 max-h-64 overflow-y-auto">
+            <div className="bg-card p-4 max-h-64 overflow-y-auto">
               <div className="space-y-2">
                 {errors.slice(0, 50).map((error, i) => (
                   <div key={i} className="text-sm">
                     <span className="font-medium text-red-900">Row {error.row + 1}</span>
-                    <span className="text-gray-600"> - {error.field}: </span>
+                    <span className="text-muted-foreground"> - {error.field}: </span>
                     <span className="text-red-700">{error.message}</span>
                   </div>
                 ))}
                 {errors.length > 50 && (
-                  <div className="text-sm text-gray-600 italic">
+                  <div className="text-sm text-muted-foreground italic">
                     ... and {errors.length - 50} more errors
                   </div>
                 )}
@@ -170,17 +170,17 @@ export default function ValidationResults({ results }: ValidationResultsProps) {
           </button>
           
           {showWarnings && (
-            <div className="bg-white p-4 max-h-64 overflow-y-auto">
+            <div className="bg-card p-4 max-h-64 overflow-y-auto">
               <div className="space-y-2">
                 {warnings.slice(0, 50).map((warning, i) => (
                   <div key={i} className="text-sm">
                     <span className="font-medium text-yellow-900">Row {warning.row + 1}</span>
-                    <span className="text-gray-600"> - {warning.field}: </span>
+                    <span className="text-muted-foreground"> - {warning.field}: </span>
                     <span className="text-yellow-700">{warning.message}</span>
                   </div>
                 ))}
                 {warnings.length > 50 && (
-                  <div className="text-sm text-gray-600 italic">
+                  <div className="text-sm text-muted-foreground italic">
                     ... and {warnings.length - 50} more warnings
                   </div>
                 )}

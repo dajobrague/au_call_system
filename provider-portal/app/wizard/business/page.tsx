@@ -10,6 +10,9 @@ import {
   AUSTRALIAN_TIMEZONES,
 } from '@/lib/utils/wizard-storage';
 
+const field =
+  'w-full rounded-md border border-border bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/40 transition-colors focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20';
+
 export default function WizardBusinessPage() {
   const router = useRouter();
   const [providerName, setProviderName] = useState('');
@@ -20,9 +23,12 @@ export default function WizardBusinessPage() {
   const [errors, setErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load saved state
   useEffect(() => {
     const wizardState = getWizardState();
+    if (!wizardState.plan?.planRecordId) {
+      router.replace('/wizard/plan');
+      return;
+    }
     if (wizardState.business) {
       setProviderName(wizardState.business.providerName);
       setState(wizardState.business.state);
@@ -30,7 +36,7 @@ export default function WizardBusinessPage() {
       setAddress(wizardState.business.address);
       setTimezone(wizardState.business.timezone);
     }
-  }, []);
+  }, [router]);
 
   const handleBack = () => {
     router.push('/wizard/user');
@@ -41,7 +47,6 @@ export default function WizardBusinessPage() {
     setErrors([]);
     setIsSubmitting(true);
 
-    // Validate required fields
     const newErrors: string[] = [];
 
     if (!providerName.trim()) {
@@ -66,7 +71,6 @@ export default function WizardBusinessPage() {
       return;
     }
 
-    // Save to wizard state
     saveWizardState({
       business: {
         providerName: providerName.trim(),
@@ -75,48 +79,45 @@ export default function WizardBusinessPage() {
         address: address.trim(),
         timezone,
       },
-      currentStep: 2,
+      currentStep: 4,
     });
 
-    // Navigate to next step
     router.push('/wizard/logo');
   };
 
   return (
     <WizardLayout>
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Business Information
+        <h2 className="text-xl font-bold tracking-tight text-foreground">
+          Business information
         </h2>
-        <p className="text-gray-600 mb-6">
+        <p className="mt-1 mb-6 text-sm leading-relaxed text-muted-foreground">
           Tell us about your organization
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Provider Name */}
           <div>
             <label
               htmlFor="providerName"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
             >
-              Provider Name *
+              Provider name *
             </label>
             <input
               type="text"
               id="providerName"
               value={providerName}
               onChange={(e) => setProviderName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#bd1e2b] focus:border-transparent"
+              className={field}
               placeholder="Your organization name"
               required
             />
           </div>
 
-          {/* State */}
           <div>
             <label
               htmlFor="state"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
             >
               State *
             </label>
@@ -124,7 +125,7 @@ export default function WizardBusinessPage() {
               id="state"
               value={state}
               onChange={(e) => setState(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#bd1e2b] focus:border-transparent"
+              className={field}
               required
             >
               <option value="">Select a state</option>
@@ -136,11 +137,10 @@ export default function WizardBusinessPage() {
             </select>
           </div>
 
-          {/* Suburb */}
           <div>
             <label
               htmlFor="suburb"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
             >
               Suburb *
             </label>
@@ -149,17 +149,16 @@ export default function WizardBusinessPage() {
               id="suburb"
               value={suburb}
               onChange={(e) => setSuburb(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#bd1e2b] focus:border-transparent"
+              className={field}
               placeholder="Suburb or city"
               required
             />
           </div>
 
-          {/* Address */}
           <div>
             <label
               htmlFor="address"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
             >
               Address *
             </label>
@@ -168,17 +167,16 @@ export default function WizardBusinessPage() {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#bd1e2b] focus:border-transparent"
+              className={`${field} resize-none`}
               placeholder="Full street address"
               required
             />
           </div>
 
-          {/* Timezone */}
           <div>
             <label
               htmlFor="timezone"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground"
             >
               Timezone *
             </label>
@@ -186,7 +184,7 @@ export default function WizardBusinessPage() {
               id="timezone"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#bd1e2b] focus:border-transparent"
+              className={field}
               required
             >
               <option value="">Select a timezone</option>
@@ -198,35 +196,33 @@ export default function WizardBusinessPage() {
             </select>
           </div>
 
-          {/* Error Messages */}
           {errors.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-sm font-semibold text-red-800 mb-2">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+              <p className="mb-2 text-sm font-semibold text-destructive">
                 Please fix the following errors:
               </p>
-              <ul className="list-disc list-inside space-y-1">
-                {errors.map((error, index) => (
-                  <li key={index} className="text-sm text-red-700">
-                    {error}
+              <ul className="list-inside list-disc space-y-1">
+                {errors.map((err, index) => (
+                  <li key={index} className="text-sm text-destructive">
+                    {err}
                   </li>
                 ))}
               </ul>
             </div>
           )}
 
-          {/* Navigation Buttons */}
           <div className="flex justify-between pt-4">
             <button
               type="button"
               onClick={handleBack}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+              className="rounded-lg border border-border px-6 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
             >
               Back
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-3 bg-[#bd1e2b] text-white rounded-lg font-semibold hover:bg-[#9a1823] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? 'Saving...' : 'Next: Logo'}
             </button>
@@ -236,4 +232,3 @@ export default function WizardBusinessPage() {
     </WizardLayout>
   );
 }
-
