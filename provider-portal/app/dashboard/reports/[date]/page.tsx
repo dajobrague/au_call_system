@@ -110,17 +110,17 @@ export default function DailyReportPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen px-4">
-        <div className="max-w-md w-full bg-red-50 border border-red-200 rounded-lg p-6">
+        <div className="max-w-md w-full bg-destructive/10 border border-destructive/30 rounded-xl p-6">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
+            <AlertCircle className="w-6 h-6 text-destructive shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-lg font-semibold text-red-900 mb-2">
+              <h3 className="text-lg font-semibold text-foreground mb-2">
                 Error Loading Report
               </h3>
-              <p className="text-red-700 mb-4">{error}</p>
+              <p className="text-destructive mb-4">{error}</p>
               <button
                 onClick={() => fetchReportData(dateParam)}
-                className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors"
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Try Again
               </button>

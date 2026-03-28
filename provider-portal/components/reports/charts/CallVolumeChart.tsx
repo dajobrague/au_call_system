@@ -17,7 +17,7 @@ export default function CallVolumeChart({ data }: CallVolumeChartProps) {
   if (!data || data.length === 0) {
     return (
       <div className="bg-card rounded-xl shadow-sm border border-border/60 p-6">
-        <h3 className="text-base font-semibold text-foreground mb-4">Call Volume Over Time</h3>
+        <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Call Volume Over Time</h3>
         <div className="h-80 flex items-center justify-center text-muted-foreground">
           <div className="text-center">
             <p className="text-sm">No call data available</p>
@@ -38,7 +38,7 @@ export default function CallVolumeChart({ data }: CallVolumeChartProps) {
   
   return (
     <div className="bg-card rounded-xl shadow-sm border border-border/60 p-6" data-chart="call-volume">
-      <h3 className="text-base font-semibold text-foreground mb-4">Call Volume Over Time</h3>
+      <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Call Volume Over Time</h3>
       <ResponsiveContainer width="100%" height={320}>
         <LineChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" />
@@ -61,7 +61,7 @@ export default function CallVolumeChart({ data }: CallVolumeChartProps) {
               border: '1px solid hsl(220, 13%, 91%)',
               borderRadius: '12px',
               padding: '12px',
-              boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
+              boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
               fontSize: '13px'
             }}
             formatter={(value: number | string, name: string) => {
@@ -91,9 +91,9 @@ export default function CallVolumeChart({ data }: CallVolumeChartProps) {
           <Line 
             type="monotone" 
             dataKey="duration" 
-            stroke="#6b7280" 
+            stroke="hsl(220, 9%, 46%)" 
             strokeWidth={2}
-            dot={{ fill: '#6b7280', r: 4 }}
+            dot={{ fill: 'hsl(220, 9%, 46%)', r: 4 }}
             activeDot={{ r: 6 }}
           />
         </LineChart>

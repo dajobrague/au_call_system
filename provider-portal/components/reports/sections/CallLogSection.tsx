@@ -58,7 +58,7 @@ export default function CallLogSection({ callLog }: CallLogSectionProps) {
           </thead>
           <tbody className="bg-card divide-y divide-border/60 print:divide-black">
             {callLog.map((call, index) => (
-              <tr key={index} className={`hover:bg-muted/30 print:hover:bg-white ${call.issuesFlagged ? 'bg-red-50 print:bg-white' : ''}`}>
+              <tr key={index} className={`hover:bg-muted/30 print:hover:bg-white ${call.issuesFlagged ? 'bg-destructive/10 print:bg-white' : ''}`}>
                 <td className="px-3 py-3 text-sm text-foreground print:text-black whitespace-nowrap align-top">
                   <div className="flex items-center gap-2">
                     {call.issuesFlagged && (

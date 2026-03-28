@@ -31,7 +31,7 @@ export default function DurationBreakdownChart({ data }: DurationBreakdownChartP
   if (total === 0) {
     return (
       <div className="bg-card rounded-xl shadow-sm border border-border/60 p-6">
-        <h3 className="text-base font-semibold text-foreground mb-4">Call Duration Breakdown</h3>
+        <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Duration Breakdown</h3>
         <div className="h-80 flex items-center justify-center text-muted-foreground">
           <div className="text-center">
             <p className="text-sm">No call data available</p>
@@ -55,7 +55,7 @@ export default function DurationBreakdownChart({ data }: DurationBreakdownChartP
   
   return (
     <div className="bg-card rounded-xl shadow-sm border border-border/60 p-6" data-chart="duration-breakdown">
-      <h3 className="text-base font-semibold text-foreground mb-4">Call Duration Breakdown</h3>
+      <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Duration Breakdown</h3>
       <ResponsiveContainer width="100%" height={320}>
         <PieChart>
           <Pie
@@ -82,7 +82,7 @@ export default function DurationBreakdownChart({ data }: DurationBreakdownChartP
               border: '1px solid hsl(220, 13%, 91%)',
               borderRadius: '12px',
               padding: '12px',
-              boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
+              boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
               fontSize: '13px'
             }}
             formatter={(value: number, name: string, props: any) => {

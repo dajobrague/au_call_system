@@ -52,7 +52,7 @@ export default function AdditionalCommentsSection({
       </p>
       
       {readOnly ? (
-        <div className="min-h-[120px] p-3 border border-input rounded-md bg-muted/30 whitespace-pre-wrap print:bg-white print:border-black">
+        <div className="min-h-[120px] p-3 border border-input rounded-lg bg-muted/30 whitespace-pre-wrap print:bg-white print:border-black">
           {comments || <span className="text-muted-foreground/60 print:text-black italic">No additional comments</span>}
         </div>
       ) : (
@@ -61,7 +61,7 @@ export default function AdditionalCommentsSection({
             value={comments}
             onChange={(e) => onCommentsChange(e.target.value)}
             placeholder="Example: Client called again at 2:15 AM requesting clarification on transport. No action needed."
-            className="w-full min-h-[120px] p-3 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-y print:border-black"
+            className="w-full min-h-[120px] p-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-y print:border-black"
             rows={5}
           />
           <div className="flex justify-between items-center mt-2">

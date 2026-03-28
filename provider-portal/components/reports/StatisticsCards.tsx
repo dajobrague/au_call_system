@@ -64,15 +64,15 @@ export default function StatisticsCards({
   
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-card rounded-xl shadow-sm border border-border/60 p-6">
+          <div key={i} className="bg-card rounded-xl shadow-sm border border-border/60 p-5">
             <div className="animate-pulse">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 bg-muted rounded-lg"></div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 bg-muted rounded-lg" />
               </div>
-              <div className="h-7 bg-muted rounded w-20 mb-2"></div>
-              <div className="h-4 bg-muted rounded w-28"></div>
+              <div className="h-7 bg-muted rounded w-20 mb-1.5" />
+              <div className="h-4 bg-muted rounded w-24" />
             </div>
           </div>
         ))}
@@ -81,24 +81,24 @@ export default function StatisticsCards({
   }
   
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
           <div
             key={stat.id}
-            className="bg-card rounded-xl shadow-sm border border-border/60 hover:shadow-md transition-shadow duration-200 p-6"
+            className="bg-card rounded-xl shadow-sm border border-border/60 hover:shadow-md transition-shadow duration-200 p-5"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className={`${stat.lightColor} p-3 rounded-lg`}>
-                <Icon className={`w-6 h-6 ${stat.textColor}`} />
+            <div className="flex items-center justify-between mb-3">
+              <div className={`${stat.lightColor} p-2.5 rounded-lg`}>
+                <Icon className={`w-5 h-5 ${stat.textColor}`} />
               </div>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               <div className="text-2xl font-bold text-foreground">
                 {stat.value}
               </div>
-              <div className="text-sm font-medium text-muted-foreground">
+              <div className="text-sm text-muted-foreground">
                 {stat.label}
               </div>
             </div>

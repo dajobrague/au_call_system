@@ -37,7 +37,7 @@ export default function AttachmentsSection({ attachments }: AttachmentsSectionPr
         {attachments.map((attachment, index) => (
           <div 
             key={index}
-            className="flex items-center gap-3 p-3 border border-border/60 rounded-md hover:bg-muted/30 transition-colors print:border-black print:hover:bg-white"
+            className="flex items-center gap-3 p-3 border border-border/60 rounded-lg hover:bg-muted/30 transition-colors print:border-black print:hover:bg-white"
           >
             {attachment.type === 'recording' ? (
               <FileAudio className="w-5 h-5 text-primary shrink-0 print:text-black" />

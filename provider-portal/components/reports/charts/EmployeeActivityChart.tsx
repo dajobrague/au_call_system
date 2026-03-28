@@ -17,7 +17,7 @@ export default function EmployeeActivityChart({ data }: EmployeeActivityChartPro
   if (!data || data.length === 0) {
     return (
       <div className="bg-card rounded-xl shadow-sm border border-border/60 p-6">
-        <h3 className="text-base font-semibold text-foreground mb-4">Employee Activity</h3>
+        <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Employee Activity</h3>
         <div className="h-80 flex items-center justify-center text-muted-foreground">
           <div className="text-center">
             <p className="text-sm">No employee data available</p>
@@ -42,7 +42,7 @@ export default function EmployeeActivityChart({ data }: EmployeeActivityChartPro
   return (
     <div className="bg-card rounded-xl shadow-sm border border-border/60 p-6" data-chart="employee-activity">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-base font-semibold text-foreground">Employee Activity</h3>
+        <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Employee Activity</h3>
         {data.length > 10 && (
           <span className="text-xs text-muted-foreground">Top 10 of {data.length}</span>
         )}
@@ -72,7 +72,7 @@ export default function EmployeeActivityChart({ data }: EmployeeActivityChartPro
               border: '1px solid hsl(220, 13%, 91%)',
               borderRadius: '12px',
               padding: '12px',
-              boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
+              boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
               fontSize: '13px'
             }}
             formatter={(value: number, name: string) => {
@@ -98,7 +98,7 @@ export default function EmployeeActivityChart({ data }: EmployeeActivityChartPro
           />
           <Bar 
             dataKey="avgDuration" 
-            fill="#dc262640" 
+            fill="#dc262633" 
             radius={[0, 4, 4, 0]}
           />
         </BarChart>
